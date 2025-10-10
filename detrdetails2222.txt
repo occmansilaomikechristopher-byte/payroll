@@ -1,0 +1,634 @@
+<?php
+include 'db_connect.php';
+
+if (!isset($_GET['id']) || !isset($_GET['device_id']) || !isset($_GET['site_id'])) {
+    header("HTTP/1.1 405 Unauthorized");
+    echo "Data not available";
+    exit;
+};
+$id =  base64_decode($_GET['id']);
+$device_id =  base64_decode($_GET['device_id']);
+$site_id =  base64_decode($_GET['site_id']);
+$timekeeper_name = base64_decode($_GET['timekeeper_name']);
+// $status = base64_decode($_GET['status']);
+$query = "SELECT DTR.*,sites.site_code, sites.site_name, employer_name FROM DTR  
+        LEFT JOIN sites ON sites.id = DTR.site_id  
+        LEFT JOIN employers  ON DTR.employer_id = employers.id  
+        WHERE DTR.id = ?";
+$stmt = $conn->prepare($query);
+$stmt->bind_param("i", $id);
+$stmt->execute();
+$result = $stmt->get_result();
+$dtr = $result->fetch_assoc();
+
+
+if (!$dtr) {
+    header("HTTP/1.1 405 Unauthorized");
+    echo "Data not available";
+    exit;
+}
+
+function stringToArrayBySpaces($string)
+{
+    $split_array = preg_split('/\s{7}+/', $string, -1, PREG_SPLIT_NO_EMPTY);
+    return $split_array;
+}
+
+function getDataBySpaces($dataString)
+{
+    $splitData = [];
+    $currentElement = "";
+
+    foreach (str_split($dataString) as $char) {
+        if (ctype_space($char)) {
+            if ($currentElement) {
+                $splitData[] = $currentElement;
+                $currentElement = "";
+            }
+        } else {
+            $currentElement .= $char;
+        }
+    }
+
+    if ($currentElement) {
+        $splitData[] = $currentElement;
+    }
+
+    return $splitData;
+}
+
+$decoded_data = base64_decode(explode(",", $dtr['file'])[1]);
+$result_array = stringToArrayBySpaces($decoded_data);
+$is_duplicate = false;
+?>
+
+
+
+<!doctype html>
+
+<html lang="en">
+
+<head>
+    <title>JEJORS Payroll</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <meta name="description" content="JEJORS Payroll">
+
+    <meta name="author" content="design by: Niel Daculan">
+
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <!-- VENDOR CSS -->
+
+    <link rel="stylesheet" href="assets/vendor/bootstrap/css/bootstrap.min.css">
+
+    <link rel="stylesheet" href="assets/vendor/font-awesome/css/font-awesome.min.css">
+
+    <link rel="stylesheet" href="assets/vendor/jquery-datatable/dataTables.bootstrap4.min.css">
+    <link href="assets/css/jquery.datetimepicker.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/vendor/select2/select2.css" />
+    <link rel="stylesheet" href="assets/vendor/bootstrap-multiselect/bootstrap-multiselect.css">
+    <link rel="stylesheet" href="assets/vendor/multi-select/css/multi-select.css">
+    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="stylesheet" href="assets/css/color_skins.css">
+    <link rel="stylesheet" href="assets/css/my-style.css">
+    <link rel="stylesheet" href="assets/vendor/toastr/toastr.min.css">
+
+    <link rel="stylesheet" href="assets/datetimepicker/css/bootstrap-datetimepicker.min.css" type="text/css" media="all" />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body {
+            overflow-x: hidden;
+            background-color: #fff;
+        }
+
+        #panelContainer {
+            display: flex;
+            flex-direction: row;
+            min-height: calc(100vh - 120px);
+        }
+
+        .panel {
+            position: relative;
+
+        }
+
+        .panel.one {
+            width: 70%;
+        }
+
+        .panel.two {
+            width: 30%;
+            background: #fff;
+            z-index: 2;
+        }
+
+        .slider {
+            z-index: 999999;
+            display: block;
+            position: absolute;
+            width: 5px;
+            background-color: #9E9E9E;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            overflow: visible;
+            user-select: none;
+        }
+
+        .slider::before {
+            content: "";
+            position: absolute;
+            left: 0.25rem;
+            top: 50%;
+            height: 1.5rem;
+            width: 0.5rem;
+            background-color: #9E9E9E;
+            cursor: col-resize;
+        }
+
+        .wrapper {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="header-individual">
+            <div class="row  align-items-center">
+                <button onclick="window.location.href = 'index.php?page=dtr';" type="button" class="btn btn-default" title="Back"><span class="sr-only">Refresh</span> <i class="fa fa-arrow-left"></i></button>
+                <div class="dtr-details">
+                    <div data-toggle="tooltip" title="Period"><i class="fa fa-calendar"></i> <span><?= date('F d', strtotime($dtr['date_from'])) ?> - <?= date('M d, Y', strtotime($dtr['date_to'])) ?> </span></div>
+                    <div data-toggle="tooltip" title="Timekeeper"><i class="fa fa-user"></i><span><?= $timekeeper_name  ?> </span></div>
+                    <div data-toggle="tooltip" title="Site: <?= $dtr['site_name']  ?>"><i class="fa fa-building"></i> <span><?= $dtr['site_code']  ?></span></div>
+                    <div data-toggle="tooltip" title="Employer"><i class="fa fa-user"></i><span> <span><?= $dtr['employer_name']  ?></span></div>
+
+                </div>
+            </div>
+            <div class="">
+                <form id="navbar-search" class="navbar-form search-form">
+                    <input id="myInput" class="form-control" placeholder="Search here..." type="text">
+                    <button type="button" class="btn btn-default"><i class="icon-magnifier"></i></button>
+                </form>
+            </div>
+            <div class="row  align-items-center">
+                <button data-toggle="tooltip" title="Add Attendance" onclick="addSchedule(<?= $id ?>)" type="button" class="btn btn-outline-warning" title="Refresh"><i class="fa fa-calendar"></i></button>
+                <?php if ($dtr['status'] === 1) { ?>
+                    <button data-toggle="tooltip" title="Approve DTR" <?= $is_duplicate ? 'disabled' : ''  ?> onclick="approveDtr(<?= $id ?>)" type="button" class="btn btn-outline-secondary ml-1" title="Refresh"><i class="fa fa-thumbs-up"></i></button>
+                <?php } ?>
+            </div>
+        </div>
+        <div class="wrapper mt-4">
+            <div id="panelContainerd">
+                <div class="panels ones">
+                    <div class="content">
+                        <div class="table-scrollable">
+                            <table cellspacing="0" id="table-1" class="table table-sm table-bordered table-striped">
+                                <thead class="thead-dark">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Full Name</th>
+                                        <th>Hours Worked</th>
+                                        <th>Overtime</th>
+                                        <th>Undertime(min)</th>
+                                        <th>Late(min)</th>
+                                        <th>Logs</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+                                    $query = $conn->query("SELECT  a.*, e.employee_no, e.lastname, e.firstname, e.middlename,  d.name as department, p.name as position 
+                                    FROM DTR_details a 
+                                    INNER JOIN employee e ON a.employee_id = e.id 
+                                    LEFT JOIN department d ON e.department_id = d.id 
+                                    LEFT JOIN position p ON e.position_id = p.id  
+
+                                    WHERE  a.ddtr_id = $id ORDER BY a.date_time ASC ");
+                                    while ($row = $query->fetch_assoc()) {
+                                        $logs = json_decode($row['logs']);
+                                        $logs = isset($logs) ? $logs : [];
+
+
+                                    ?>
+                                        <tr>
+                                            <td width="120"><?= date("F j, Y",  strtotime($row['date_time'])) ?></td>
+                                            <td style="min-width: 200px;">
+                                                <b>(<?= $row['employee_no'] ?>)<?= $row['lastname'] ?> <?= $row['firstname'] ?> <?= $row['middlename'] ?>.</b>
+                                                <div><i class="fa fa-circle" style="color: #607D8B; font-size: 10px;"></i> <?= $row['position'] ?></div>
+                                            </td>
+                                            <td width="120">
+                                                <div class="input-group mb-3">
+                                                    <input type="text" value="<?= $row['work_hours'] ?>" class="form-control" placeholder="Hours Worked" aria-label="Hours Worked" aria-describedby="basic-addon2">
+                                                    <div class="input-group-append">
+                                                        <button onclick="updateHoursWork(this, <?= $row['id']?>)"  data-toggle="tooltip" title="Save Changes" class="btn btn-outline-secondary" type="button"><i class="fa fa-save"></i></button>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td width="120">
+                                                <div class="input-group mb-3">
+                                                    <input type="text" value="<?= $row['overtime'] ?>" class="form-control" placeholder="Overtime" aria-label="Overtime" aria-describedby="basic-addon2">
+                                                    <div class="input-group-append">
+                                                    <button onclick="updateOvertime(this, <?= $row['id']?>)"  data-toggle="tooltip" title="Save Changes" class="btn btn-outline-secondary" type="button"><i class="fa fa-save"></i></button>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td width="120">
+                                                <div class="input-group mb-3">
+                                                    <input type="text" value="<?= $row['undertime'] ?>" class="form-control" placeholder="Undertime" aria-label="Undertime" aria-describedby="basic-addon2">
+                                                    <div class="input-group-append">
+                                                    <button onclick="updateUndertime(this, <?= $row['id']?>)"  data-toggle="tooltip" title="Save Changes" class="btn btn-outline-secondary" type="button"><i class="fa fa-save"></i></button>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td width="120">
+                                                <div class="input-group mb-3">
+                                                    <input type="text" value="<?= $row['late'] ?>" class="form-control" placeholder="Late" aria-label="Late" aria-describedby="basic-addon2">
+                                                    <div class="input-group-append">
+                                                    <button onclick="updateLate(this, <?= $row['id']?>)"  data-toggle="tooltip" title="Save Changes" class="btn btn-outline-secondary" type="button"><i class="fa fa-save"></i></button>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <?php
+                                            $date_check = date("Y-m-d",  strtotime($row['date_time']));
+                                            $employee_id = $row['employee_id'];
+                                            // var_dump("SELECT DTR.*, timekeeper.name AS timekeeper_name,  manager.name AS manager_name, uploaded.name AS uploaded_by
+                                            //     FROM DTR_details
+                                            //     LEFT JOIN DTR ON DTR_details.ddtr_id = DTR.id
+                                            //     LEFT JOIN users AS timekeeper ON DTR.timekeeper_id = timekeeper.id
+                                            //     LEFT JOIN users AS uploaded ON DTR.uploaded_by = uploaded.id 
+                                            //     LEFT JOIN users AS manager ON DTR.manager_id = manager.id
+                                            //     where date_time = '$date_check'  
+                                            //     AND employee_id = '$employee_id' 
+                                            //     AND ddtr_id != '$id'  
+                                            //     GROUP BY date_time  
+                                            // ");
+                                            $check_duplicate = $conn->query("SELECT DTR.*, timekeeper.name AS timekeeper_name,  uploaded.name AS uploaded_by
+                                                FROM DTR_details
+                                                LEFT JOIN DTR ON DTR_details.ddtr_id = DTR.id
+                                                LEFT JOIN users AS timekeeper ON DTR.timekeeper_id = timekeeper.id
+                                                LEFT JOIN users AS uploaded ON DTR.uploaded_by = uploaded.id 
+                                                where date_time = '$date_check'  
+                                                AND employee_id = '$employee_id' 
+                                                AND ddtr_id != '$id'  
+                                                GROUP BY date_time  
+                                            ");
+                                            $timekeeper_name = '';
+                                            $device_id2 = '';
+                                            $status = '';
+                                            $site_id2 = '';
+                                            $id_dtr = '';
+                                            $site_name = '';
+
+                                            if ($check_duplicate->num_rows) {
+                                                $is_duplicate = true;
+                                                while ($row_check = $check_duplicate->fetch_assoc()) {
+
+                                                    $timekeeper_name = $row_check['timekeeper_name'];
+                                                    $device_id2 = $row_check['device_id'];
+                                                    $status = $row_check['status'];
+                                                    $site_id2 = $row_check['site_id'];
+                                                    $id_dtr = $row_check['id'];
+                                                    $site_name = $row_check['site_id'];
+                                                }
+                                            } else {
+                                                $is_duplicate = false;
+                                            }
+
+
+                                            ?>
+                                            <?php if ($is_duplicate) { ?>
+                                                <td style="background-color: #ffbbd2; margin-left:10px">
+                                                    <div>
+                                                        <?php foreach ($logs  as $log) {  ?>
+                                                            <div class="mt-1">
+                                                                <?php if ($log->type === 'bio') { ?>
+                                                                    <span class="badge badge-success">Biometric</span>
+                                                                <?php } else { ?>
+                                                                    <span class="badge badge-warning">Manual</span>
+                                                                <?php } ?>
+                                                                <?= date("g:i A",  strtotime($log->dateTime)) ?>
+                                                            </div>
+
+                                                        <?php }  ?>
+                                                    </div>
+                                                    <div class="mt-1">
+                                                        <?php if ($dtr['status'] === 1) { ?>
+                                                            <button data-toggle="tooltip" title="Delete Attendance" onclick="deleteDTRLogs(<?= $row['id'] ?>)" class="btn btn-outline-danger ml-1 btn-sm">
+                                                                <i class="fa fa-trash"></i>
+                                                            </button>
+                                                        <?php } ?>
+                                                        <a data-toggle="tooltip" title="View DTR" target="new" href="dtr-details.php?id=<?= base64_encode($id_dtr) ?>&timekeeper_name=<?= base64_encode($timekeeper_name) ?>&device_id=<?= base64_encode($device_id2) ?>&site_id=<?= base64_encode($site_id2) ?>&status=<?= base64_encode($status) ?>" type="button" class="btn btn-sm btn-outline-secondary" title="Edit" id="<?= $id_dtr ?>" site_name="<?= htmlspecialchars($site_name) ?>" onclick="edit_function(this)">
+                                                            <i class="fa fa-eye"></i>
+                                                        </a>
+
+                                                    </div>
+                                                </td>
+                                            <?php  } else { ?>
+                                                <td>
+                                                    <?php foreach ($logs  as $log) {  ?>
+                                                        <div class="m-1">
+                                                            <?php if ($log->type === 'bio') { ?>
+                                                                <span class="badge badge-success">Biometric</span>
+                                                            <?php } else { ?>
+                                                                <span class="badge badge-danger">Manual</span>
+                                                            <?php } ?>
+                                                            <?= date("g:i A",  strtotime($log->dateTime)) ?>
+                                                        </div>
+                                                    <?php } ?>
+                                                </td>
+                                            <?php } ?>
+                                            <td class="text-center">
+                                                <button data-toggle="tooltip" title="Delete Attendance" onclick="deleteDTRLogs(<?= $row['id'] ?>)" class="btn btn-outline-danger ml-1 btn-sm">
+                                                    <i class="fa fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    <?php } ?>
+                                </tbody>
+                            </table>
+                        </div>
+
+                    </div>
+                </div>
+                <!-- <div class="panel two ">
+                    <?php
+                    $rawData = [];
+                    foreach ($result_array as $k) {
+                        $splitData = [];
+                        $currentElement = "";
+                        foreach (str_split($k) as $char) {
+                            if (ctype_space($char)) {
+                                if ($currentElement) {
+                                    $splitData[] = $currentElement;
+                                    $currentElement = "";
+                                }
+                            } else {
+                                $currentElement .= $char;
+                            }
+                        }
+
+                        if ($currentElement) {
+                            $splitData[] = $currentElement;
+                        }
+                        if (isset($splitData[0])) {
+                            $code = $splitData[0];
+                            $date =  date("Y-m-d h:i:s",  strtotime($splitData[1] . ' ' . $splitData[2]));
+                            $new_data = [ // Define the new data to push
+                                "id" => $code,
+                                "date" => $date,
+                            ];
+                            array_push($rawData, $new_data);
+                        }
+                    }
+
+                    ?>
+                    <div class="content">
+                        <table cellspacing="0" id="table-2" class="table table-sm table-bordered table-striped">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Full Name</th>
+                                    <th>Logs</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php
+                                foreach ($rawData as $key => $k) {
+                                    $code = $k['id'];
+                                    $query_employee = "SELECT employee_bio.*,  employee.employee_no, employee.lastname, employee.firstname, employee.middlename    FROM employee_bio INNER JOIN employee ON employee_bio.employee_id = employee.id  WHERE employee_bio.code = ? AND employee_bio.site_id = ? AND employee_bio.device_id = ?";
+                                    $stmt_employee = $conn->prepare($query_employee);
+                                    $stmt_employee->bind_param("sss", $code, $site_id, $device_id);
+                                    $stmt_employee->execute();
+                                    $result_employee = $stmt_employee->get_result();
+                                    $employee = $result_employee->fetch_assoc();
+                                ?>
+
+                                    <tr>
+                                        <td width="100" class="text-center text-bold"><?= $code ?></td>
+                                        <td width="200"><?= $employee['lastname'] ?> <?= $employee['firstname'] ?> <?= $employee['middlename'] ?>.</td>
+                                        <td width="200"><?= date("F j, Y g:i A",  strtotime($k['date'])) ?></td>
+                                    </tr>
+                                <?php } ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <span class="slider"></span>
+                </div> -->
+            </div>
+        </div>
+    </div>
+    <?php include 'component/add_attendance.php'; ?>
+    <!-- Javascript -->
+    <script src="assets/bundles/libscripts.bundle.js"></script>
+    <script src="assets/bundles/vendorscripts.bundle.js"></script>
+    <script src="assets/vendor/toastr/toastr.js"></script>
+
+    <script src="assets/bundles/mainscripts.bundle.js"></script>
+
+    <script src="assets/bundles/datatablescripts.bundle.js"></script>
+
+    <script src="assets/vendor/parsleyjs/js/parsley.min.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script> -->
+    <!-- <script src="assets/vendor/bootstrap-datepicker/js/bootstrap-datepicker.min.js"></script> -->
+
+    <script src="assets/js/jquery.datetimepicker.full.min.js"></script>
+
+    <script src="//cdnjs.cloudflare.com/ajax/libs/moment.js/2.7.0/moment.min.js" type="text/javascript"></script>
+
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment-with-locales.min.js"></script>
+
+    <script type="text/javascript" src="assets/datetimepicker/js/bootstrap-datetimepicker.min.js"></script>
+    <script src="assets/vendor/select2/select2.min.js"></script>
+    <script src="assets/js/dtr-details.js"></script>
+
+
+    <script>
+        let isduplicate = '<?= $is_duplicate ?>';
+
+        // (function($) {
+        //     $(function() {
+        //         var isMouseDown = false,
+        //             $panelOne = $(".panel.one"),
+        //             $panelTwo = $(".panel.two"),
+        //             $panelContainer = $panelOne.parent(),
+        //             getParentWidth = function() {
+        //                 return $panelContainer.width();
+        //             },
+        //             mouseMoveHandler = function(e) {
+        //                 if (!isMouseDown) return;
+
+        //                 var clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        //                 if (isNaN(clientX))
+        //                     return;
+
+
+        //                 var width = (clientX / getParentWidth()) * 100;
+
+        //                 // don't allow a value that's smaller than zero;
+        //                 width = width < 0 ? 0 : width;
+
+        //                 // apply size to panel 1
+        //                 $panelOne.css({
+        //                     width: width + "%"
+        //                 });
+
+        //                 // apply size to panel 2
+        //                 $panelTwo.css({
+        //                     width: 100 - width + "%"
+        //                 });
+        //             };
+
+        //         // mouseDown event
+        //         $(".slider").on("mousedown touchstart", function() {
+        //             // only bind a the mouseMove handler on the first cycle
+        //             !isMouseDown && $panelContainer.on("mousemove touchmove", mouseMoveHandler);
+        //             isMouseDown = true;
+        //         });
+
+        //         $(window).on("mouseup touchend", function() {
+        //             isMouseDown = false;
+        //             // detach then mouseMove handler
+        //             $panelContainer.off("mousemove touchmove");
+        //         });
+        //     });
+        // })(jQuery);
+        $(document).ready(function() {
+
+            // $(".table-basic").freezeTable();
+            // $('#table-modal').one('shown.bs.modal', function(e) {
+
+            //     $(this).find(".table-modal").freezeTable({
+            //         'container': '#table-modal.modal',
+            //     });
+            // });
+
+            // $(".table-columns-only").freezeTable({
+            //     'freezeHead': false,
+            // });
+
+            // $(".table-head-only").freezeTable({
+            //     'freezeColumn': false,
+            // });
+
+            // // 2 Columns to be fixed
+            // $(".table-multi-columns").freezeTable({
+            //     'columnNum': 2,
+            // });
+
+            // // Shadow enabled
+            // $(".table-shadow").freezeTable({
+            //     'shadow': true,
+            // });
+
+            // // Customized styles
+            // $(".table-wrap-styles").freezeTable({
+            //     'headWrapStyles': {
+            //         'box-shadow': '0px 9px 10px -5px rgba(159, 159, 160, 0.8)'
+            //     },
+            // });
+
+            // $(".table-with-scrollbar").freezeTable({
+            //     'scrollBar': true,
+            // });
+
+            // // Freeze Column(s) Keep
+            // $(".table-column-keep").freezeTable({
+            //     'columnNum': 2,
+            //     'columnKeep': true,
+            // });
+        });
+        $(document).ready(function() {
+            $("#myInput").on("keyup", function() {
+                var value = $(this).val().toLowerCase();
+                $("#table-1 tbody tr").filter(function() {
+                    $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+                });
+                $("#table-2 tbody tr").filter(function() {
+                    $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+                });
+            });
+        });
+
+        function approveDtr(id) {
+            if (isduplicate == '1') {
+                Swal.fire({
+                    icon: "error",
+                    title: "Erorr!",
+                    text: 'The system cannot process duplicate attendance entries. Please ensure you are submitting a unique record.',
+                }).then((result) => {
+
+                });
+                return
+            }
+            Swal.fire({
+                title: "Are you sure?",
+                text: "You are about to approve this DTR.",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Yes, approve it!",
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: "Approving, please wait...",
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        },
+                    });
+                    await new Promise((resolve) => setTimeout(resolve, 1000));
+                    $.ajax({
+                        url: "ajax.php?action=update_status_dtr",
+                        method: "POST",
+                        dataType: "JSON",
+                        data: {
+                            id,
+                            status
+                        },
+                        error: (xhr, status, error) => {
+                            Swal.close();
+                            handleError(error || '');
+                            $(".submitbutton").removeAttr("disabled");
+                        },
+                        success: function(res) {
+                            if (res?.result) {
+                                Swal.fire({
+                                    icon: "success",
+                                    title: "Success!",
+                                    text: "DTR successfully approve.",
+                                }).then((result) => {
+                                    if (result.isConfirmed) {
+                                        window.location.href = `index.php?page=dtr`;
+                                    }
+                                });
+                            } else {
+                                Swal.fire({
+                                    icon: "error",
+                                    title: "Erorr!",
+                                    text: res.message,
+                                }).then((result) => {
+
+                                });
+                                return false;
+                            }
+                        },
+                    });
+                }
+            });
+        }
+    </script>
+    <script type="text/javascript">
+        toastr.options.timeOut = "false";
+        toastr.options.closeButton = true;
+        toastr.options.positionClass = 'toast-top-right';
+    </script>
+
+</body>
+
+</html>

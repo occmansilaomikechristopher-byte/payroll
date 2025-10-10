@@ -1,0 +1,257 @@
+<?php if ($login_role === 6) { ?>
+    <?php
+    echo "<script> location.href='index.php?page=dtr'; </script>";
+    exit;
+    ?>
+<?php } ?>
+
+<?php
+include 'db_connect.php';
+$total_employee = $conn->query("SELECT count(*) AS total FROM  employee  ")->fetch_array();
+$total_positions= $conn->query("SELECT count(*) AS total FROM  position ")->fetch_array();
+$total_clusters = $conn->query("SELECT count(*) AS total FROM  clusters  ")->fetch_array();
+$total_sites = $conn->query("SELECT count(*) AS total FROM  sites WHERE status=1  ")->fetch_array();
+$filter_query = '';
+// if ($login_role === 4) {
+//     $employer_id = $_SESSION["login_employer_id"];
+//     $filter_query = "WHERE id = $employer_id ";
+// }
+
+?>
+
+<?php
+
+// Get the current day of the week (0 = Sunday, 1 = Monday, etc.)
+$dayOfWeek = date('w');
+
+// Calculate the number of days to subtract to get to the previous Monday
+$daysToSubtract = $dayOfWeek === 0 ? 6 : $dayOfWeek - 1;
+
+// Get the timestamp for the previous Monday
+$mondayTimestamp = strtotime("-$daysToSubtract days");
+
+// Get the Monday and Sunday dates in desired format
+$startDateFrom = '';
+$startDateTo = '';
+
+$site_filter  = "AND DTR.site_id = 1";
+
+?>
+
+
+<div class="containe-fluid">
+    <div class="row clearfix m-4">
+        <div class="col-lg-3 col-md-6">
+            <div class="card top_counter">
+                <div class="body">
+                    <div class="icon text-info"><i class="icon-users"></i> </div>
+                    <div class="content">
+                        <div class="text">Employees</div>
+                        <h5 class="number"><?= $total_employee[0] ?></h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card top_counter">
+                <div class="body">
+                    <div class="icon text-warning"><i class="fa fa-building"></i> </div>
+                    <div class="content">
+                        <div class="text">Positions</div>
+                        <h5 class="number"><?= $total_positions[0] ?></h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card top_counter">
+                <div class="body">
+                    <div class="icon text-danger"><i class="icon-bag"></i> </div>
+                    <div class="content">
+                        <div class="text">Clusters</div>
+                        <h5 class="number"><?= $total_clusters[0] ?></h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-12">
+            <div class="card top_counter">
+                <div class="body">
+                    <div class="icon"><i class="icon-handbag"></i> </div>
+                    <div class="content">
+                        <div class="text">Sites</div>
+                        <h5 class="number"><?= $total_sites[0] ?></h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row clearfix m-4">
+        <div class="col-sm">
+            <h5>Weekly DTR Submission</h5>
+        </div>
+        <div class="col-sm">
+            <form method="GET" action="" id="form-week"  >
+            <?php
+            function getWeeksDropdown($year = null)
+            {
+                global $startDateFrom; 
+                global $startDateTo; 
+                // If no year is provided, use the current year
+                $year = $year ?? date('Y');
+
+                // Calculate the number of weeks in the year
+                $numWeeks = date('W', strtotime($year . '12-31'));
+
+                // Calculate the last week of the year
+                $lastWeek = $numWeeks;
+
+                $selected_week = isset($_GET['week'])  ? $_GET['week'] : $lastWeek;
+
+                // Create an array to store the week options
+                $weeks = [];
+
+                for ($week = 1; $week <= $numWeeks; $week++) {
+                    // Calculate start and end dates for the week
+                    $startDate = date('Y-m-d', strtotime($year . 'W' . sprintf('%02d', $week)));
+                    $endDate = date('Y-m-d', strtotime($startDate . '+6 days'));
+
+                    // Format the week option
+                    $weekOption = "Week $week - " . date('F d', strtotime($startDate)) . " - " . date('F d, Y', strtotime($endDate));
+                    $weeks[$week] = $weekOption;
+                    if($week == $selected_week){
+                        $startDateFrom = $startDate;
+                        $startDateTo = $endDate;
+                    }
+                }
+
+                // Create the dropdown
+                echo '<select  style="width: 300px"  id="week-select" class="form-control pull-right" name="week">';
+                foreach ($weeks as $week => $weekOption) {
+                    $selected = ($week == $selected_week) ? 'selected' : '';
+                    echo '<option value="' . $week . '" ' . $selected . '>' . $weekOption . '</option>';
+                }
+                echo '</select>';
+            }
+            getWeeksDropdown();
+            ?>
+            </form>
+        </div>
+    </div>
+    <div class="row clearfix m-4">
+        <?php
+        $total_site = 0;
+        $user_forms = $conn->query("SELECT * from clusters $filter_query  ORDER BY cluster ASC");
+        while ($row_data_form = $user_forms->fetch_assoc()) {
+            $sites_query = $conn->query("SELECT count(*) total_sites
+                FROM sites 
+                WHERE sites.status = 1 
+                AND sites.cluster_id = '" . $row_data_form['id'] . "'
+               ");
+           
+            while ($row_site = $sites_query->fetch_assoc()) {
+                $total_site = $row_site['total_sites'];
+            }
+        ?>
+            <div class="col-lg-12">
+                <div id="employer<?= $row_data_form['id'] ?>" class="alert alert-success d-none " role="alert">
+                    <b><?= $row_data_form['cluster'] ?> Daily Time Record upload complete.</b>
+                </div>
+                <div class="card">
+                    <div class="header">
+                        <h2><?= $row_data_form['cluster'] ?></h2>
+                    </div>
+                    <div class="body">
+                        <div class="table-responsive">
+                            <table id="data-table" class="table table-hover dataTable table-custom table-striped m-b-0 c_list">
+                                <thead class="thead-dark">
+                                    <tr>
+                                        <th>Period</th>
+                                        <th>Employer</th>
+                                        <th>Site</th>
+                                        <th>Uploaded By</th>
+                                        <th>Timekeeper</th>
+                                        <th>Approved By</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php 
+                                    $from = date("Y-m-d", strtotime($startDateFrom));
+                                    $to = date("Y-m-d", strtotime($startDateTo));
+                                    $total_site_submit = 0;
+                                    $query = $conn->query("SELECT DTR.*, sites.site_name, sites.site_address,sites.site_code, timekeeper.name AS timekeeper_name,  uploaded.name AS uploaded_by, employer_name, approved.name AS approve_by
+                                FROM DTR 
+                                LEFT JOIN sites ON DTR.site_id = sites.id 
+                                LEFT JOIN users AS timekeeper ON DTR.timekeeper_id = timekeeper.id 
+                                LEFT JOIN users AS uploaded ON DTR.uploaded_by = uploaded.id 
+                                LEFT JOIN employers  ON DTR.employer_id = employers.id  
+                                LEFT JOIN users AS approved ON DTR.approved_by = approved.id  
+                                WHERE  date(date_from) between '" . $startDateFrom . "' and '" . $startDateTo . "'  AND sites.cluster_id =  '" . $row_data_form['id'] . "'
+                                ORDER BY DTR.id DESC");
+                                    while ($row = $query->fetch_assoc()) {
+                                    ?>
+                                        <tr>
+                                            <td>
+                                                <b>
+                                                    <?php
+                                                    $date = strtotime($row['date_from']);
+                                                    $formattedDate = date("F j, Y", $date);
+                                                    echo $formattedDate;
+                                                    ?>
+                                                    - <?php
+                                                        $date = strtotime($row['date_to']);
+                                                        $formattedDate = date("F j, Y", $date);
+                                                        echo $formattedDate;
+                                                        ?>
+                                                </b>
+                                            </td>
+                                            <td><?php echo htmlspecialchars($row['employer_name']); ?></td>
+                                            <td>
+                                                <div class="site-wapper">
+                                                    <div><?= $row['site_code'] ?></div>
+                                                    <div> <?= $row['site_name'] ?></div>
+                                                    <div> <?= $row['site_address'] ?></div>
+                                                </div>
+                                            </td>
+                                            <td><?= $row['uploaded_by'] ?></td>
+                                            <td><?= $row['timekeeper_name'] ?></td>
+                                            <td><?= $row['approve_by'] ?></td>
+                                            <td width="100">
+                                                <?php if ($row['status'] == 2) {
+                                                    $total_site_submit++; ?>
+                                                    <span class="badge  badge-success">Approved</span>
+                                                <?php } else { ?>
+                                                    <span class="badge badge-secondary">New</span>
+                                                <?php } ?>
+                                            </td>
+                                            <td class="text-center" width="100">
+                                                <a data-toggle="tooltip" title="View Details" href="dtr-details.php?id=<?= base64_encode($row['id']) ?>&timekeeper_name=<?= base64_encode($row['timekeeper_name']) ?>&device_id=<?= base64_encode($row['device_id']) ?>&site_id=<?= base64_encode($row['site_id']) ?>&status=<?= base64_encode($row['status']) ?>" type="button" class="btn btn-sm btn-outline-secondary" title="Edit" id="<?= $row['id'] ?>" site_name="<?= htmlspecialchars($row['site_name']) ?>" onclick="edit_function(this)">
+                                                    <i class="fa fa-eye"></i>
+                                                </a>
+
+                                            </td>
+                                        </tr>
+                                    <?php
+                                    }
+                                    ?>
+                                </tbody>
+                            </table>
+                            <span class="badge badge-primary float-right"><?= $total_site_submit ?> out of <?= $total_site ?></span>
+                            <?php if ($total_site_submit > 0 && $total_site_submit == $total_site) { ?>
+                                <script>
+                                    let idssd = "<?= $row_data_form['id'] ?>";
+                                    document.getElementById(`employer${idssd}`).classList.remove("d-none");
+                                </script>
+                            <?php } ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php } ?>
+    </div>
+
+
+
+</div>
