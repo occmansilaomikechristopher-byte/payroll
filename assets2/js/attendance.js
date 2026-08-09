@@ -66,13 +66,18 @@
 
 $(function () {
 
-    
     $('#site-select').select2({
-        dropdownParent: $('#modal-filter')
+        dropdownParent: $('#modal-filter'),
+        placeholder: '— All Sites —',
+        allowClear: true,
+        width: '100%',
     });
 
     $('#employee-select').select2({
-        dropdownParent: $('#modal-filter')
+        dropdownParent: $('#modal-filter'),
+        placeholder: 'Select one or more employees...',
+        allowClear: true,
+        width: '100%',
     });
 
     
@@ -145,18 +150,120 @@ $(function () {
 
 });
 
-$("#form-filter").on('submit', function(e){
-    e.preventDefault();
-    var form = $(this);
+// Attendance DataTable + filter logic
+if ($('#attendance-table').length) {
+    var attTable = $('#attendance-table').DataTable({
+        processing: true,
+        serverSide: true,
+        order: [[0, 'desc']],
+        pageLength: 25,
+        ajax: {
+            url: 'attendance-server.php',
+            type: 'POST',
+            data: function (d) {
+                d.from         = attFilter.from;
+                d.to           = attFilter.to;
+                d.employee_ids = attFilter.employee_ids;
+                d.site_id      = attFilter.site_id;
+            },
+        },
+        columns: [
+            { data: 'date' },
+            { data: 'employee' },
+            { data: 'site' },
+            { data: 'work_hours', className: 'text-center', orderable: true },
+            { data: 'overtime',   className: 'text-center', orderable: true },
+            { data: 'undertime',  className: 'text-center', orderable: true },
+            { data: 'late',       className: 'text-center', orderable: true },
+            { data: 'logs',       orderable: false },
+            { data: 'status',     className: 'text-center', orderable: false },
+        ],
+        language: {
+            emptyTable: [
+                '<div class="att-empty">',
+                  '<div class="att-empty-icon"><i class="ri-calendar-check-line"></i></div>',
+                  '<h6>No Attendance Records</h6>',
+                  '<p>Select employees and a date range,<br>then apply the filter to view records.</p>',
+                  '<button class="att-empty-btn" data-bs-toggle="modal" data-bs-target="#modal-filter">',
+                    '<i class="ri-filter-3-line"></i> Apply Filter',
+                  '</button>',
+                '</div>',
+            ].join(''),
+            zeroRecords: [
+                '<div class="att-empty">',
+                  '<div class="att-empty-icon"><i class="ri-search-line"></i></div>',
+                  '<h6>No Matching Records</h6>',
+                  '<p>No attendance records match your current<br>filter or search criteria.</p>',
+                  '<button class="att-empty-btn" data-bs-toggle="modal" data-bs-target="#modal-filter">',
+                    '<i class="ri-edit-2-line"></i> Modify Filter',
+                  '</button>',
+                '</div>',
+            ].join(''),
+        },
+        drawCallback: function (settings) {
+            var json = settings.json;
+            if (json && json.stats) {
+                attUpdateStats(json.stats);
+            }
+        },
+    });
 
-    form.parsley().validate();
+    function attUpdateStats(stats) {
+        if (!attFilter.from || !attFilter.to) {
+            $('#att-stats-row, #att-filter-bar, #btn-clear-filter').hide();
+            return;
+        }
+        $('#att-stats-row').show();
+        $('#att-filter-bar').show();
+        $('#btn-clear-filter').css('display', 'inline-flex');
+        $('#stat-total').text(parseInt(stats.total_records).toLocaleString());
+        $('#stat-hours').text(parseFloat(stats.total_hours).toFixed(1));
+        $('#stat-ot').text(parseFloat(stats.total_overtime).toFixed(1));
+        $('#stat-ut').text(parseFloat(stats.avg_undertime).toFixed(1) + 'm');
+        $('#stat-late').text(parseFloat(stats.avg_late).toFixed(1) + 'm');
+        $('#stat-emps').text(stats.unique_employees);
 
-    if (form.parsley().isValid()){ 
-        e.preventDefault()
-        let fullUrl = window.location.href + '&' +  $(this).serialize();
-        window.location.href = fullUrl
+        var from = new Date(attFilter.from);
+        var to   = new Date(attFilter.to);
+        var fmt  = { month: 'short', day: 'numeric', year: 'numeric' };
+        $('#filter-date-label').text(from.toLocaleDateString('en-US', fmt) + ' – ' + to.toLocaleDateString('en-US', fmt));
+        $('#filter-emp-label').text(attFilter.emp_label || (attFilter.employee_ids ? attFilter.employee_ids.split(',').length + ' selected' : 'All'));
+        $('#filter-site-label').text(attFilter.site_label || 'All Sites');
     }
-});
+
+    $('#form-filter').on('submit', function (e) {
+        e.preventDefault();
+        var empIds  = $('#employee-select').val() || [];
+        var siteVal = $('#site-select').val();
+        var siteTxt = $('#site-select option:selected').text();
+
+        attFilter.from         = $('#from').val();
+        attFilter.to           = $('#to').val();
+        attFilter.employee_ids = empIds.join(',');
+        attFilter.site_id      = siteVal || '';
+        attFilter.emp_label    = empIds.length ? empIds.length + ' employee(s)' : 'All';
+        attFilter.site_label   = siteVal ? siteTxt.split('(')[0].trim() : 'All Sites';
+
+        $('#modal-filter').modal('hide');
+        attTable.draw();
+    });
+
+    $('#btn-clear-filter').on('click', function () {
+        attFilter = { from: '', to: '', employee_ids: '', site_id: '', emp_label: '', site_label: '' };
+        $('#employee-select').val(null).trigger('change');
+        $('#site-select').val('').trigger('change');
+        $('#from').val('');
+        $('#to').val('');
+        $('#att-stats-row, #att-filter-bar').hide();
+        $(this).hide();
+        attTable.draw();
+    });
+
+    // Auto-draw if URL params were present on page load
+    if (attFilter.from && attFilter.to) {
+        attTable.draw();
+    }
+}
 
 
 $('.remove_attendance').click(function(){

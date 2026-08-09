@@ -1,46 +1,71 @@
-<div class="modal" id="modal-filter-add" tabindex="-1" role="dialog">
-	<form class="form-auth-small" id="form-filter" method="post" novalidate>
-		<input type="hidden" name="id" id="id">
-		<div class="modal-dialog" role="document">
-			<div class="modal-content">
-				<div class="modal-header">
-					<h6 class="modal-title" id="defaultModalLabel">Filter Logs</h6>
-					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-				</div>
-				<div class="modal-body" style="min-height: 500px;">
-					<div class="row clearfix">
-						<div class="col-md-12">
-							<div class="form-group">
-								<label>Sites</label>
-								<select id="site-select" class="form-control select2" name="site_id" data-parsley-required-message="Please select  site." required>
-									<option value="">Select a site...</option>
-									<?php
-									$user_forms = $conn->query("SELECT * from sites WHERE status = 1 order by site_name asc");
-									while ($row_data_form = $user_forms->fetch_assoc()) :
-									?>
-										<option value="<?php echo $row_data_form['id'] ?>"><?php echo $row_data_form['site_name'] ?>(<?php echo $row_data_form['site_address'] ?>)</option>
-									<?php endwhile; ?>
-								</select>
-							</div>
-						</div>
-						<div class="col-md-12">
-							<div class="form-group">
-								<label>From</label>
-								<input name="from" id="from" class="form-control datetimepicker" autocomplete="off" data-parsley-required-message="Please select  date." required>
-							</div>
-						</div>
-						<div class="col-md-12">
-							<div class="form-group">
-								<label>To</label>
-								<input name="to" id="to" class="form-control datetimepicker" autocomplete="off" data-parsley-required-message="Please select  date." required>
-							</div>
-						</div>
-					</div>
-				</div>
-				<div class="modal-footer">
-					<button type="submit" class="btn btn-info">Filter</button>
-				</div>
-			</div>
-		</div>
-	</form>
+<div class="modal fade" id="modal-filter-add" tabindex="-1" role="dialog">
+    <form id="form-filter" novalidate>
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title mb-0">
+                        <i class="ri-filter-3-line me-2" style="color:#394b7c;"></i>Filter Visitor Logs
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+
+                    <!-- Date Range -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#394b7c;">
+                            <i class="ri-calendar-range-line me-1"></i>Date Range <span class="text-danger">*</span>
+                        </label>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-label small text-muted mb-1">From</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text"><i class="ri-calendar-2-line"></i></span>
+                                    <input name="from" id="from" class="form-control datetimepicker"
+                                        autocomplete="off" placeholder="YYYY/MM/DD"
+                                        data-parsley-required-message="Select start date." required>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small text-muted mb-1">To</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text"><i class="ri-calendar-2-line"></i></span>
+                                    <input name="to" id="to" class="form-control datetimepicker"
+                                        autocomplete="off" placeholder="YYYY/MM/DD"
+                                        data-parsley-required-message="Select end date." required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Site -->
+                    <div class="mb-1">
+                        <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#394b7c;">
+                            <i class="ri-map-pin-2-line me-1"></i>Site <span class="text-muted fw-normal">(optional)</span>
+                        </label>
+                        <select id="site-select" class="form-control select2" name="site_id"
+                            data-placeholder="— All Sites —">
+                            <option value="">— All Sites —</option>
+                            <?php
+                            $user_forms = $conn->query("SELECT * FROM sites WHERE status = 1 ORDER BY site_name ASC");
+                            while ($row_data_form = $user_forms->fetch_assoc()):
+                            ?>
+                                <option value="<?= $row_data_form['id'] ?>">
+                                    <?= htmlspecialchars($row_data_form['site_name']) ?> (<?= htmlspecialchars($row_data_form['site_address']) ?>)
+                                </option>
+                            <?php endwhile; ?>
+                        </select>
+                    </div>
+
+                </div>
+                <div class="modal-footer" style="background:#f8f9fa;">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="ri-close-line me-1"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-sm text-white" style="background:#394b7c;border-color:#394b7c;">
+                        <i class="ri-search-line me-1"></i>Apply Filter
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
 </div>

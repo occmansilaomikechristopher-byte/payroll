@@ -30,31 +30,31 @@ $result = $conn->query($query);
 $data = [];
 
 while ($row = $result->fetch_assoc()) {
-    $period = date("F d", strtotime($row['date_from'])) . " - " . date("F j, Y", strtotime($row['date_to']));
+    $period = date("M d", strtotime($row['date_from'])) . ' &ndash; ' . date("M j, Y", strtotime($row['date_to']));
 
-    $site_info = '<div class="site-wapper">
-                    <div><i class="ri-hashtag"></i> ' . $row['site_code'] . '</div>
-                    <div><i class="ri-radio-button-line"></i> ' . $row['site_name'] . '</div>
-                    <div><i class="ri-map-pin-line"></i> ' . $row['site_address'] . '</div>
-                  </div>';
+    $site_info = '<span class="dtr-site-code">' . htmlspecialchars($row['site_code']) . '</span>'
+               . '<div class="dtr-site-name">' . htmlspecialchars($row['site_name']) . '</div>'
+               . '<div class="dtr-site-addr">' . htmlspecialchars($row['site_address']) . '</div>';
 
-    $action = '<div class="action-buttons">
-                    <button class="btn btn-sm btn-outline-secondary view-dtr"
-                        data-id="' . base64_encode($row['id']) . '" 
-                        data-timekeeper="' . base64_encode($row['timekeeper_name']) . '"
-                        data-device="' . base64_encode($row['device_id']) . '"
-                        data-site="' . base64_encode($row['site_id']) . '"
-                        data-status="' . base64_encode($row['status']) . '">View</button>
-               </div>';
+    $action = '<div class="dtr-action">'
+            . '<button class="btn btn-sm btn-outline-success view-dtr"'
+            . ' data-id="' . base64_encode($row['id']) . '"'
+            . ' data-timekeeper="' . base64_encode($row['timekeeper_name']) . '"'
+            . ' data-device="' . base64_encode($row['device_id']) . '"'
+            . ' data-site="' . base64_encode($row['site_id']) . '"'
+            . ' data-status="' . base64_encode($row['status']) . '"'
+            . ' data-bs-toggle="tooltip" data-bs-placement="top" title="View DTR Details">'
+            . '<i class="ri-eye-line me-1"></i>View</button>'
+            . '</div>';
 
     $data[] = [
-        "period" => "<b>$period</b>",
-        "employer_name" => htmlspecialchars($row['employer_name']),
-        "site" => $site_info,
-        "uploaded_by" => $row['uploaded_by'],
-        "timekeeper_name" => $row['timekeeper_name'],
-        "approve_by" => $row['approve_by'],
-        "action" => $action
+        "period"          => '<div class="dtr-period"><i class="ri-calendar-2-line me-1 text-muted"></i>' . $period . '</div>',
+        "employer_name"   => '<span class="dtr-user">' . htmlspecialchars($row['employer_name']) . '</span>',
+        "site"            => $site_info,
+        "uploaded_by"     => '<div class="dtr-user"><i class="ri-user-3-line me-1 text-muted"></i>' . htmlspecialchars($row['uploaded_by']) . '</div>',
+        "timekeeper_name" => '<div class="dtr-user"><i class="ri-user-settings-line me-1 text-muted"></i>' . htmlspecialchars($row['timekeeper_name']) . '</div>',
+        "approve_by"      => '<div class="dtr-user"><i class="ri-shield-check-line me-1 text-muted"></i>' . htmlspecialchars($row['approve_by']) . '</div>',
+        "action"          => $action,
     ];
 }
 

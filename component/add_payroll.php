@@ -217,7 +217,7 @@
 
 <div class="modal" id="modal-sites" tabindex="-1" role="dialog">
     <form class="form-auth-small" id="form-add" method="post" novalidate>
-        <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-dialog modal-xl" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h6 class="title" id="defaultModalLabel">Select Sites</h6>

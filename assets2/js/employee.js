@@ -38,18 +38,23 @@ $(document).ready(function () {
             { data: "0" },
             { data: "1" },
             { data: "2" },
-            { data: "3", className: "text-right text-bold" },
-            { data: "4", className: "text-right text-bold" },
-            { data: "5", className: "text-right text-bold" },
+            { data: "3", className: "text-end" },
+            { data: "4", className: "text-end" },
+            { data: "5", className: "text-end" },
             { data: "7", className: "text-center" },
             { data: "8", className: "text-center" },
-            { data: "9", className: "text-center" },
+            { data: "9", className: "text-center", orderable: false },
         ],
         columnDefs: [
-            { width: "100px", targets: 0 },
-            { width: "100px", targets: 6 },
-            { width: "100px", targets: 7 },
+            { width: "90px", targets: 0 },
+            { width: "90px", targets: 6 },
+            { width: "90px", targets: 7 },
         ],
+    }).on("draw.dt", function () {
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+            bootstrap.Tooltip.getInstance(el)?.dispose();
+            new bootstrap.Tooltip(el, { trigger: "hover" });
+        });
     });
 
     // Search input filter
@@ -57,16 +62,27 @@ $(document).ready(function () {
         oTable.search($(this).val()).draw();
     });
 
-    // Status dropdown filter
-    $("#filter-status").change(function () {
-        oTable.draw(); // Redraw table with new filter
+    $("#filter-status").select2({
+        allowClear: true,
+        width: "resolve",
+        dropdownParent: $("body"),
+    }).on("change", function () {
+        oTable.draw();
     });
 
-    $("#filter-ptype").change(function () {
-        oTable.draw(); // Redraw table with new filter
+    $("#filter-ptype").select2({
+        allowClear: true,
+        width: "resolve",
+        dropdownParent: $("body"),
+    }).on("change", function () {
+        oTable.draw();
     });
 
-    $("#filter-position").change(function () {
+    $("#filter-position").select2({
+        allowClear: true,
+        width: "resolve",
+        dropdownParent: $("body"),
+    }).on("change", function () {
         oTable.draw();
     });
 });

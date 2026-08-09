@@ -3,6 +3,8 @@ ini_set('serialize_precision', '-1');
 session_start();
 
 ini_set('display_errors', 0);
+// ini_set('display_errors', 1);
+// error_reporting(E_ALL);
 
 require 'vendor/autoload.php';  // Keep this at the top
 
@@ -793,94 +795,187 @@ class Action
 
     function save_site()
     {
-        extract($_POST);
-        $status = $_POST["status"];
-        $status = isset($status) ? 1 : 0;
-        $data = " site_name='$site_name' ";
-        $data .= ", site_address = '$site_address' ";
-        $data .= ", cluster_id = '$cluster_id' ";
-        $data .= ", site_code = '$site_code' ";
-        $data .= ", status = '$status' ";
-        $data .= ", timekeeper_id = '$timekeeper_id' ";
-        $data .= ", pic = '$pic' ";
+        try {
+            // Ensure all expected keys exist
+            $site_name     = isset($_POST['site_name']) ? trim($_POST['site_name']) : '';
+            $site_address  = isset($_POST['site_address']) ? trim($_POST['site_address']) : '';
+            $employer_id   = isset($_POST['employer_id']) ? $_POST['employer_id'] : '';
+            $cluster_id    = isset($_POST['cluster_id']) ? $_POST['cluster_id'] : '';
+            $site_code     = isset($_POST['site_code']) ? trim($_POST['site_code']) : '';
+            $timekeeper_id = isset($_POST['timekeeper_id']) ? $_POST['timekeeper_id'] : '';
+            $pic           = isset($_POST['pic']) ? trim($_POST['pic']) : '';
+            $id            = isset($_POST['id']) ? $_POST['id'] : '';
+            $status        = isset($_POST['status']) ? 1 : 0;
 
-        if (empty($id)) {
-            $save = $this->db->query("INSERT INTO sites set " . $data);
+            // Sanitize inputs
+            $site_name     = mysqli_real_escape_string($this->db, $site_name);
+            $site_address  = mysqli_real_escape_string($this->db, $site_address);
+            $employer_id   = mysqli_real_escape_string($this->db, $employer_id);
+            $cluster_id    = mysqli_real_escape_string($this->db, $cluster_id);
+            $site_code     = mysqli_real_escape_string($this->db, $site_code);
+            $timekeeper_id = mysqli_real_escape_string($this->db, $timekeeper_id);
+            $pic           = mysqli_real_escape_string($this->db, $pic);
+            $id            = mysqli_real_escape_string($this->db, $id);
 
-            if ($save) {
-                return 1;
+            // Basic validation
+            if (empty($site_name) || empty($employer_id)) {
+                return [
+                    'status'  => "success",
+                    'message' => 'Site name and employer are required.'
+                ];
             }
-        } else {
-            $save = $this->db->query("UPDATE sites set " . $data . " where id=" . $id);
-            $this->db->query("UPDATE users SET site_id = $id WHERE id = " . $timekeeper_id);
 
-            if ($save) {
-                return 2;
+            // Build SQL data string
+            $data = "
+            site_name = '$site_name',
+            site_address = '$site_address',
+            employer_id = '$employer_id',
+            cluster_id = '$cluster_id',
+            site_code = '$site_code',
+            status = '$status',
+            timekeeper_id = '$timekeeper_id'
+        ";
+
+            // Insert or update
+            if (empty($id)) {
+                $save = $this->db->query("INSERT INTO sites SET $data");
+                if (!$save) {
+                    throw new Exception("Insert failed: " . $this->db->error);
+                }
+
+                $new_id = $this->db->insert_id;
+                if (!empty($timekeeper_id)) {
+                    $this->db->query("UPDATE users SET site_id = '$new_id' WHERE id = '$timekeeper_id'");
+                }
+
+                return [
+                    'status'  => "success",
+                    'message' => 'Site created successfully.'
+                ];
+            } else {
+                $save = $this->db->query("UPDATE sites SET $data WHERE id = '$id'");
+                if (!$save) {
+                    throw new Exception("Update failed: " . $this->db->error);
+                }
+
+                if (!empty($timekeeper_id)) {
+                    $this->db->query("UPDATE users SET site_id = '$id' WHERE id = '$timekeeper_id'");
+                }
+
+                return [
+                    'status'  => "success",
+                    'message' => 'Site updated successfully.'
+                ];
             }
+        } catch (Exception $e) {
+            // Catch and return any error message
+            return [
+                'status'  => "error",
+                'message' => 'Error: ' . $e->getMessage()
+            ];
         }
     }
+
 
     function save_user()
     {
-        $name = isset($_POST['name']) ? $_POST['name'] : '';
-        $username = isset($_POST['username']) ? $_POST['username'] : '';
-        $password = isset($_POST['password']) ? $_POST['password'] : '';
-        $role = isset($_POST['role']) ? $_POST['role'] : '';
-        $site_id = isset($_POST['site_id']) ? $_POST['site_id'] : '';
-        $employer_id = isset($_POST['employer_id']) ? $_POST['employer_id'] : '';
-        $id = isset($_POST['id']) ? $_POST['id'] : '';
-        // Validate and sanitize input values (example using mysqli_real_escape_string)
-        $name = mysqli_real_escape_string($this->db, $name);
-        $username = mysqli_real_escape_string($this->db, $username);
-        $password = password_hash(mysqli_real_escape_string($this->db, $password), PASSWORD_BCRYPT);
-        $role = mysqli_real_escape_string($this->db, $role);
-        $site_id = mysqli_real_escape_string($this->db, $site_id);
-        $id = mysqli_real_escape_string($this->db, $id);
-        $employer_id = mysqli_real_escape_string($this->db, $employer_id);
+        try {
+            // Enable MySQLi exceptions for try/catch
+            mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-        // Check if username already exists for new insertions
-        if (empty($id)) {
-            $check_username = $this->db->query("SELECT id FROM users WHERE username = '$username' LIMIT 1");
-            if ($check_username->num_rows > 0) {
-                return ['result' => false, 'message' => 'Username already exists!'];
-            }
-        }
+            // Gather POST data safely
+            $name         = isset($_POST['name']) ? $_POST['name'] : '';
+            $username     = isset($_POST['username']) ? $_POST['username'] : '';
+            $password     = isset($_POST['password']) ? $_POST['password'] : '';
+            $role         = isset($_POST['role']) ? $_POST['role'] : '';
+            $site_id      = isset($_POST['site_id']) ? $_POST['site_id'] : '';
+            $employer_id  = isset($_POST['employer_id']) ? $_POST['employer_id'] : '';
+            $id           = isset($_POST['id']) ? $_POST['id'] : '';
 
-        // Construct the SQL query
-        $data = "name = '$name', username = '$username', password = '$password', role = '$role', employer_id = '$employer_id' ";
-        if (isset($site_id) && $site_id != '') {
-            $data .= ", site_id = '$site_id'";
-        }
+            // Sanitize inputs
+            $name        = mysqli_real_escape_string($this->db, $name);
+            $username    = mysqli_real_escape_string($this->db, $username);
+            $role        = mysqli_real_escape_string($this->db, $role);
+            $site_id     = mysqli_real_escape_string($this->db, $site_id);
+            $employer_id = mysqli_real_escape_string($this->db, $employer_id);
+            $id          = mysqli_real_escape_string($this->db, $id);
 
-        // Perform insertion or update based on the presence of $id
-        $user_id = '';
-        if (empty($id)) {
-            $save = $this->db->query("INSERT INTO users SET " . $data);
-            $user_id  = $this->db->insert_id;
-        } else {
-            $save = $this->db->query("UPDATE users SET " . $data . " WHERE id = '$id'");
-            $user_id  = $id;
-        }
+            // Handle password hashing and query part
+            $password_sql = '';
 
-        if ($role == '5') {
-            $this->db->query("UPDATE sites SET timekeeper_id = '$user_id' WHERE id = '$site_id' ");
-        }
-
-        if ($role == '6') {
-            // $this->db->query("UPDATE sites SET employer_id = '$employer_id' WHERE id = '$site_id' ");
-        }
-
-        // Check if query was successful and return appropriate response
-        if ($save) {
             if (empty($id)) {
-                return ['result' => true, 'message' => 'Saved successfully'];
+                // New user
+                if (empty($password)) {
+                    return ['result' => false, 'message' => 'Password is required for new users.'];
+                }
+                $password = password_hash(mysqli_real_escape_string($this->db, $password), PASSWORD_BCRYPT);
+                $password_sql = ", password = '$password'";
             } else {
-                return ['result' => true, 'message' => 'Updated successfully'];
+                // Existing user — update password only if provided
+                if (!empty($password)) {
+                    $password = password_hash(mysqli_real_escape_string($this->db, $password), PASSWORD_BCRYPT);
+                    $password_sql = ", password = '$password'";
+                }
             }
-        } else {
-            return ['result' => false, 'message' => 'Error saving/updating data: ' . $this->db->error];
+
+            // Check duplicate username only for new users
+            if (empty($id)) {
+                $check_username = $this->db->query("SELECT id FROM users WHERE username = '$username' LIMIT 1");
+                if ($check_username->num_rows > 0) {
+                    return ['result' => false, 'message' => 'Username already exists!'];
+                }
+            }
+
+            // Build data string
+            $data = "
+            name = '$name',
+            username = '$username',
+            role = '$role',
+            employer_id = '$employer_id'
+            $password_sql
+        ";
+
+            if (!empty($site_id)) {
+                $data .= ", site_id = '$site_id'";
+            }
+
+            // Insert or update user
+            if (empty($id)) {
+                $save = $this->db->query("INSERT INTO users SET $data");
+                $user_id = $this->db->insert_id;
+            } else {
+                $save = $this->db->query("UPDATE users SET $data WHERE id = '$id'");
+                $user_id = $id;
+            }
+
+            // Optional: update related site for timekeeper role
+            if ($role == '5') {
+                $this->db->query("UPDATE sites SET timekeeper_id = '$user_id' WHERE id = '$site_id'");
+            }
+
+            // Success response
+            if ($save) {
+                return [
+                    'result' => true,
+                    'message' => empty($id) ? 'User created successfully!' : 'User updated successfully!'
+                ];
+            }
+        } catch (mysqli_sql_exception $e) {
+            // Database errors (e.g., constraint violations, SQL syntax issues)
+            return [
+                'result' => false,
+                'message' => 'Database error: ' . $e->getMessage()
+            ];
+        } catch (Exception $e) {
+            // Other unexpected PHP errors
+            return [
+                'result' => false,
+                'message' => 'Unexpected error: ' . $e->getMessage()
+            ];
         }
     }
+
+
 
     function localSync()
     {
@@ -953,59 +1048,72 @@ class Action
 
     function loginMobile()
     {
-        $status = 1;
-        $inputJSON = file_get_contents('php://input');
-        // Parse JSON data
-        $input = json_decode($inputJSON, true);
+        try {
+            mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+            $status = 1;
+            $inputJSON = file_get_contents('php://input');
+            $input = json_decode($inputJSON, true);
 
-        // Check if JSON is valid
-        if ($input === null || !isset($input['username']) || !isset($input['password'])) {
-            return ['result' => false, 'message' => 'Invalid  data'];
-        }
-        $username = $input['username'];
-        $password = $input['password'];
-        $stmt =  $this->db->prepare("SELECT clusters.cluster, sites.cluster_id, users.*,employer_name, sites.site_code,sites.site_name, sites.site_address  FROM users 
-            LEFT JOIN employers ON employers.id = users.employer_id 
-            LEFT JOIN sites ON sites.id = users.site_id 
-            LEFT JOIN clusters ON sites.cluster_id = clusters.id 
-            WHERE username = ? AND users.status =   ?  
+            if ($input === null || !isset($input['username']) || !isset($input['password'])) {
+                return ['result' => false, 'message' => 'Invalid data'];
+            }
+
+            $username = $input['username'];
+            $password = $input['password'];
+
+            // Fetch active user
+            $stmt = $this->db->prepare("
+            SELECT users.*, employers.employer_name
+            FROM users
+            LEFT JOIN employers ON employers.id = users.employer_id
+            WHERE username = ? AND users.status = ?
         ");
-        if ($stmt) {
             $stmt->bind_param('ss', $username, $status);
             $stmt->execute();
             $result = $stmt->get_result();
-            if ($result->num_rows == 1) {
-                $row = $result->fetch_assoc();
-                $stored_hashed_password = $row['password'];
-                if (password_verify($password, $stored_hashed_password)) {
-                    // if ($row['site_id'] == '' || $row['site_id'] == null) {
-                    //     return ['result' => false, 'message' => 'There is no site currently assigned to you.'];
-                    // }
-                    $timekeeper_id = $row['id'];
-                    $qry_site = $this->db->query("SELECT sites.*, clusters.cluster FROM sites  LEFT JOIN clusters ON sites.cluster_id = clusters.id   WHERE timekeeper_id = '$timekeeper_id' AND sites.status = 1 ");
-                    if ($qry_site->num_rows < 0) {
-                        return ['result' => false, 'message' => "There is no site currently assigned to you."];
-                    }
 
-                    $qry_site_2 = $this->db->query("SELECT COUNT(*) AS total_sites FROM sites WHERE timekeeper_id = '$timekeeper_id' AND status = 1");
-                    if ($qry_site_2->num_rows > 0) {
-                        $row_site = $qry_site_2->fetch_assoc();
-                        if ($row_site['total_sites'] > 1) {
-                            return ['result' => false, 'message' => "Too many sites are currently assigned. Please contact the administrator for assistance."];
-                        }
-                    }
-                    $row_site = $qry_site->fetch_assoc();
-                    return ['result' => true, 'user' => $row, 'site' => $row_site];
-                } else {
-                    return ['result' => false, 'message' => 'Password incorrect'];
-                }
-            } else {
+            if ($result->num_rows !== 1) {
                 return ['result' => false, 'message' => 'No user found with the given username'];
             }
-        } else {
-            return ['result' => false, 'message' => 'Error preparing statement'];
+
+            $user = $result->fetch_assoc();
+            $stored_hashed_password = $user['password'];
+
+            if (!password_verify($password, $stored_hashed_password)) {
+                return ['result' => false, 'message' => 'Password incorrect'];
+            }
+
+            // ✅ Only return ACTIVE sites assigned to this user
+            $timekeeper_id = $user['id'];
+            $qry_sites = $this->db->query("
+            SELECT sites.*, clusters.cluster 
+            FROM sites  
+            LEFT JOIN clusters ON sites.cluster_id = clusters.id
+            WHERE sites.timekeeper_id = '$timekeeper_id' AND sites.status = 1
+        ");
+
+            $sites = [];
+            while ($site_row = $qry_sites->fetch_assoc()) {
+                $sites[] = $site_row;
+            }
+
+            if (count($sites) === 0) {
+                return ['result' => false, 'message' => 'No active sites assigned to you.'];
+            }
+
+            return [
+                'result' => true,
+                'user'   => $user,
+                'sites'  => $sites,
+            ];
+        } catch (mysqli_sql_exception $e) {
+            return ['result' => false, 'message' => 'Database error: ' . $e->getMessage()];
+        } catch (Exception $e) {
+            return ['result' => false, 'message' => 'Unexpected error: ' . $e->getMessage()];
         }
     }
+
+
 
     function save_employee_attendance_manual()
     {
@@ -1131,13 +1239,13 @@ class Action
             return ['result' => false, 'message' => "You're not currently assigned to this site. Please log in again."];
         }
 
-        $qry_site_2 = $this->db->query("SELECT COUNT(*) AS total_sites FROM sites WHERE timekeeper_id = '$timekeeper_id' AND status = 1");
-        if ($qry_site_2->num_rows > 0) {
-            $row_site = $qry_site_2->fetch_assoc();
-            if ($row_site['total_sites'] > 1) {
-                return ['result' => false, 'message' => "Too many sites are currently assigned. Please contact the administrator for assistance."];
-            }
-        }
+        // $qry_site_2 = $this->db->query("SELECT COUNT(*) AS total_sites FROM sites WHERE timekeeper_id = '$timekeeper_id' AND status = 1");
+        // if ($qry_site_2->num_rows > 0) {
+        //     $row_site = $qry_site_2->fetch_assoc();
+        //     if ($row_site['total_sites'] > 1) {
+        //         return ['result' => false, 'message' => "Too many sites are currently assigned. Please contact the administrator for assistance."];
+        //     }
+        // }
 
         $this->db->begin_transaction();
         try {
@@ -1162,6 +1270,7 @@ class Action
                 $logs = $k['logs'];
                 $hours = $k['hours']  > 8 ? 8 : $k['hours'];
                 $overtime = $k['ot'];
+                $notes = $k['notes'];
                 $date_time = $k['date_time'];
                 $code = $k['code'];
                 $qry_bio = $this->db->query("SELECT * FROM employee_bio  WHERE employee_id = '$employee_id' AND site_id = '$site_id' AND device_id = '$device_id'
@@ -1176,9 +1285,9 @@ class Action
                         throw new Exception('Failed to insert data');
                     }
                 }
-                $sql2 = "INSERT INTO DTR_details (ddtr_id, employee_id, date_time, work_hours, logs, attendance_type, overtime) VALUES (?, ?, ?, ?, ?, ?, ?)";
+                $sql2 = "INSERT INTO DTR_details (ddtr_id, employee_id, date_time, work_hours, logs, attendance_type, overtime, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
                 $stmt2 = $this->db->prepare($sql2);
-                $stmt2->bind_param('sssssss', $ddtr_id, $employee_id, $date_time, $hours, $logs, $attendance_type, $overtime);
+                $stmt2->bind_param('ssssssss', $ddtr_id, $employee_id, $date_time, $hours, $logs, $attendance_type, $overtime, $notes);
                 try {
                     $stmt2->execute();
                 } catch (Exception $e) {
@@ -1409,7 +1518,23 @@ class Action
                         $employeeCount[$employee_id] = 1;
                     }
 
+                    // Cap hours at 8 (1 day)
+                    // Cap hours at 8 (1 day)
                     $work_hours = floor($row["work_hours"]) >= 8 ? 8 : $row["work_hours"];
+
+                    // Convert to days using your special rules
+                    if ($work_hours == 8) {
+                        $days = 1;
+                    } else if ($work_hours == 4.5625) {
+                        $days = 0.5625;
+                    } else {
+                        $days = $work_hours / 8;
+                    }
+
+
+
+                    // Convert to days using your special rules
+
                     $under_time = 0; // 8 - $work_hours
                     $grouped_data[$employee_id]["under_time"] += $under_time;
 
@@ -1442,7 +1567,7 @@ class Action
                     $grouped_data[$employee_id]["sss_fund"] = $row["sss_fund"];
                     $grouped_data[$employee_id]["per_minute"] = $per_minute;
                     $grouped_data[$employee_id]["per_day"] = $per_day;
-                    $grouped_data[$employee_id]["present"] += $work_hours / 8; // $employeeCount[$employee_id]
+                    $grouped_data[$employee_id]["present"] += $days;
                     $grouped_data[$employee_id]["overtime"] +=  $row['overtime'];
                     $grouped_data[$employee_id]["late_in_minutes"]  += $row['late'];
                     $grouped_data[$employee_id]["undertime"]  +=  $row['undertime'];
@@ -1722,12 +1847,12 @@ class Action
         $type = $resultArray2["type"];
         $employer_id = $resultArray2["employer_id"];
         $category = $resultArray2["category_id"];
-        $deferential = $resultArray2["deferential"];
+        //$deferential = $resultArray2["deferential"];
         $deferential = isset($deferential) ? 2 : 1;
         $data = " date_from='$date_from' ";
         $data .= ", date_to = '$date_to' ";
         $data .= ", type = '$type' ";
-        $data .= ", deferential = '$deferential' ";
+        // $data .= ", deferential = '$deferential' ";
         $data .= ", site_ids = '$jsonString' ";
         $data .= ", employer_id = '$employer_id' ";
         $data .= ", category = '$category' ";
@@ -1760,23 +1885,39 @@ class Action
         // Assuming you have a valid DB connection in $this->db
         $employer_id = $_POST['employer_id'];
         $category_id = $_POST['category_id'];
+        $date_from = date("Y-m-d", strtotime($_POST['date_from']));
+        $date_to = date("Y-m-d", strtotime($_POST['date_to']));
+
         $filter_query = "";
         $disabled = false;
         if ($category_id != 0) {
             $disabled = true;
             $filter_query = "AND sites.cluster_id  = $category_id ";
         }
-        // Fetching data from the database
         $sites = $this->db->query("
-            SELECT sites.* , users.name, clusters.cluster
-            FROM users 
-            INNER JOIN sites ON users.id = sites.timekeeper_id 
-            LEFT JOIN clusters  ON clusters.id = sites.cluster_id 
-            WHERE users.role = 5 
-            AND sites.status = 1 
-            AND users.employer_id = '$employer_id'
-            $filter_query
+            SELECT 
+                        sites.*, 
+                        users.name, 
+                        clusters.cluster,
+                         DTR.date_from,
+                          DTR.date_to
+                    FROM users
+                    INNER JOIN sites 
+                        ON users.id = sites.timekeeper_id
+                    LEFT JOIN clusters 
+                        ON clusters.id = sites.cluster_id
+                    INNER JOIN DTR 
+                        ON DTR.site_id = sites.id
+                    WHERE users.role = 5
+                    AND sites.status = 1
+                    AND sites.employer_id = '$employer_id'
+                    AND DTR.date_from BETWEEN '$date_from' AND '$date_to'
+                    AND DTR.status = 2 
+                    $filter_query
+                    GROUP BY sites.id
         ");
+
+
 
         // Start outputting the table with Bootstrap classes
         echo '<div class="container mt-5">';
@@ -1787,6 +1928,7 @@ class Action
         echo '<th scope="col">Site</th>';
         echo '<th scope="col">Cluster</th>';
         echo '<th scope="col">Timekeeper</th>';
+        echo '<th scope="col">Approved DTR</th>';
         echo '</tr>';
         echo '</thead>';
         echo '<tbody>';
@@ -1798,6 +1940,11 @@ class Action
             echo '<td><b><span class="text-primary">(' . htmlspecialchars($row['site_code']) . ')</span>' . htmlspecialchars($row['site_name']) . '</b><p>' . htmlspecialchars($row['site_address']) . '</p></td>';
             echo '<td>' . htmlspecialchars($row['cluster']) . '</td>';
             echo '<td>' . htmlspecialchars($row['name']) . '</td>';
+            echo '<td>'
+                . date("F d, Y", strtotime($row['date_from']))
+                . ' - '
+                . date("F d, Y", strtotime($row['date_to']))
+                . '</td>';
             echo '</tr>';
         }
 
@@ -2160,54 +2307,53 @@ class Action
     }
 
     function update_payroll_item_new()
-{
-    $items = $_POST['items'];
-    
-    try {
-        $this->db->begin_transaction();
-        
-         foreach ($items as $item) {
-            $id = $item['id'];              // payroll_item ID
-            $value = (float) $item['value'];
-            $field = $item['type'];
-            $dd_id = (int) $item['dd_id'];
-            
-            // Save the payroll item
-            $this->save_new_payroll_item($id, $value, $field, $dd_id);
-            
-            // Handle per_day type
-            if ($field === 'per_day') {
-                // First get the employee_id from payroll_items table
-                $getEmployeeQuery = "SELECT employee_id FROM payroll_items WHERE id = ?";
-                $stmt = $this->db->prepare($getEmployeeQuery);
-                $stmt->bind_param("i", $id);
-                $stmt->execute();
-                $result = $stmt->get_result();
-                
-                if ($result->num_rows > 0) {
-                    $row = $result->fetch_assoc();
-                    $employee_id = $row['employee_id'];
-                    
-                    // Calculate monthly salary (assuming 22 working days)
-                    $salary = $value ;
+    {
+        $items = $_POST['items'];
 
-                    // Update the employee's salary in the database
-                    $updateQuery = "UPDATE employee SET salary = ? WHERE id = ?";
-                    $stmt = $this->db->prepare($updateQuery);
-                    $stmt->bind_param("di", $salary, $employee_id);
+        try {
+            $this->db->begin_transaction();
+
+            foreach ($items as $item) {
+                $id = $item['id'];              // payroll_item ID
+                $value = (float) $item['value'];
+                $field = $item['type'];
+                $dd_id = (int) $item['dd_id'];
+
+                // Save the payroll item
+                $this->save_new_payroll_item($id, $value, $field, $dd_id);
+
+                // Handle per_day type
+                if ($field === 'per_day') {
+                    // First get the employee_id from payroll_items table
+                    $getEmployeeQuery = "SELECT employee_id FROM payroll_items WHERE id = ?";
+                    $stmt = $this->db->prepare($getEmployeeQuery);
+                    $stmt->bind_param("i", $id);
                     $stmt->execute();
+                    $result = $stmt->get_result();
+
+                    if ($result->num_rows > 0) {
+                        $row = $result->fetch_assoc();
+                        $employee_id = $row['employee_id'];
+
+                        // Calculate monthly salary (assuming 22 working days)
+                        $salary = $value;
+
+                        // Update the employee's salary in the database
+                        $updateQuery = "UPDATE employee SET salary = ? WHERE id = ?";
+                        $stmt = $this->db->prepare($updateQuery);
+                        $stmt->bind_param("di", $salary, $employee_id);
+                        $stmt->execute();
+                    }
                 }
             }
+
+            $this->db->commit();
+            return ['result' => true, 'message' => 'save'];
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return ['result' => false, 'message' => 'Error updating payroll items: ' . $e->getMessage()];
         }
-        
-        $this->db->commit();
-       return ['result' => true, 'message' => 'save'];
-        
-    } catch (Exception $e) {
-        $this->db->rollback();
-        return ['result' => false, 'message' => 'Error updating payroll items: ' . $e->getMessage()];
     }
-}
 
     function save_new_payroll_item($id, $value, $field, $dd_id)
     {
@@ -2917,14 +3063,14 @@ class Action
                     }
 
                     //penalty
-                     if ($penalty > 0) {
+                    if ($penalty > 0) {
                         $data = " employee_id='$employee_id' ";
                         $data .= ", deduction_id = 3 ";
                         $data .= ", amount = $penalty ";
                         $this->db->query("INSERT INTO employee_deductions set " . $data);
                     }
 
-                    
+
                     //ca
                     if ($cash_advance > 0) {
                         $data = " employee_id='$employee_id' ";
@@ -2932,7 +3078,6 @@ class Action
                         $data .= ", amount = $cash_advance ";
                         $this->db->query("INSERT INTO employee_deductions set " . $data);
                     }
-                    
                 } else {
                     throw new Exception("Failed to insert employee: " . $stmtInsert->error);
                 }

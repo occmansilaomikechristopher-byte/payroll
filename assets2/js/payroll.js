@@ -20,7 +20,7 @@ $(document).ready(function () {
             url: "payroll-server.php",
             type: "POST",
             data: function (d) {
-                d.p2 = p2; // add p2 param to POST data
+                d.p2 = p2;
             },
         },
         columns: [
@@ -32,6 +32,11 @@ $(document).ready(function () {
             { data: "status" },
             { data: "action", orderable: false },
         ],
+    }).on("draw.dt", function () {
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+            bootstrap.Tooltip.getInstance(el)?.dispose();
+            new bootstrap.Tooltip(el, { trigger: "hover" });
+        });
     });
 });
 

@@ -98,14 +98,20 @@
             /* height: 30px  !important;
             width: 30px  !important; */
             /* background: #ffffff ; */
-            border-radius: 50%  !important;
-            display: flex ;
-            align-items: center  !important;
-            justify-content: center  !important;
+            border-radius: 50% !important;
+            display: flex;
+            align-items: center !important;
+            justify-content: center !important;
             /* color: red  !important; */
             /* margin-top: 14px; */
             font-size: 15px;
         }
+
+        /* .table-hover tbody tr:hover {
+            background-color: #f8f9fa;
+            transform: scale(1.01);
+            transition: all 0.2s ease;
+        } */
     </style>
 
 </head>

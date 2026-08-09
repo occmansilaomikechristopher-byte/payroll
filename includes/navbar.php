@@ -32,8 +32,9 @@
 
             <div id="two-column-menu">
             </div>
-            <?php if ($login_role  !== 6) { ?>
-                <ul class="navbar-nav" id="navbar-nav">
+   
+            <ul class="navbar-nav" id="navbar-nav">
+                <?php if ($login_role !== 6 && $login_role !== 7) { ?>
                     <li class="menu-title"><span data-key="t-menu">Links</span></li>
                     <li class="nav-item">
                         <a class="nav-link menu-link <?php if ($page == 'home') {
@@ -205,6 +206,7 @@
                         </ul>
                     </div>
                 </li> -->
+                <?php if($login_role !== 4) { ?>
                     <li class="nav-item">
                         <a class="nav-link menu-link <?php if ($page == 'visitors-logs') {
                                                             echo 'active';
@@ -219,10 +221,9 @@
                             <i class=" ri-team-line"></i> <span data-key="t-widgets">User Profile</span>
                         </a>
                     </li>
-                </ul>
-            <?php } ?>
-            <?php if ($login_role  === 6) { ?>
-                <ul class="navbar-nav" id="navbar-nav">
+                    <?php } ?>
+                <?php } ?>
+                <?php if ($login_role  === 6) { ?>
                     <li class="menu-title"><span data-key="t-menu">Links</span></li>
                     <li class="nav-item">
                         <a class="nav-link menu-link" href="#sidebarLanding3" data-bs-toggle="collapse" role="button" aria-expanded="true" aria-controls="sidebarLanding">
@@ -246,9 +247,40 @@
                             </ul>
                         </div>
                     </li>
+                <?php } ?>
+                <?php if ($login_role  === 7) { ?>
+                    <li class="menu-title"><span data-key="t-menu">Links</span></li>
+                    <li class="nav-item">
+                        <a class="nav-link menu-link <?php if ($page == 'home') {
+                                                            echo 'active';
+                                                        } ?>" href="index.php">
+                            <i class=" ri-dashboard-fill"></i> <span data-key="t-widgets">Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link menu-link" href="#sidebarLanding3" data-bs-toggle="collapse" role="button" aria-expanded="true" aria-controls="sidebarLanding">
+                            <i class="ri-calendar-line"></i> <span data-key="t-landing">Time & Attendance</span>
+                        </a>
+                        <div class="menu-dropdown collapse <?php if ($page == 'attendance' || $page == 'dtr'  ||  $page == 'dtr-details') {
+                                                                echo 'show';
+                                                            } ?>" id="sidebarLanding3" style="">
+                            <ul class="nav nav-sm flex-column">
+                                <li class="nav-item">
+                                    <a href="index.php?page=dtr" class="nav-link <?php if ($page == 'dtr'  ||  $page == 'dtr-details') {
+                                                                                        echo 'active';
+                                                                                    } ?>" data-key=" t-job">Daily Time Record</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="index.php?page=attendance" class="nav-link <?php if ($page == 'attendance') {
+                                                                                            echo 'active';
+                                                                                        } ?>" data-key="t-nft-landing">Attendance Record</a>
+                                </li>
 
-                </ul>
-            <?php } ?>
+                            </ul>
+                        </div>
+                    </li>
+                <?php } ?>
+            </ul>
         </div>
         <!-- Sidebar -->
     </div>

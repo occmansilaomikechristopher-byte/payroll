@@ -1,27 +1,34 @@
-<div class="modal" id="modal" tabindex="-1" role="dialog">
-	<form class="form-auth-small" id="form-add" method="post" novalidate>
-		<input type="hidden" name="id" id="id">
-		<div class="modal-dialog" role="document">
-			<div class="modal-content">
-				<div class="modal-header">
-					<h6 class="modal-title" id="defaultModalLabel">Create Cluster</h6>
-					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-				</div>
-				<div class="modal-body">
-					<div class="row clearfix">
-						<input name="cluster_id" style="display: none;" />
-						<div class="col-md-12">
-							<div class="form-group">
-								<label>Cluster</label>
-								<input type="text" class="form-control" placeholder="Cluster" name="cluster" id="cluster" data-parsley-required-message="Cluster is required." required>
-							</div>
-						</div>
-					</div>
-				</div>
-				<div class="modal-footer">
-					<button type="submit" class="btn btn-info submitbutton"> Create</button>
-				</div>
-			</div>
-		</div>
-	</form>
+<div class="modal fade" id="modal" tabindex="-1" role="dialog">
+    <form id="form-add" novalidate>
+        <input type="hidden" name="id" id="id">
+        <input type="hidden" name="cluster_id" />
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title title mb-0">
+                        <i class="ri-global-line me-2" style="color:#394b7c;"></i>Create Cluster
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-1">
+                        <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#394b7c;">
+                            <i class="ri-global-line me-1"></i>Cluster Name <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" class="form-control" placeholder="e.g. North Cluster"
+                            name="cluster" id="cluster"
+                            data-parsley-required-message="Cluster name is required." required>
+                    </div>
+                </div>
+                <div class="modal-footer" style="background:#f8f9fa;">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="ri-close-line me-1"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-sm text-white submitbutton" style="background:#394b7c;border-color:#394b7c;">
+                        <i class="ri-save-line me-1"></i>Create
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
 </div>

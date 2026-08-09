@@ -2,7 +2,7 @@
 if (!isset($_GET['id'])) {
     return;
 }
-$id = $_GET['id'];
+$id = (int) $_GET['id'];
 
 
 $filter_query = "";
@@ -63,75 +63,6 @@ $contributions_settings = array_values($contributions_settings);
 $payroll_type = $payroll['type'];
 
 ?>
-<style>
-    #table-1 td:nth-child(2) {
-        position: sticky;
-        left: 0px;
-        z-index: 9;
-        background-color: #d2ff9d;
-        color: #000;
-        border-color: #8BC34A;
-        border-left: 3px solid #8BC34A !important;
-        border-right: 3px solid #8BC34A !important;
-    }
-
-    .net-content {
-        position: sticky;
-        right: 0px !important;
-        z-index: 9;
-        background-color: #d2ff9d !important;
-        color: #000 !important;
-        border-color: #8BC34A;
-        border-left: 3px solid #8BC34A !important;
-        border-right: 3px solid #8BC34A !important;
-    }
-
-    .net-danger {
-        background-color: #ffcaca !important;
-        color: #000 !important;
-        border-color: #e59f9f;
-        border-left: 3px solid #f56767 !important;
-        border-right: 3px solid #f59e9e !important;
-    }
-
-    .table-responsive2 {
-        height: 50vh;
-        /* Set the height you need */
-        overflow-y: auto;
-        overflow-x: auto;
-    }
-
-    table {
-        width: 100%;
-    }
-
-    td,
-    th {
-        vertical-align: middle;/
-    }
-
-    .input-group-append button {
-        border-radius: 0px !important;
-    }
-
-    .text-right {
-        text-align: right;
-    }
-
-    fieldset {
-        border: 1px solid #e9ebec;
-        border-radius: 8px;
-        padding: 20px;
-        background: white;
-        box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
-    }
-
-    legend {
-        font-size: 1.2em;
-        font-weight: bold;
-        padding: 0 10px;
-    }
-</style>
 <link rel="stylesheet" href="assets2/css/my-style.css">
 <div class="main-content">
     <div class="page-content">
@@ -139,228 +70,181 @@ $payroll_type = $payroll['type'];
             <!-- start page title -->
             <div class="row">
                 <div class="col-12">
-                    <div
-                        class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
-                        <h4 class="mb-sm-0">Payroll Details</h4>
-
+                    <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+                        <div class="page-title-enhanced">
+                            <div>
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <h4 class="mb-0 fw-bold">Payroll Details</h4>
+                                    <?php if ($status == 2): ?>
+                                        <span class="payroll-status-badge bg-danger text-white"><i class="ri-lock-fill me-1"></i>Locked</span>
+                                    <?php else: ?>
+                                        <span class="payroll-status-badge bg-success text-white"><i class="ri-lock-unlock-line me-1"></i>Open</span>
+                                    <?php endif; ?>
+                                </div>
+                                <small class="text-muted">
+                                    <i class="ri-calendar-2-line me-1"></i>
+                                    <?= date('M d', strtotime($payroll['date_from'])) ?> &ndash; <?= date('M d, Y', strtotime($payroll['date_to'])) ?>
+                                    &nbsp;&bull;&nbsp;
+                                    <i class="ri-user-2-line me-1"></i><?= htmlspecialchars($payroll_r['employer_name']) ?>
+                                    <?php if ($payroll_r['category'] != 0): ?>
+                                        &nbsp;&bull;&nbsp;<i class="ri-global-line me-1"></i><?= htmlspecialchars($payroll_r['cluster']) ?>
+                                    <?php endif; ?>
+                                </small>
+                            </div>
+                        </div>
                         <div class="page-title-right">
                             <ol class="breadcrumb m-0">
-                                <li class="breadcrumb-item">
-                                    <a href="javascript: void(0);">Pages</a>
-                                </li>
-                                <li class="breadcrumb-item">
-                                    <a href="javascript: void(0);">Payroll</a>
-                                </li>
+                                <li class="breadcrumb-item"><a href="javascript:void(0);">Pages</a></li>
+                                <li class="breadcrumb-item"><a href="javascript:void(0);">Payroll</a></li>
                                 <li class="breadcrumb-item active">Payroll Details</li>
                             </ol>
                         </div>
                     </div>
                 </div>
-                <div class="card">
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-6 col-md-3">
-                                <div class="d-flex mt-3">
-                                    <div class="flex-shrink-0 avatar-xs align-self-center me-3">
-                                        <div class="avatar-title bg-light rounded-circle fs-16 text-primary material-shadow">
-                                            <i class="ri-calendar-fill"></i>
-                                        </div>
-                                    </div>
-                                    <div class="flex-grow-1 overflow-hidden">
-                                        <p class="mb-1">Period :</p>
-                                        <h6 class="fw-semibold"><?= date('F d', strtotime($payroll['date_from'])) ?> - <?= date('F d, Y', strtotime($payroll['date_to'])) ?></h6>
-                                    </div>
-                                </div>
-                            </div>
-                            <!--end col-->
-                            <div class="col-6 col-md-3">
-                                <div class="d-flex mt-3">
-                                    <div class="flex-shrink-0 avatar-xs align-self-center me-3">
-                                        <div class="avatar-title bg-light rounded-circle fs-16 text-primary material-shadow">
-                                            <i class="ri-user-2-fill"></i>
-                                        </div>
-                                    </div>
-                                    <div class="flex-grow-1 overflow-hidden">
-                                        <p class="mb-1">Employer :</p>
-                                        <h6 class="fw-semibold"><?= $payroll_r['employer_name']  ?></h6>
-                                    </div>
-                                </div>
-                            </div>
-                            <?php if ($payroll_r['category'] != 0) { ?>
-                                <div class="col-6 col-md-3">
-                                    <div class="d-flex mt-3">
-                                        <div class="flex-shrink-0 avatar-xs align-self-center me-3">
-                                            <div class="avatar-title bg-light rounded-circle fs-16 text-primary material-shadow">
-                                                <i class="ri-global-line"></i>
-                                            </div>
-                                        </div>
-                                        <div class="flex-grow-1 overflow-hidden">
-                                            <p class="mb-1">Cluster :</p>
-                                            <h6 class="fw-semibold"><?= $payroll_r['cluster']  ?></h6>
-                                        </div>
-                                    </div>
-                                </div>
-                            <?php } ?>
-                            <div class="col-6 col-md-3">
-                                <div class="d-flex mt-3">
-                                    <div class="flex-shrink-0 avatar-xs align-self-center me-3">
-                                        <div class="avatar-title bg-light rounded-circle fs-16 text-primary material-shadow">
-                                            <i class="ri-inbox-line"></i>
-                                        </div>
-                                    </div>
-                                    <div class="flex-grow-1 overflow-hidden">
-                                        <p class="mb-1">Type :</p>
-                                        <h6 class="fw-semibold"><?php if ($payroll['type'] == 5) {  ?>
-                                                Monthly
-                                            <?php } else { ?>
-                                                Week <?= $payroll['type'] ?>
-                                            <?php } ?></h6>
-                                    </div>
-                                </div>
-                            </div>
-                            <!--end col-->
-                        </div>
-                        <!--end row-->
-                    </div>
-                    <!--end card-body-->
-                </div>
-                <div class="card" id="myDiv">
-                    <div class="card-header align-items-center d-flex">
-                        <h4 class="card-title mb-0 flex-grow-1">Payroll List</h4>
-                        <div class="flex-shrink-0">
-                            <button data-toggle="tooltip" id="sf" title="Fullscreeen" onclick="openFullscreen()" type="button" class="btn btn-default mr-1"> <i class="ri-fullscreen-line"></i></button>
-                            <button style="display: none;" id="hf" data-toggle="tooltip" title="Fullscreeen" onclick="closeFullscreen()" type="button" class="btn btn-default mr-1"> <i class="ri-fullscreen-exit-line"></i></button>
-                            <button data-toggle="tooltip" title="Sites"  onclick="view_site()" type="button" class="btn btn-sm btn-outline-warning " title="Refresh"> <i class=" ri-building-line"></i></button>
+                <div class="xl-panel" id="myDiv">
+                    <div class="xl-ribbon">
+                        <span class="xl-ribbon-title">
+                            <i class="ri-table-line" style="color:#1976d2;"></i> Payroll List
+                        </span>
+                        <div class="xl-ribbon-actions">
+                            <button data-toggle="tooltip" id="sf" title="Fullscreen" onclick="openFullscreen()" class="xl-btn"><i class="ri-fullscreen-line"></i></button>
+                            <button style="display:none;" id="hf" data-toggle="tooltip" title="Exit Fullscreen" onclick="closeFullscreen()" class="xl-btn"><i class="ri-fullscreen-exit-line"></i></button>
+                            <div class="xl-ribbon-sep"></div>
+                            <button data-toggle="tooltip" title="Print Settings" data-bs-toggle="modal" data-bs-target="#modal-print-settings" class="xl-btn"><i class="ri-settings-3-line"></i> Print Settings</button>
+                            <button data-toggle="tooltip" title="Sites" onclick="view_site()" class="xl-btn"><i class="ri-building-line"></i> Sites</button>
+                            <div class="xl-ribbon-sep"></div>
                             <?php if ($payroll_type == 5) { ?>
-                                <a data-toggle="tooltip" title="Print" href="print-montly.php?id=<?= $id ?>" class="btn btn-outline-primary mr-1 btn-sm" title="Print By Employee"><span class="sr-only">Print</span> <i class="ri-printer-line"></i></a>
+                                <a data-toggle="tooltip" title="Print" href="print-montly.php?id=<?= $id ?>" class="xl-btn"><i class="ri-printer-line"></i> Print</a>
                             <?php } else { ?>
-                                <a data-toggle="tooltip" title="Print Payroll" href="print-payroll.php?id=<?= $id ?>&site_id=<?= $sid ?>" class="btn btn-outline-primary mr-1 btn-sm" title="Print Payroll"><span class="sr-only">Print</span> <i class="ri-printer-line"></i></a>
-                                <a data-toggle="tooltip" title="Print By Summary" href="print-payroll-employer.php?id=<?= $id ?>&type=all" class="btn btn-secondary mr-1 btn-sm" title="Print By Employee"><span class="sr-only">Print</span> <i class="ri-printer-fill"></i></a>
+                                <a data-toggle="tooltip" title="Print Payroll" href="print-payroll.php?id=<?= $id ?>&site_id=<?= $sid ?>" class="xl-btn"><i class="ri-printer-line"></i> Print</a>
+                                <a data-toggle="tooltip" title="Print By Summary" href="print-payroll-employer.php?id=<?= $id ?>&type=all" class="xl-btn"><i class="ri-printer-fill"></i> Summary</a>
                             <?php } ?>
-                            <!-- <a target="new" data-toggle="tooltip" title="Export To Excel" href="export-payroll.php?id=<?= $id ?>&site_id=<?= $sid ?>" class="btn btn-outline-success mr-1" title="Print"><span class="sr-only">Print</span> <i class="fa fa-file-excel-o"></i></a>                -->
                             <?php if ($status !== 2) { ?>
-                                <button data-toggle="tooltip" title="Lock Payroll" onclick="lockPayroll(<?= $id ?>)" type="button" class="btn btn-danger mr-1 btn-sm" title="Lock">Lock</button>
+                                <div class="xl-ribbon-sep"></div>
+                                <button data-toggle="tooltip" title="Lock Payroll" onclick="lockPayroll(<?= $id ?>)" class="xl-btn xl-btn-danger"><i class="ri-lock-line"></i> Lock</button>
+                                <div class="xl-ribbon-sep"></div>
+                                <button onclick="saveUnsaved()" id="btn-unsaved" title="Save Changes" class="xl-btn xl-btn-save" style="display:none;">
+                                    <i class="bx bx-save"></i> Save
+                                    <span id="counter-unsaved">0</span>
+                                </button>
                             <?php } ?>
                         </div>
                     </div>
-                    <div class="card-body">
-                        <div style="margin-bottom: 20px; width: 200px;">
-                            <div class="search-box">
-                                <input id="myInput" type="text" class="form-control bg-light border-light" placeholder="Search here...">
-                                <i class="ri-search-2-line search-icon"></i>
+                    <div class="xl-panel-body">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                            <div class="xl-search-wrap">
+                                <i class="ri-search-2-line"></i>
+                                <input id="myInput" type="text" placeholder="Search...">
                             </div>
                         </div>
-                        <button onclick="saveUnsaved()" data-toggle="tooltip" title="Save Changes" type="button" class="btn btn-icon btn-topbar material-shadow-none btn-ghost-secondary rounded-circle floating-button" id="btn-unsaved">
-                            <i class="bx bx-save fs-22"></i>
-                            <span class="position-absolute topbar-badge fs-10 translate-middle badge rounded-pill bg-danger" id="counter-unsaved">0<span class="visually-hidden">unsave</span></span>
-                        </button>
                         <form id="form-payroll">
-                            <div class="table-responsive2 mt-3" id="table-responsive2">
+                            <div class="table-responsive2" id="table-responsive2">
                                 <?php if ($payroll_type == 5) { ?>
 
-                                    <table cellspacing="0" id="table-1" class="table table-sm table-bordered table-striped">
+                                    <table cellspacing="0" id="table-1">
                                         <thead>
+                                            <!-- ═══ ROW 1 : Section group banners ═══ -->
                                             <tr>
                                                 <th rowspan="2" class="text-center primary-header">No.</th>
                                                 <th rowspan="2" class="text-center primary-header">Name</th>
                                                 <th rowspan="2" class="text-center primary-header">Position</th>
                                                 <th rowspan="2" class="text-center primary-header">Project Code</th>
-                                                <th rowspan="2" class="text-center  primary-header">Monthly Basic Pay</th>
-                                                <th rowspan="2" class="text-center  primary-header">Quinsina Pay</th>
-                                                <th colspan="3" class="text-center  primary-header">Allowance</th>
-                                                <!-- <th rowspan="2" class="text-center  primary-header">Allowance Quinsina</th> -->
-                                                <th rowspan="2" class="text-center  success-header">Basic Daily Rate</th>
-                                                <!-- <th rowspan="2" class="text-center  primary-header">Allowance Daily Rate</th> -->
-                                                <th rowspan="2" class="text-center  primary-header">No. of Duty</th>
-                                                <th rowspan="2" class="text-center  primary-header">Absences</th>
-                                                <th rowspan="2" class="text-center  primary-header">Amount Absences</th>
-                                                <th rowspan="2" class="text-center  success-header">Total Amount</th>
-                                                <th rowspan="2" class="text-center  primary-header">Legal Holiday</th>
-                                                <th rowspan="2" class="text-center  primary-header">Amount</th>
-                                                <th rowspan="2" class="text-center  primary-header">Sunday Duty</th>
-                                                <th rowspan="2" class="text-center  primary-header">Amount</th>
-                                                <th rowspan="2" class="text-center  primary-header">Special Holiday</th>
-                                                <th rowspan="2" class="text-center  primary-header">Amount</th>
+                                                <!-- Basic Earnings (3 cols) -->
+                                                <th colspan="3" class="text-center primary-header">Basic Earnings</th>
+                                                <!-- Allowance (3 cols) -->
+                                                <th colspan="3" class="text-center info-header">Allowance</th>
+                                                <!-- Attendance (4 cols) -->
+                                                <th colspan="4" class="text-center primary-header">Attendance</th>
+                                                <!-- Holidays & Extra Duties (6 cols) -->
+                                                <th colspan="6" class="text-center info-header">Holidays &amp; Extra Duties</th>
+                                                <!-- Overtime (3 cols) -->
                                                 <th colspan="3" class="text-center info-header">Overtime</th>
-
+                                                <!-- Late (3 cols) -->
                                                 <th colspan="3" class="text-center info-header">Late</th>
-                                                <th rowspan="2" class="text-center success-header">Total Gross PAY</th>
-                                                <th colspan="<?= count($contributions_settings) + 4 ?>" class="text-center danger-header">Deduction</th>
+                                                <th rowspan="2" class="text-center success-header">Total Gross Pay</th>
+                                                <!-- Deductions -->
+                                                <th colspan="<?= count($contributions_settings) + 4 ?>" class="text-center danger-header">Deductions</th>
                                                 <th rowspan="2" class="text-center danger-header">Total Deduction</th>
                                                 <?php if (count($refunds_settings) > 0) { ?>
-                                                    <th colspan="<?= count($refunds_settings) ?>" class="text-center primary-header">Refunds</th>
+                                                    <th colspan="<?= count($refunds_settings) ?>" class="text-center success-header">Refunds</th>
                                                 <?php } ?>
                                                 <th rowspan="2" class="text-center success-header">Net Pay</th>
-                                                <th rowspan="2" class="text-center  primary-header">Actions</th>
-                                                <th rowspan="2" class="text-center  primary-header">No.</th>
+                                                <th rowspan="2" class="text-center primary-header">Actions</th>
+                                                <th rowspan="2" class="text-center primary-header">No.</th>
                                             </tr>
+                                            <!-- ═══ ROW 2 : Individual column labels ═══ -->
                                             <tr>
-                                                <th class="text-center  info-header">No. dys</th>
-                                                <th class="text-center  info-header">Rate</th>
-                                                <th class="text-center  info-header">Amount</th>
-
-                                                <th class="text-center  info-header">No. hr</th>
-                                                <th class="text-center  info-header">Rate</th>
-                                                <th class="text-center  info-header">Amount</th>
-
-                                                <th class="text-center  info-header">Min</th>
-                                                <th class="text-center  info-header">Rate</th>
-                                                <th class="text-center  info-header">Amount</th>
-
+                                                <!-- Basic Earnings -->
+                                                <th class="text-center primary-header">Monthly Basic Pay</th>
+                                                <th class="text-center primary-header">Quinsena Pay</th>
+                                                <th class="text-center success-header">Basic Daily Rate</th>
+                                                <!-- Allowance -->
+                                                <th class="text-center info-header">No. Days</th>
+                                                <th class="text-center info-header">Rate</th>
+                                                <th class="text-center info-header">Amount</th>
+                                                <!-- Attendance -->
+                                                <th class="text-center primary-header">No. of Duty</th>
+                                                <th class="text-center primary-header">Absences</th>
+                                                <th class="text-center primary-header">Amt. Absences</th>
+                                                <th class="text-center success-header">Total Amount</th>
+                                                <!-- Holidays & Extra Duties -->
+                                                <th class="text-center info-header">Legal Holiday</th>
+                                                <th class="text-center info-header">Amount</th>
+                                                <th class="text-center info-header">Sunday Duty</th>
+                                                <th class="text-center info-header">Amount</th>
+                                                <th class="text-center info-header">Special Holiday</th>
+                                                <th class="text-center info-header">Amount</th>
+                                                <!-- Overtime -->
+                                                <th class="text-center info-header">No. Hrs</th>
+                                                <th class="text-center info-header">Rate</th>
+                                                <th class="text-center info-header">Amount</th>
+                                                <!-- Late -->
+                                                <th class="text-center info-header">Minutes</th>
+                                                <th class="text-center info-header">Rate</th>
+                                                <th class="text-center info-header">Amount</th>
+                                                <!-- Deduction sub-headers -->
                                                 <?php if (count($contributions_settings) > 0) {
                                                     foreach ($contributions_settings as $k) {
                                                         if ($k['type'] == 1) {
-                                                            $query_con = "SELECT * FROM contributions   WHERE id = ?";
+                                                            $query_con = "SELECT * FROM contributions WHERE id = ?";
                                                             $stmt_con = $conn->prepare($query_con);
                                                             $stmt_con->bind_param("i", $k['id']);
                                                             $stmt_con->execute();
-                                                            $result_con = $stmt_con->get_result();
-                                                            $contribution = $result_con->fetch_assoc();
+                                                            $contribution = $stmt_con->get_result()->fetch_assoc();
                                                             $name_deduction = $contribution['contribution'];
-                                                        } else if ($k['type'] == 3) {
-                                                            $query_con = "SELECT * FROM contribution_loan_types   WHERE clt_id = ?";
+                                                        } elseif ($k['type'] == 3) {
+                                                            $query_con = "SELECT * FROM contribution_loan_types WHERE clt_id = ?";
                                                             $stmt_con = $conn->prepare($query_con);
                                                             $stmt_con->bind_param("i", $k['id']);
                                                             $stmt_con->execute();
-                                                            $result_con = $stmt_con->get_result();
-                                                            $contribution = $result_con->fetch_assoc();
-                                                            $name_deduction =  $contribution['loan_type'];
-                                                        } else if ($k['type'] == 2) {
-                                                            $query_con = "SELECT * FROM deductions   WHERE id = ?";
+                                                            $contribution = $stmt_con->get_result()->fetch_assoc();
+                                                            $name_deduction = $contribution['loan_type'];
+                                                        } elseif ($k['type'] == 2) {
+                                                            $query_con = "SELECT * FROM deductions WHERE id = ?";
                                                             $stmt_con = $conn->prepare($query_con);
                                                             $stmt_con->bind_param("i", $k['id']);
                                                             $stmt_con->execute();
-                                                            $result_con = $stmt_con->get_result();
-                                                            $contribution = $result_con->fetch_assoc();
-                                                            $name_deduction =  $contribution['deduction'];
+                                                            $contribution = $stmt_con->get_result()->fetch_assoc();
+                                                            $name_deduction = $contribution['deduction'];
                                                         }
-
-
                                                 ?>
-                                                        <th class="text-center danger-header"><?= $name_deduction ?></th>
-                                                    <?php } ?>
-                                                <?php } else { ?>
-
-                                                <?php } ?>
-                                                <th class="text-center  danger-header">SSS PROVIDENT FUND </th>
-                                                <th class="text-center  danger-header">JEI ADVANCE</th>
-                                                <th class="text-center  danger-header">JCC ADVANCES</th>
-                                                <th class="text-center  danger-header">Tax</th>
+                                                        <th class="text-center danger-header"><?= htmlspecialchars($name_deduction) ?></th>
+                                                <?php } } ?>
+                                                <th class="text-center danger-header">SSS Provident Fund</th>
+                                                <th class="text-center danger-header">JEI Advance</th>
+                                                <th class="text-center danger-header">JCC Advances</th>
+                                                <th class="text-center danger-header">Tax</th>
+                                                <!-- Refund sub-headers -->
                                                 <?php if (count($refunds_settings) > 0) {
                                                     foreach ($refunds_settings as $k) {
-                                                        $query_con = "SELECT * FROM refunds   WHERE id = ?";
+                                                        $query_con = "SELECT * FROM refunds WHERE id = ?";
                                                         $stmt_con = $conn->prepare($query_con);
                                                         $stmt_con->bind_param("i", $k['id']);
                                                         $stmt_con->execute();
-                                                        $result_con = $stmt_con->get_result();
-                                                        $rfund = $result_con->fetch_assoc();
-                                                        $name_refunds =  $rfund['refunds'];
-
+                                                        $rfund = $stmt_con->get_result()->fetch_assoc();
                                                 ?>
-                                                        <th class="text-center success-header"><?= $name_refunds ?></th>
-                                                <?php }
-                                                } ?>
-
+                                                        <th class="text-center success-header"><?= htmlspecialchars($rfund['refunds']) ?></th>
+                                                <?php } } ?>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -764,8 +648,8 @@ $payroll_type = $payroll['type'];
                                                         <b><?= number_format($net, 2) ?></b>
                                                     </td>
                                                     <td style="min-width: 90px;" class="text-center">
-                                                        <a href="view_payslip.php?id=<?= $row['id'] ?>" type="button" class="btn btn-sm btn-outline-danger" data-toggle="tooltip" title="View Paylip" id="<?= $row['id'] ?>" site_name="<?= htmlspecialchars($row['site_name']) ?>" onclick="edit_function(this)">
-                                                            <i class=" ri-file-line"></i>
+                                                        <a href="view_payslip.php?id=<?= $row['id'] ?>" class="xl-btn" data-toggle="tooltip" title="View Payslip" id="<?= $row['id'] ?>" site_name="<?= htmlspecialchars($row['site_name']) ?>" onclick="edit_function(this)">
+                                                            <i class="ri-file-text-line"></i> View
                                                         </a>
                                                     </td>
                                                     <td class="text-center" style="min-width: 40px;"><b><?= $i ?></b></td>
@@ -822,7 +706,7 @@ $payroll_type = $payroll['type'];
 
 
                                 <?php } else { ?>
-                                    <table cellspacing="0" id="table-1" class="table table-sm table-bordered table-striped">
+                                    <table cellspacing="0" id="table-1">
                                         <thead>
                                             <tr>
                                                 <th rowspan="2" class="text-center primary-header">No.</th>
@@ -1162,8 +1046,8 @@ $payroll_type = $payroll['type'];
                                                         <b><?= number_format($net, 2) ?></b>
                                                     </td>
                                                     <td style="min-width: 90px;" class="text-center">
-                                                        <a href="view_payslip.php?id=<?= $row['id'] ?>" type="button" class="btn btn-sm btn-outline-danger" data-toggle="tooltip" title="View Paylip" id="<?= $row['id'] ?>" site_name="<?= htmlspecialchars($row['site_name']) ?>" onclick="edit_function(this)">
-                                                            <i class=" ri-file-line"></i>
+                                                        <a href="view_payslip.php?id=<?= $row['id'] ?>" class="xl-btn" data-toggle="tooltip" title="View Payslip" id="<?= $row['id'] ?>" site_name="<?= htmlspecialchars($row['site_name']) ?>" onclick="edit_function(this)">
+                                                            <i class="ri-file-text-line"></i> View
                                                         </a>
                                                     </td>
                                                     <td class="text-center" style="min-width: 40px;"><b><?= $i ?></b></td>
@@ -1211,56 +1095,80 @@ $payroll_type = $payroll['type'];
 
             <!-- end page title -->
         </div>
-        <br>
-        <fieldset>
-            <legend>Print Setting</legend>
-            <form class="form-auth-small" id="form-print-settings" method="post" novalidate>
-                <input type="hidden" name="id" value="<?= $id ?>">
-                <div class="row">
-                    <div class="col-md-2">
-                        <div class="form-group">
-                            <label>Prepared By</label>
-                            <input class="form-control input-class" value="<?= $payroll['prepared_by'] ?>" name="prepared_by" type="text" data-parsley-required-message="Fields is required." required>
-                        </div>
-                        <div class="form-group mt-4">
-                            <label>Position</label>
-                            <input class="form-control input-class" name="prepared_by_role" type="text" data-parsley-required-message="Fields is required." value="<?= isset($payroll['prepared_by_role']) && trim($payroll['prepared_by_role']) !== '' ? $payroll['prepared_by_role'] : 'PAYROLL OFFICER' ?>"
-
-                                required>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="form-group">
-                            <label>Verified By</label>
-                            <input class="form-control input-class" name="verified_by" value="<?= $payroll['verified_by'] ?>" type="text" data-parsley-required-message="Fields is required." required>
-                        </div>
-                        <div class="form-group mt-4">
-                            <label>Position</label>
-                            <input class="form-control input-class" name="verified_by_role" type="text" data-parsley-required-message="Fields is required." value="<?= isset($payroll['verified_by_role']) && trim($payroll['verified_by_role']) !== '' ? $payroll['verified_by_role'] : 'Compensation & Benefits Supervisor' ?>" required>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="form-group">
-                            <label> Approved By</label>
-                            <input class="form-control input-class" value="<?= isset($payroll['approved_by']) && trim($payroll['approved_by']) !== '' ? $payroll['approved_by'] : 'Jordan G. Tiu/Jerry G. Tiu/Jean T. Chin' ?>" name="approved_by" type="text" required data-parsley-required-message="Fields is required.">
-                        </div>
-                        <div class="form-group mt-4">
-                            <label>Position</label>
-                            <input class="form-control input-class" name="approved_by_role" type="text" data-parsley-required-message="Fields is required." value="<?= isset($payroll['approved_by_role']) && trim($payroll['approved_by_role']) !== '' ? $payroll['approved_by_role'] : 'MANAGEMENT' ?>" required>
-                        </div>
-                    </div>
-                </div>
-                <div style="margin: 20px 0px;">
-                    <button type="submit" class="btn btn-info">Save Changes</button>
-                </div>
-            </form>
-        </fieldset>
-        <br> </br>
         <!-- container-fluid -->
     </div>
     <!-- End Page-content -->
 
 </div>
+
+<!-- Print Settings Modal -->
+<div class="modal fade" id="modal-print-settings" tabindex="-1" role="dialog" aria-labelledby="modalPrintSettingsLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white">
+                <h5 class="modal-title" id="modalPrintSettingsLabel"><i class="ri-settings-3-line me-2"></i>Print Settings</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form class="form-auth-small" id="form-print-settings" method="post" novalidate>
+                <input type="hidden" name="id" value="<?= $id ?>">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="card border h-100">
+                                <div class="card-header bg-light py-2 fw-semibold"><i class="ri-edit-line me-1"></i>Prepared By</div>
+                                <div class="card-body">
+                                    <div class="form-group mb-3">
+                                        <label class="form-label small text-muted">Name</label>
+                                        <input class="form-control" value="<?= htmlspecialchars($payroll['prepared_by']) ?>" name="prepared_by" type="text" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label small text-muted">Position</label>
+                                        <input class="form-control" name="prepared_by_role" type="text" value="<?= htmlspecialchars(isset($payroll['prepared_by_role']) && trim($payroll['prepared_by_role']) !== '' ? $payroll['prepared_by_role'] : 'PAYROLL OFFICER') ?>" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border h-100">
+                                <div class="card-header bg-light py-2 fw-semibold"><i class="ri-checkbox-circle-line me-1"></i>Verified By</div>
+                                <div class="card-body">
+                                    <div class="form-group mb-3">
+                                        <label class="form-label small text-muted">Name</label>
+                                        <input class="form-control" name="verified_by" value="<?= htmlspecialchars($payroll['verified_by']) ?>" type="text" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label small text-muted">Position</label>
+                                        <input class="form-control" name="verified_by_role" type="text" value="<?= htmlspecialchars(isset($payroll['verified_by_role']) && trim($payroll['verified_by_role']) !== '' ? $payroll['verified_by_role'] : 'Compensation & Benefits Supervisor') ?>" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border h-100">
+                                <div class="card-header bg-light py-2 fw-semibold"><i class="ri-shield-check-line me-1"></i>Approved By</div>
+                                <div class="card-body">
+                                    <div class="form-group mb-3">
+                                        <label class="form-label small text-muted">Name</label>
+                                        <input class="form-control" value="<?= htmlspecialchars(isset($payroll['approved_by']) && trim($payroll['approved_by']) !== '' ? $payroll['approved_by'] : 'Jordan G. Tiu/Jerry G. Tiu/Jean T. Chin') ?>" name="approved_by" type="text" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label small text-muted">Position</label>
+                                        <input class="form-control" name="approved_by_role" type="text" value="<?= htmlspecialchars(isset($payroll['approved_by_role']) && trim($payroll['approved_by_role']) !== '' ? $payroll['approved_by_role'] : 'MANAGEMENT') ?>" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-info"><i class="ri-save-line me-1"></i>Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <div class="modal" id="modal-sites-2" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
@@ -1316,5 +1224,51 @@ $payroll_type = $payroll['type'];
 <script>
     let id = "<?= $id ?>";
     let status = "<?= $status ?>";
+
+    function fitTableToViewport() {
+        const container = document.getElementById('table-responsive2');
+        if (!container) return;
+        const top = container.getBoundingClientRect().top + window.scrollY;
+        const scrollTop = window.scrollY || document.documentElement.scrollTop;
+        const visibleTop = top - scrollTop;
+        const available = window.innerHeight - visibleTop - 24;
+        container.style.height = Math.max(available, 200) + 'px';
+    }
+
+    function fixStickyHeaderGap() {
+        const thead = document.querySelector('#table-1 thead');
+        if (!thead) return;
+        const row1 = thead.querySelector('tr:first-child');
+        if (!row1) return;
+        const row1Height = row1.getBoundingClientRect().height;
+        thead.querySelectorAll('tr:nth-child(2) th').forEach(th => {
+            th.style.top = row1Height + 'px';
+        });
+    }
+
+    function fixFrozenColumns() {
+        const table = document.getElementById('table-1');
+        if (!table) return;
+        // Measure the rendered width of the first body/header cell
+        const col1Ref = table.querySelector('tbody tr td:nth-child(1)')
+                     || table.querySelector('thead tr:first-child th:nth-child(1)');
+        if (!col1Ref) return;
+        const col1W = col1Ref.getBoundingClientRect().width;
+        // Set left offset on every col-2 cell
+        table.querySelectorAll(
+            'tbody td:nth-child(2), tfoot th:nth-child(2), thead tr:first-child th:nth-child(2)'
+        ).forEach(el => { el.style.left = col1W + 'px'; });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        fitTableToViewport();
+        fixStickyHeaderGap();
+        fixFrozenColumns();
+    });
+    window.addEventListener('resize', () => {
+        fitTableToViewport();
+        fixStickyHeaderGap();
+        fixFrozenColumns();
+    });
 </script>
 <?php include 'component/add_payroll.php'; ?>

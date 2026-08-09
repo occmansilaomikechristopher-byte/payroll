@@ -287,12 +287,14 @@ $(document).ready(function () {
 });
 
 function countUnsaved() {
+    const btn = document.getElementById("btn-unsaved");
+    if (!btn) return;
     if (changedInputs.length === 0) {
-        $("#btn-unsaved").prop("disabled", true);
+        btn.style.display = "none";
     } else {
-        $("#btn-unsaved").prop("disabled", false);
+        btn.style.display = "inline-flex";
+        document.getElementById("counter-unsaved").textContent = changedInputs.length;
     }
-    $("#counter-unsaved").text(changedInputs.length);
 }
 
 async function saveUnsaved() {

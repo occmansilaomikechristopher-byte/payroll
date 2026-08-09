@@ -8,21 +8,23 @@ let id = null;
 
 $(document).ready(function () {
     $('#data-table').DataTable({
-        "processing": true,
-        "serverSide": true,
-        "ajax": {
-            "url": "dtr-server.php", // Fetch data from PHP
-            "type": "POST"
-        },
-        "columns": [
-            { "data": "period" },
-            { "data": "employer_name" },
-            { "data": "site" },
-            { "data": "uploaded_by" },
-            { "data": "timekeeper_name" },
-            { "data": "approve_by" },
-            { "data": "action", "orderable": false, "searchable": false }
-        ]
+        processing: true,
+        serverSide: true,
+        ajax: { url: 'dtr-server.php', type: 'POST' },
+        columns: [
+            { data: 'period' },
+            { data: 'employer_name' },
+            { data: 'site' },
+            { data: 'uploaded_by' },
+            { data: 'timekeeper_name' },
+            { data: 'approve_by' },
+            { data: 'action', orderable: false, searchable: false, className: 'text-center' },
+        ],
+    }).on('draw.dt', function () {
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+            bootstrap.Tooltip.getInstance(el)?.dispose();
+            new bootstrap.Tooltip(el, { trigger: 'hover' });
+        });
     });
 
     // View button event listener
