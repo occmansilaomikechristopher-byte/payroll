@@ -82,7 +82,7 @@
 			<div class="modal-content">
 				<div class="modal-header">
 					<h6 class="modal-title mb-0">
-						<i class="ri-filter-3-line me-2" style="color:#394b7c;"></i>Filter Attendance Records
+						<i class="ri-filter-3-line me-2" style="color:#009688;"></i>Filter Attendance Records
 					</h6>
 					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 				</div>
@@ -90,7 +90,7 @@
 
 					<!-- Date Range -->
 					<div class="mb-3">
-						<label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#394b7c;">
+						<label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
 							<i class="ri-calendar-range-line me-1"></i>Date Range <span class="text-danger">*</span>
 						</label>
 						<div class="row g-2">
@@ -117,7 +117,7 @@
 
 					<!-- Employee -->
 					<div class="mb-3">
-						<label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#394b7c;">
+						<label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
 							<i class="ri-user-line me-1"></i>Employee <span class="text-danger">*</span>
 						</label>
 						<select id="employee-select" name="employee_id[]" class="form-control" multiple
@@ -133,19 +133,19 @@
 						<div class="form-text text-muted" style="font-size:11px;"><i class="ri-information-line me-1"></i>Hold Ctrl / Cmd to select multiple</div>
 					</div>
 
-					<!-- Site -->
+					<!-- Branch -->
 					<div class="mb-1">
-						<label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#394b7c;">
-							<i class="ri-map-pin-2-line me-1"></i>Site <span class="text-muted fw-normal">(optional)</span>
+						<label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
+							<i class="ri-map-pin-2-line me-1"></i>Branch <span class="text-muted fw-normal">(optional)</span>
 						</label>
-						<select id="site-select" class="form-control" name="site_id" data-placeholder="All sites">
-							<option value="">— All Sites —</option>
+						<select id="site-select" class="form-control" name="site_id" data-placeholder="All branches">
+							<option value="">— All Branches —</option>
 							<?php
-							$sites = $conn->query("SELECT * FROM sites WHERE status = 1 ORDER BY site_name ASC");
-							while ($row_site = $sites->fetch_assoc()):
+							$sites = $conn->query("SELECT * FROM branches WHERE status = 1 ORDER BY branch_name ASC");
+							if ($sites) while ($row_site = $sites->fetch_assoc()):
 							?>
 								<option value="<?= $row_site['id'] ?>">
-									<?= htmlspecialchars($row_site['site_name']) ?> (<?= htmlspecialchars($row_site['site_address']) ?>)
+									<?= htmlspecialchars($row_site['branch_name']) ?>
 								</option>
 							<?php endwhile; ?>
 						</select>
@@ -156,7 +156,7 @@
 					<button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">
 						<i class="ri-close-line me-1"></i>Cancel
 					</button>
-					<button type="submit" class="btn btn-sm text-white" style="background:#394b7c;border-color:#394b7c;">
+					<button type="submit" class="btn btn-sm text-white" style="background:#009688;border-color:#009688;">
 						<i class="ri-search-line me-1"></i>Apply Filter
 					</button>
 				</div>

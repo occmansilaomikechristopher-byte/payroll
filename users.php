@@ -1,14 +1,24 @@
+<?php
+// User Management is admin-only (role 1)
+if ($login_role != 1) {
+    echo '<div class="main-content"><div class="page-content"><div class="container-fluid">
+            <div class="alert alert-danger mt-4"><i class="ri-lock-line me-2"></i>
+            Access denied. User Management is restricted to administrators.</div>
+          </div></div></div>';
+    return;
+}
+?>
 <style>
-    .usr-avatar { width:30px; height:30px; border-radius:50%; background:#394b7c; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .usr-avatar { width:30px; height:30px; border-radius:50%; background:#009688; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
     .usr-name { font-weight:600; font-size:13px; }
-    .usr-username { font-family:monospace; font-size:12px; color:#394b7c; font-weight:600; }
+    .usr-username { font-family:monospace; font-size:12px; color:#009688; font-weight:600; }
     .usr-employer { font-size:13px; font-weight:600; }
-    .usr-site-code { background:#394b7c; color:#fff; padding:1px 6px; border-radius:3px; font-size:10px; font-weight:700; font-family:monospace; }
+    .usr-site-code { background:#009688; color:#fff; padding:1px 6px; border-radius:3px; font-size:10px; font-weight:700; font-family:monospace; }
     .usr-site-name { font-size:11px; font-weight:600; color:#333; }
     .usr-site-addr { font-size:10px; color:#888; }
     .usr-site-item { border:1px solid #d0d7ee; border-radius:4px; padding:4px 8px; margin-bottom:4px; background:#f7f8fc; }
     .usr-action { display:flex; gap:4px; justify-content:center; flex-wrap:nowrap; }
-    #data-table thead th { background-color:#394b7c !important; border-color:#2d3d66 !important; color:#fff !important; }
+    #data-table thead th { background-color:#009688 !important; border-color:#2d3d66 !important; color:#fff !important; }
     #data-table tbody tr:hover td { background:#f4f5fb; }
 </style>
 
@@ -19,7 +29,7 @@
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
                         <h4 class="mb-sm-0">
-                            <i class="ri-shield-user-line me-2" style="color:#394b7c;"></i>User Management
+                            <i class="ri-shield-user-line me-2" style="color:#009688;"></i>User Management
                         </h4>
                         <div class="page-title-right">
                             <ol class="breadcrumb m-0">
@@ -30,16 +40,16 @@
                     </div>
                 </div>
 
-                <div class="card" style="border-top:3px solid #394b7c;">
+                <div class="card" style="border-top:3px solid #009688;">
                     <div class="card-header align-items-center d-flex py-2">
                         <h4 class="card-title mb-0 flex-grow-1">
-                            <i class="ri-shield-user-line me-2" style="color:#394b7c;"></i>User List
+                            <i class="ri-shield-user-line me-2" style="color:#009688;"></i>User List
                             <?php
                             $user_count = $conn->query("SELECT COUNT(*) AS c FROM users WHERE role != 1")->fetch_assoc()['c'];
                             ?>
-                            <span class="badge ms-1" style="background:#eef0f8;color:#394b7c;font-size:11px;font-weight:700;vertical-align:middle;"><?= $user_count ?></span>
+                            <span class="badge ms-1" style="background:#eef0f8;color:#009688;font-size:11px;font-weight:700;vertical-align:middle;"><?= $user_count ?></span>
                         </h4>
-                        <button type="button" class="btn btn-sm text-white" style="background:#394b7c;border-color:#394b7c;"
+                        <button type="button" class="btn btn-sm text-white" style="background:#009688;border-color:#009688;"
                             data-bs-toggle="modal" data-bs-target="#modal">
                             <i class="ri-user-add-line me-1"></i>Create User
                         </button>
@@ -62,14 +72,25 @@
                                     $query = $conn->query("
                                         SELECT users.*,
                                             employers.employer_name,
+                                            branches.branch_name,
+                                            branches.branch_code,
                                             GROUP_CONCAT(CONCAT(sites.site_code,'|',sites.site_name,'|',sites.site_address) SEPARATOR '||') AS site_data
                                         FROM users
                                         LEFT JOIN employers ON employers.id = users.employer_id
-                                        LEFT JOIN sites ON sites.timekeeper_id = users.id
+                                        LEFT JOIN branches ON branches.id = users.branch_id
+                                        LEFT JOIN sites ON sites.id = users.site_id
                                         WHERE users.role != 1
                                         GROUP BY users.id
                                         ORDER BY users.name ASC
                                     ");
+                                    if (!$query):
+                                    ?>
+                                        <tr><td colspan="5" class="text-center py-4 text-danger">
+                                            <i class="ri-error-warning-line me-1"></i>Unable to load users. Run the SQL:
+                                            <code>ALTER TABLE users ADD COLUMN branch_id INT NULL AFTER site_id;</code>
+                                        </td></tr>
+                                    <?php
+                                    else:
                                     while ($row = $query->fetch_assoc()):
                                         $initials = strtoupper(substr($row['name'], 0, 1))
                                                   . strtoupper(substr(strstr($row['name'], ' ') ?: $row['name'], 1, 1));
@@ -100,7 +121,16 @@
                                                         <?php endforeach; ?>
                                                     </div>
                                                 <?php elseif ($row['role'] == 5): ?>
-                                                    <div class="text-muted" style="font-size:11px;margin-top:3px;"><i class="ri-information-line me-1"></i>No site assigned</div>
+                                                    <div class="text-muted" style="font-size:11px;margin-top:3px;"><i class="ri-information-line me-1"></i>No branch assigned</div>
+                                                <?php elseif ($row['role'] == 9 && !empty($row['branch_name'])): ?>
+                                                    <div class="mt-1">
+                                                        <div class="usr-site-item">
+                                                            <span class="usr-site-code"><?= htmlspecialchars($row['branch_code']) ?></span>
+                                                            <span class="usr-site-name ms-1"><?= htmlspecialchars($row['branch_name']) ?></span>
+                                                        </div>
+                                                    </div>
+                                                <?php elseif ($row['role'] == 9): ?>
+                                                    <div class="text-muted" style="font-size:11px;margin-top:3px;"><i class="ri-information-line me-1"></i>No branch assigned</div>
                                                 <?php endif; ?>
                                             </td>
                                             <td>
@@ -121,6 +151,7 @@
                                                         username="<?= htmlspecialchars($row['username']) ?>"
                                                         employer_id="<?= htmlspecialchars($row['employer_id']) ?>"
                                                         role="<?= htmlspecialchars($row['role']) ?>"
+                                                        branch_id="<?= htmlspecialchars($row['branch_id'] ?? '') ?>"
                                                         onclick="edit_function(this)"
                                                         data-bs-toggle="tooltip" data-bs-placement="top" title="Edit User">
                                                         <i class="ri-edit-line me-1"></i>Edit
@@ -141,7 +172,7 @@
                                                 </div>
                                             </td>
                                         </tr>
-                                    <?php endwhile; ?>
+                                    <?php endwhile; endif; ?>
                                 </tbody>
                             </table>
                         </div>

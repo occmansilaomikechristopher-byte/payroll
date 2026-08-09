@@ -42,30 +42,30 @@ $fullname  = htmlspecialchars($lastname . ', ' . $firstname . ($middlename ? ' '
 ?>
 <style>
     .emp-profile-bar { display:flex; align-items:center; gap:16px; padding:14px 0 12px; border-bottom:2px solid #d0d7ee; margin-bottom:14px; flex-wrap:wrap; }
-    .emp-big-avatar { width:52px; height:52px; border-radius:50%; background:#394b7c; color:#fff; font-size:20px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; letter-spacing:1px; }
-    .emp-profile-name { font-size:17px; font-weight:700; color:#394b7c; line-height:1.2; }
+    .emp-big-avatar { width:52px; height:52px; border-radius:50%; background:#009688; color:#fff; font-size:20px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; letter-spacing:1px; }
+    .emp-profile-name { font-size:17px; font-weight:700; color:#009688; line-height:1.2; }
     .emp-profile-sub { font-size:12px; color:#555; margin-top:3px; }
     .emp-profile-stats { display:flex; gap:20px; margin-left:auto; flex-wrap:wrap; }
     .emp-profile-stat { text-align:right; }
-    .emp-profile-stat-val { font-size:13px; font-weight:700; color:#394b7c; font-family:'Segoe UI',monospace; }
+    .emp-profile-stat-val { font-size:13px; font-weight:700; color:#009688; font-family:'Segoe UI',monospace; }
     .emp-profile-stat-lbl { font-size:10px; color:#888; text-transform:uppercase; letter-spacing:.3px; }
     .detail-section { border:1px solid #d0d7ee; border-radius:4px; margin-bottom:10px; overflow:hidden; }
-    .detail-section-title { background:#394b7c; color:#fff; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; padding:5px 12px; display:flex; align-items:center; gap:6px; }
+    .detail-section-title { background:#009688; color:#fff; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; padding:5px 12px; display:flex; align-items:center; gap:6px; }
     .detail-row { display:flex; flex-wrap:wrap; }
     .detail-item { padding:7px 14px; border-bottom:1px solid #eef0f8; border-right:1px solid #eef0f8; flex:1; min-width:200px; }
     .detail-item:last-child { border-right:none; }
     .detail-label { font-size:10px; color:#888; font-weight:700; text-transform:uppercase; letter-spacing:.3px; margin-bottom:2px; }
     .detail-value { font-size:13px; font-weight:600; color:#1a1a1a; }
-    .emp-currency-val { font-weight:700; color:#394b7c; font-family:'Segoe UI',monospace; }
+    .emp-currency-val { font-weight:700; color:#009688; font-family:'Segoe UI',monospace; }
     .cn-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(210px,1fr)); gap:10px; margin-top:4px; }
     .cn-item { border:1px solid #c5cde8; border-radius:4px; padding:10px 12px; background:#eef0f8; }
-    .cn-item label { font-size:10px; color:#394b7c; font-weight:700; text-transform:uppercase; letter-spacing:.3px; display:block; margin-bottom:5px; }
+    .cn-item label { font-size:10px; color:#009688; font-weight:700; text-transform:uppercase; letter-spacing:.3px; display:block; margin-bottom:5px; }
     .cn-item .form-control { font-size:13px; font-weight:600; border-color:#c5cde8; }
     .barcode-wrap { background:#f8f9fa; border:1px solid #d0d7ee; border-radius:4px; padding:10px 16px; display:inline-block; margin-top:4px; }
     #table-loan thead.table-dark th,
     #table-contributions thead.table-dark th,
     #table-deductions thead.table-dark th,
-    #table-sites thead.table-dark th { background-color:#394b7c !important; border-color:#2d3d66 !important; }
+    #table-sites thead.table-dark th { background-color:#009688 !important; border-color:#2d3d66 !important; }
 </style>
 
 <div class="main-content">

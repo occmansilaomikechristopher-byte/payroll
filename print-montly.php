@@ -1,8 +1,8 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=Edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-<meta name="description" content="JEJORS Payroll">
-<meta name="author" content="design by: Niel Daculan">
+<meta name="description" content=" Payroll">
+<meta name="author" content="design by:">
 <link rel="icon" href="favicon.ico" type="image/x-icon">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script> -->
@@ -171,11 +171,11 @@ $payroll_type = $payroll['type'];
 
                     <div class="top">
                         <div class="logo-area">
-                            <img style="width: 60px;" src="assets2/images/logo.jpeg" alt="Logo">
+                            <img style="width: 60px;" src="/payroll/assets/images/gv-logo.png" alt="Logo">
                         </div>
                         <div>
-                            <div>JEJORS CONSTRUCTION CORPORATION</div>
-                            <div>TIU SONS, BUILDING BARANGAY 33, GUILLERMO COGON CAGAYAN DE ORO CITY</h4>
+                            <div>JV Glass</div>
+                            <div>Opol Misamis Oriental</h4>
                             </div>
                             <div class="text-center">PAYROLL PERIOD:
                                 <strong>
@@ -658,10 +658,7 @@ $payroll_type = $payroll['type'];
 <!-- <script src="xlsx.full.min.js"></script> -->
 <script>
     window.print();
-    window.onafterprint = function() {
-        window.close();
-        history.back();
-    };
+    // Do not automatically close or navigate away after printing.
     // function exportTableToExcel(tableID, filename = "PAYROLL.xlsx") {
     //     let table = document.getElementById(tableID);
     //     let wb = XLSX.utils.table_to_book(table, {

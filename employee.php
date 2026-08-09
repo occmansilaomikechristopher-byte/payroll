@@ -2,12 +2,12 @@
     .emp-id { font-weight:700; color:#1976d2; font-family:'Segoe UI',monospace; letter-spacing:.3px; }
     .emp-name { font-weight:600; font-size:13px; }
     .emp-position { font-size:11px; color:#555; }
-    .emp-currency { font-weight:600; color:#394b7c; font-size:12px; font-family:'Segoe UI',monospace; }
+    .emp-currency { font-weight:600; color:#009688; font-size:12px; font-family:'Segoe UI',monospace; }
     .emp-actions { display:flex; gap:4px; align-items:center; flex-wrap:nowrap; }
     .emp-actions .btn-sm { padding:3px 9px; font-size:11px; white-space:nowrap; }
     .filter-label { font-size:11px; color:#666; font-weight:600; margin-bottom:3px; }
-    .emp-avatar { width:28px; height:28px; border-radius:50%; background:#394b7c; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-    #table-employee thead.table-dark th { background-color:#394b7c !important; border-color:#2d3d66 !important; }
+    .emp-avatar { width:28px; height:28px; border-radius:50%; background:#009688; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    
 </style>
 <div class="main-content">
 	<div class="page-content">
@@ -76,7 +76,7 @@
 							<table id="table-employee" class="table table-hover table-bordered dt-responsive nowrap align-middle">
 								<thead class="table-dark">
 									<tr>
-										<th><i class="ri-hashtag me-1"></i>ID</th>
+										<th><i class="ri-hashtag me-1"></i>ID111</th>
 										<th><i class="ri-user-3-line me-1"></i>Name</th>
 										<th><i class="ri-briefcase-4-line me-1"></i>Position</th>
 										<th><i class="ri-money-dollar-circle-line me-1"></i>Basic Pay</th>

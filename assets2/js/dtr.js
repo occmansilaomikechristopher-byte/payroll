@@ -6,25 +6,69 @@
 let btnText = "Create";
 let id = null;
 
+// Auto-refresh interval for DTR tables (every 5 seconds)
+let dtrRefreshInterval = null;
+
+function startDTRAutoRefresh() {
+    // Clear any existing interval
+    if (dtrRefreshInterval) {
+        clearInterval(dtrRefreshInterval);
+    }
+    
+    // Refresh every 5 seconds
+    dtrRefreshInterval = setInterval(() => {
+        if ($.fn.DataTable.isDataTable('#data-table')) {
+            $('#data-table').DataTable().ajax.reload(null, false);
+        }
+    }, 5000);
+}
+
+function stopDTRAutoRefresh() {
+    if (dtrRefreshInterval) {
+        clearInterval(dtrRefreshInterval);
+        dtrRefreshInterval = null;
+    }
+}
+
 $(document).ready(function () {
-    $('#data-table').DataTable({
-        processing: true,
-        serverSide: true,
-        ajax: { url: 'dtr-server.php', type: 'POST' },
-        columns: [
-            { data: 'period' },
-            { data: 'employer_name' },
-            { data: 'site' },
-            { data: 'uploaded_by' },
-            { data: 'timekeeper_name' },
-            { data: 'approve_by' },
-            { data: 'action', orderable: false, searchable: false, className: 'text-center' },
-        ],
-    }).on('draw.dt', function () {
-        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
-            bootstrap.Tooltip.getInstance(el)?.dispose();
-            new bootstrap.Tooltip(el, { trigger: 'hover' });
+    if ($('#data-table').length) {
+        $('#data-table').DataTable({
+            processing: true,
+            serverSide: true,
+            ajax: { url: 'dtr-server.php', type: 'POST' },
+            columns: [
+                { data: 'period' },
+                { data: 'site' },
+                { data: 'uploaded_by' },
+                { data: 'timekeeper_name' },
+                { data: 'approve_by' },
+                { data: 'action', orderable: false, searchable: false, className: 'text-center' },
+            ],
+        }).on('draw.dt', function () {
+            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+                bootstrap.Tooltip.getInstance(el)?.dispose();
+                new bootstrap.Tooltip(el, { trigger: 'hover' });
+            });
         });
+    }
+
+    // Start auto-refresh for DTR tables
+    startDTRAutoRefresh();
+
+    // Manual refresh button handler
+    $(document).on("click", "#refresh-dtr-btn", function () {
+        var btn = $(this);
+        btn.prop("disabled", true);
+        btn.find("i").addClass("ri-spin");
+        
+        if ($.fn.DataTable.isDataTable('#data-table')) {
+            $('#data-table').DataTable().ajax.reload(null, false);
+        }
+        
+        setTimeout(() => {
+            btn.prop("disabled", false);
+            btn.find("i").removeClass("ri-spin");
+        }, 1000);
     });
 
     // View button event listener
@@ -58,30 +102,61 @@ function readFileAsText(file) {
     });
 }
 
-(async () => {
-    const file = await dataURLtoFile(
-        "data:text/plain;base64,ICAgICAgICAgICAgIDQwCTIwMjQtMDYtMTcgNzozNToyMAk3CTAJMQkwCiAgICAgICAgICAgIDE5MgkyMDI0LTA2LTE3IDExOjUyOjQ3CTcJMAkxCTAKICAgICAgICAgICAgIDQwCTIwMjQtMDYtMTcgMTc6MDI6MjAJNwkwCTEJMAogICAgICAgICAgICAxOTIJMjAyNC0wNi0xNyAxNzo1Mjo0Nwk3CTAJMQkwCiAgICAgICAgICAgICA0MAkyMDI0LTA2LTE4IDA4OjAyOjIwCTcJMAkxCTAKICAgICAgICAgICAgMTkyCTIwMjQtMDYtMTggMDc6NTg6MjAJNwkwCTEJMAogICAgICAgICAgICAgNDAJMjAyNC0wNi0xOCAxNzoxMDoyMAk3CTAJMQkwCiAgICAgICAgICAgIDE5MgkyMDI0LTA2LTE4IDE3OjA4OjIwCTcJMAkxCTAKICAgICAgICAgICAgIDQwCTIwMjQtMDYtMTkgMDg6MDI6MTAJNwkwCTEJMAogICAgICAgICAgICAxOTIJMjAyNC0wNi0xOSAwNzo1ODoyMwk3CTAJMQkwCiAgICAgICAgICAgICA0MAkyMDI0LTA2LTE5IDE3OjEwOjIxCTcJMAkxCTAKICAgICAgICAgICAgMTkyCTIwMjQtMDYtMTkgMTc6MDg6MjMJNwkwCTEJMAogICAgICAgICAgICAgNDAJMjAyNC0wNi0yMCAwODowMjoyMQk3CTAJMQkwCiAgICAgICAgICAgIDE5MgkyMDI0LTA2LTIwIDA3OjU4OjI1CTcJMAkxCTAKICAgICAgICAgICAgIDQwCTIwMjQtMDYtMjAgMTc6MTA6MjAJNwkwCTEJMAogICAgICAgICAgICAxOTIJMjAyNC0wNi0yMCAxNzowODoxMAk3CTAJMQkwCiAgICAgICAgICAgICA0MAkyMDI0LTA2LTIxIDA4OjAyOjEwCTcJMAkxCTAKICAgICAgICAgICAgIDQwCTIwMjQtMDYtMjEgMTc6MTA6MTUJNwkwCTEJMAogICAgICAgICAgICAgNDAJMjAyNC0wNi0yMiAwODowMjoxNwk3CTAJMQkwCiAgICAgICAgICAgIDE5MgkyMDI0LTA2LTIyIDA3OjU4OjE5CTcJMAkxCTAKICAgICAgICAgICAgIDQwCTIwMjQtMDYtMjIgMTc6MTA6MTYJNwkwCTEJMAogICAgICAgICAgICAxOTIJMjAyNC0wNi0yMiAxNzowODoyMAk3CTAJMQkwCiAgICAgICAgICA=",
-        "hello.txt"
-    );
-    // const reader = new FileReader();
-    // reader.onload = function() {
-    //     const parsedData = parseBiometricData(reader.result);
-    //     console.table(parsedData)
-    //     const myTable = createTable(parsedData);
-    //     const targetDiv = document.getElementById("table-container");
-    //     targetDiv.appendChild(myTable);
-    // };
-    // reader.readAsText(file);
-    // const fileContentBioOrig = await readFileAsText(file);
-    // const parsedData = parseBiometricData(fileContentBioOrig);
-    // console.log({parsedData})
+function isJsonString(value) {
+    try {
+        JSON.parse(value);
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+function parseUploadContent(content) {
+    const trimmed = content.trim();
+
+    if (isJsonString(trimmed)) {
+        return JSON.parse(trimmed);
+    }
+
+    try {
+        const decoded = atob(trimmed);
+        if (isJsonString(decoded.trim())) {
+            return JSON.parse(decoded.trim());
+        }
+    } catch (error) {
+        // not base64 JSON; continue with plain text parsing
+    }
+
+    return parseBiometricData(trimmed);
+}
+
+(function () {
+    // DTR upload helpers
 })();
 
 $("#fileUploadForm").on("submit", async function (e) {
     e.preventDefault();
-    var form = $(this);
-    if (form.parsley().isValid()) {
-        try {
+    const form = $(this);
+    if (!form.parsley().isValid()) {
+        return;
+    }
+
+    const fileBiometric = $("#fileBiometric")[0]?.files?.[0];
+    if (!fileBiometric) {
+        handleError("Please select a biometric file to upload.");
+        return;
+    }
+
+    const extension = fileBiometric.name.split('.').pop().toLowerCase();
+    if (extension !== 'dat') {
+        handleError("Only .dat files are accepted.");
+        return;
+    }
+
+    const formData = new FormData(this);
+    let response = null;
+
+    try {
             Swal.fire({
                 title: "Uploading, please wait...",
                 allowOutsideClick: false,
@@ -89,56 +164,70 @@ $("#fileUploadForm").on("submit", async function (e) {
                     Swal.showLoading();
                 },
             });
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-            const filePathDBFile = $("#fileDB")[0].files[0];
-            const fileBiometric = $("#fileBiometric")[0].files[0];
 
-            const fileContent = await readFileAsText(filePathDBFile);
-            const filePathDB = atob(fileContent);
-            const rawDatas = JSON.parse(filePathDB);
-            // console.table(rawDatas);
-            const fileContentBio = await readFileAsText(fileBiometric);
-            const filePathBio = atob(fileContentBio);
-            const bioDatas = JSON.parse(filePathBio);
-            // const fileDataBio = await dataURLtoFile(
-            //     bioDatas?.file,
-            //     "hello.txt"
-            // );
-            // const fileContentBioOrig = await readFileAsText(fileDataBio);
-            // const parsedDataBio = parseBiometricData(fileContentBioOrig);
-            $.ajax({
-                url: "ajax.php?action=manual-push-dtr",
+            response = await $.ajax({
+                url: "ajax.php?action=upload-biometric-dtr",
                 method: "POST",
                 dataType: "JSON",
-                data: { dtr: bioDatas, dtr_details: rawDatas },
-                error: (xhr, status, error) => {
-                    Swal.close();
-                    handleError(error || "");
-                    $(".submitbutton").removeAttr("disabled");
-                },
-                success: function (res) {
-                    if (res?.result) {
-                        Swal.fire({
-                            icon: "success",
-                            title: "Success!",
-                            text: "DTR successfully uploaded.",
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                location.reload();
-                            }
-                        });
-                    } else {
-                        Swal.close();
-                        handleError(res?.message || "");
-                        $(".submitbutton").removeAttr("disabled");
-                    }
-                },
+                data: formData,
+                processData: false,
+                contentType: false,
             });
-        } catch (error) {
-            $(".submitbutton").removeAttr("disabled");
+
             Swal.close();
-            handleError(res?.message || "");
+
+        if (response?.result) {
+            // Build HTML summary for better presentation
+            let summaryHtml = '<div style="text-align: left; font-size: 14px;">';
+            summaryHtml += '<div style="margin-bottom: 10px;"><strong>✓ Imported Records:</strong> <span style="color: #28a745; font-weight: bold;">' + (response.imported_count || 0) + '</span></div>';
+            
+            if (response.skipped_count > 0) {
+                summaryHtml += '<div style="margin-bottom: 10px;"><strong>⚠ Skipped:</strong> <span style="color: #ffc107;">' + response.skipped_count + '</span></div>';
+            }
+            
+            if (Array.isArray(response.unknown_codes) && response.unknown_codes.length > 0) {
+                const unknownList = response.unknown_codes.slice(0, 10).join(', ');
+                const moreText = response.unknown_codes.length > 10 ? ` +${response.unknown_codes.length - 10} more` : '';
+                summaryHtml += '<div style="margin-bottom: 10px;"><strong>❌ Unknown Codes:</strong> <span style="color: #dc3545;">' + unknownList + moreText + '</span></div>';
+            }
+            summaryHtml += '</div>';
+
+            Swal.fire({
+                icon: "success",
+                title: "Upload Completed!",
+                html: summaryHtml,
+                didOpen: () => {
+                    // Close upload modal if it exists
+                    const uploadModal = document.getElementById('modal-dtr');
+                    if (uploadModal) {
+                        const bsModal = bootstrap.Modal.getInstance(uploadModal);
+                        if (bsModal) bsModal.hide();
+                    }
+                }
+            }).then((result) => {
+                if (result.isConfirmed || result.isDismissed) {
+                    // Refresh the pending DTR table (data-table1) - static table: redraw instead of ajax.reload
+                    if ($.fn.DataTable.isDataTable('#data-table1')) {
+                        $('#data-table1').DataTable().draw(false);
+                    }
+                    // Refresh the approved DTR table (data-table) if it exists and is initialized
+                    if ($.fn.DataTable.isDataTable('#data-table')) {
+                        $('#data-table').DataTable().ajax.reload(null, false);
+                    }
+                    // Reload the entire page after a short delay to refresh Employee Logs
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                    // Clear the form
+                    $("#fileUploadForm")[0].reset();
+                }
+            });
+        } else {
+            handleError(response?.message || "An error occurred while uploading the DTR.");
         }
+    } catch (error) {
+        Swal.close();
+        handleError(error?.responseJSON?.message || error?.statusText || error?.message || "An error occurred while uploading the DTR.");
     }
 });
 
@@ -227,24 +316,25 @@ async function deleteDTR(id) {
             url: "ajax.php?action=delete_dtr",
             method: "POST",
             data: { id: id },
-            error: (err) => {
+            dataType: "JSON",
+            error: (xhr) => {
                 Swal.close();
-                handleError();
+                handleError(xhr.responseJSON?.message || xhr.statusText || "Unable to delete the DTR.");
             },
-            success: function (resp) {
-                if (resp == 1) {
+            success: function (response) {
+                if (response?.result) {
                     Swal.fire({
                         icon: "success",
                         title: "Success!",
-                        text: "Selected payroll successfully deleted.",
+                        text: "DTR successfully deleted.",
                     }).then((result) => {
-                        if (result.isConfirmed) {
+                        if (result.isConfirmed || result.isDismissed) {
                             location.reload();
                         }
                     });
                 } else {
                     Swal.close();
-                    handleError();
+                    handleError(response?.message || "Unable to delete the DTR.");
                 }
             },
         });

@@ -2,7 +2,7 @@
 $servername = "localhost";
 $username = "root";
 $password = "";
-$dbname = "payroll";
+$dbname = "payroll_management";
 
 // Create connection
 $conn = new mysqli($servername, $username, $password, $dbname);
@@ -17,4 +17,4 @@ $conn->set_charset("utf8mb4");
 
 // Return connection object
 return $conn;
-?>
+// Note: no closing PHP tag to avoid accidental trailing output

@@ -1,3 +1,14 @@
 RewriteEngine On
-RewriteCond %{SCRIPT_FILENAME} !-d
-RewriteRule ^([^.]+)$ $1.php [NC,L]
+# No hardcoded RewriteBase — Apache infers it from the directory this
+# .htaccess lives in, so it works both in a subfolder (e.g. /payroll/ on
+# local XAMPP) and at the web root (live server with no payroll folder).
+
+# ── Let real files (ajax.php, *-server.php, assets/, uploads/, etc.) pass ──
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# ── Clean URL → index.php router ─────────────────────────────────────────
+# /payroll/employee          → index.php?page=employee
+# /payroll/dtr-details?id=5  → index.php?page=dtr-details&id=5
+RewriteRule ^([a-zA-Z0-9_-]+)/?$ index.php?page=$1 [L,QSA]

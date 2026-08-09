@@ -176,11 +176,11 @@ $net = $gross_salary -  $total_deductions;
 	<div class="contriner-fluid">
 		<div class="top">
 			<div class="logo-area">
-				<img style="width: 60px;" src="assets/images/logo.jpeg" alt="Logo">
+				<img style="width: 60px;" src="/payroll/assets/images/gv-logo.png" alt="Logo">
 			</div>
 			<div>
-				<h1>JEJORS CONSTRUCTION CORPORATION</h1>
-				<h4>TIU SONS, BUILDING BARANGAY 33, GUILLERMO COGON CAGAYAN DE ORO CITY</h4>
+				<h1>JV Glass</h1>
+				<h4>Opol Misamis Oriental</h4>
 			</div>
 		</div>
 		<br><br>
@@ -402,11 +402,11 @@ $net = $gross_salary -  $total_deductions;
 	</div>
 </body>
 <script>
+	window.addEventListener('afterprint', function () {
+		window.location.href = 'home';
+	});
+
 	window.print();
-	window.onafterprint = function() {
-		window.close();
-		history.back();
-	};
 </script>
 
 </html>

@@ -1,22 +1,22 @@
 // oTable = $("#table-employee").DataTable();
 document.addEventListener("DOMContentLoaded", function () {
-    document.querySelectorAll(".nav.nav-pills").forEach((nav, index) => {
-        let tabGroupKey = `activeTabGroup${index}`; // Unique key for each tab group
-        let activeTab = localStorage.getItem(tabGroupKey);
+    const employeeDetailsTabs = document.getElementById("employee-details-tabs");
+    const tabStorageKey = "employeeDetailsActiveTab";
 
-        // Restore active tab if it exists
-        if (activeTab) {
-            let tabElement = nav.querySelector(`[href="${activeTab}"]`);
-            if (tabElement) {
-                new bootstrap.Tab(tabElement).show();
-            }
-        }
+    if (!employeeDetailsTabs || !window.bootstrap || !bootstrap.Tab) {
+        return;
+    }
 
-        // Save active tab when clicked
-        nav.querySelectorAll(".nav-link").forEach((tab) => {
-            tab.addEventListener("click", function () {
-                localStorage.setItem(tabGroupKey, this.getAttribute("href"));
-            });
+    const activeTab = localStorage.getItem(tabStorageKey);
+    const activeTabElement = activeTab && employeeDetailsTabs.querySelector(`[href="${activeTab}"]`);
+
+    if (activeTabElement) {
+        bootstrap.Tab.getOrCreateInstance(activeTabElement).show();
+    }
+
+    employeeDetailsTabs.querySelectorAll('[data-bs-toggle="tab"]').forEach((tab) => {
+        tab.addEventListener("shown.bs.tab", function () {
+            localStorage.setItem(tabStorageKey, tab.getAttribute("href"));
         });
     });
 });
@@ -371,18 +371,78 @@ $("#employee-allowance").on("submit", async function (e) {
 });
 
 function add_deductions(e) {
-    $("#modal-deduction").modal("show");
+    openEmployeeModal('modal-deduction', function () {
+        try {
+            $('#deduction_id').val('').trigger('change');
+            $('#amount').val('');
+            $('#edate').val(moment().format('YYYY-MM-DD'));
+            $('#dfield').hide();
+        } catch (err) {}
+    });
 }
 
 function add_contritions(e) {
-    $("#modal-contrition").modal("show");
+    openEmployeeModal('modal-contrition');
 }
 function add_allowance(e) {
-    $("#modal-allowance").modal("show");
+    openEmployeeModal('modal-allowance');
 }
 
 function edit_details(e) {
-    $("#addemployee").modal("show");
+    openEmployeeModal('addemployee', function () {
+        // Keep the form aligned with the employee record shown on the page.
+        try {
+            if (window.employeeData) {
+                $('#form-add [name="id"]').val(window.employeeData.id || '');
+                $('#form-add [name="firstname"]').val(window.employeeData.firstname || '');
+                $('#form-add [name="middlename"]').val(window.employeeData.middlename || '');
+                $('#form-add [name="lastname"]').val(window.employeeData.lastname || '');
+                $('#form-add [name="ext"]').val(window.employeeData.ext || '');
+                $('#form-add [name="bday"]').val(window.employeeData.bday || '');
+                $('#form-add [name="position_id"]').val(window.employeeData.position_id || '').trigger('change');
+                $('#form-add [name="clasification_id"]').val(window.employeeData.clasification_id || '').trigger('change');
+                $('#form-add [name="basic_pay"]').val(window.employeeData.basic_pay || '');
+                $('#form-add [name="salary"]').val(window.employeeData.salary || '');
+                $('#form-add [name="ot_rate"]').val(window.employeeData.ot_rate || '');
+                $('#form-add [name="allowance_rate"]').val(window.employeeData.allowance_rate || '');
+                $('#form-add [name="sss_fund"]').val(window.employeeData.sss_fund || '0');
+                $('#form-add [name="weekly_payroll"]').prop('checked', !!window.employeeData.weekly_payroll);
+                $('#form-add [name="isAutoDeduct"]').prop('checked', !!window.employeeData.isAutoDeduct);
+                $('#form-add [name="status"]').prop('checked', !!window.employeeData.status);
+            }
+        } catch (err) {}
+    });
+}
+
+function add_loans(e) {
+    openEmployeeModal('modal-loan', function () {
+        try {
+            $('#loan_id').val('');
+            $('#loan-select').val('').trigger('change');
+            $('#loan_date').val(moment().format('YYYY-MM-DD'));
+            $('#damount').val('');
+            $('#loan_balance').val('');
+            $('#loan_amount').val('');
+            $('#loan_status').prop('checked', false);
+            $('#loan_employee_id').val(window.employeeData?.id || employee_id);
+        } catch (err) {}
+    });
+}
+
+function openEmployeeModal(modalId, prepareFn) {
+    if (typeof prepareFn === 'function') {
+        prepareFn();
+    }
+
+    const modalEl = document.getElementById(modalId);
+    if (!modalEl) return;
+
+    if (modalEl.parentElement !== document.body) {
+        document.body.appendChild(modalEl);
+    }
+
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
 }
 
 $("#type").change(function () {
@@ -590,10 +650,6 @@ $(document).ready(function () {
     });
 });
 
-function add_loans(e) {
-    $("#modal-loan").modal("show");
-}
-
 $("#employee-loan").on("submit", async function (e) {
     e.preventDefault();
     var form = $(this);
@@ -705,7 +761,8 @@ function formatDate(dateString) {
 }
 
 function loanHistory(id) {
-    $("#modal-loan-history").modal("show");
+    const modalHistoryEl = document.getElementById('modal-loan-history');
+    if (modalHistoryEl) new bootstrap.Modal(modalHistoryEl).show();
     $.ajax({
         url: "ajax.php?action=loan_history_details",
         method: "POST",
@@ -772,8 +829,9 @@ function loanHistory(id) {
                 });
 
                 table += `</tbody></table>`;
-                $(document).ready(function () {
-                    $('[data-toggle="tooltip"]').tooltip(); // Initialize tooltips globally
+                // Initialize tooltips for generated content (supports data-toggle or data-bs-toggle)
+                document.querySelectorAll('[data-toggle="tooltip"], [data-bs-toggle="tooltip"]').forEach(function (el) {
+                    try { new bootstrap.Tooltip(el); } catch (e) {}
                 });
 
                 // Append or replace the content inside a div (assumed div with ID #loanHistoryDiv)
@@ -788,8 +846,14 @@ function loanHistory(id) {
 function editLoan(e) {
     $("#loan_id").val($(e).attr("loan_id"));
     $("#loan_employee_id").val($(e).attr("employee_id"));
-    $("#loan-select").val($(e).attr("loan_type"));
-    $("#loan_date").val($(e).attr("loan_date"));
+    $("#loan-select").val($(e).attr("loan_type")).trigger('change');
+    try {
+        // ensure date is in YYYY-MM-DD
+        const ld = $(e).attr("loan_date");
+        if (ld) {
+            $('#loan_date').val(ld);
+        }
+    } catch (err) {}
     $("#damount").val($(e).attr("damount"));
     $("#loan_balance").val($(e).attr("loan_balance"));
     $("#loan_amount").val($(e).attr("loan_amount"));
@@ -797,7 +861,8 @@ function editLoan(e) {
     if ($(e).attr("loan_status") == 1) {
         $("#loan_status").prop("checked", true);
     }
-    $("#modal-loan").modal("show");
+    const modalEl = document.getElementById('modal-loan');
+    if (modalEl) new bootstrap.Modal(modalEl).show();
 }
 
 $(document).on("hide.bs.modal", "#modal-loan", function () {
@@ -808,7 +873,8 @@ function editContriAmount(el) {
     $("#contribution-id").val($(el).attr("data-id"));
     $("#contribution-name").val($(el).attr("data-name"));
     $("#contribution-amount").val($(el).attr("data-amount"));
-    $("#modal-contrition").modal("show");
+    const modalEl = document.getElementById('modal-contrition');
+    if (modalEl) new bootstrap.Modal(modalEl).show();
     console.log(el);
 }
 
@@ -854,5 +920,18 @@ $("#uploadForm").on("submit", async function (e) {
         });
     }
 });
+
+// Keep the legacy handlers available to any remaining inline markup.
+window.edit_details = edit_details;
+window.add_loans = add_loans;
+window.add_deductions = add_deductions;
+window.add_contritions = add_contritions;
+window.add_allowance = add_allowance;
+window.editLoan = editLoan;
+window.loanHistory = loanHistory;
+window.editContriAmount = editContriAmount;
+
+// The employee-details buttons use Bootstrap's data API, so their modals can
+// open even if another page-specific script fails later during initialization.
 
 

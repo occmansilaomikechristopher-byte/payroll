@@ -1,8 +1,8 @@
 <style>
     .cluster-name { font-weight:600; font-size:13px; color:#222; }
     .cluster-index { font-size:11px; color:#aaa; font-family:monospace; margin-right:6px; }
-    .site-count-badge { display:inline-flex; align-items:center; gap:4px; background:#eef0f8; color:#394b7c; border:1px solid #d0d7ee; border-radius:12px; padding:2px 10px; font-size:12px; font-weight:700; }
-    #data-table thead th { background-color:#394b7c !important; border-color:#2d3d66 !important; color:#fff !important; }
+    .site-count-badge { display:inline-flex; align-items:center; gap:4px; background:#eef0f8; color:#009688; border:1px solid #d0d7ee; border-radius:12px; padding:2px 10px; font-size:12px; font-weight:700; }
+    #data-table thead th { background-color:#009688 !important; border-color:#2d3d66 !important; color:#fff !important; }
     #data-table tbody tr:hover td { background:#f4f5fb; }
 </style>
 
@@ -13,7 +13,7 @@
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
                         <h4 class="mb-sm-0">
-                            <i class="ri-global-line me-2" style="color:#394b7c;"></i>Cluster
+                            <i class="ri-global-line me-2" style="color:#009688;"></i>Cluster
                         </h4>
                         <div class="page-title-right">
                             <ol class="breadcrumb m-0">
@@ -24,17 +24,17 @@
                     </div>
                 </div>
 
-                <div class="card" style="border-top:3px solid #394b7c;">
+                <div class="card" style="border-top:3px solid #009688;">
                     <div class="card-header align-items-center d-flex py-2">
                         <h4 class="card-title mb-0 flex-grow-1">
-                            <i class="ri-global-line me-2" style="color:#394b7c;"></i>Cluster List
+                            <i class="ri-global-line me-2" style="color:#009688;"></i>Cluster List
                             <?php
                             $cluster_count = $conn->query("SELECT COUNT(*) AS c FROM clusters")->fetch_assoc()['c'];
                             ?>
-                            <span class="badge ms-1" style="background:#eef0f8;color:#394b7c;font-size:11px;font-weight:700;vertical-align:middle;"><?= $cluster_count ?></span>
+                            <span class="badge ms-1" style="background:#eef0f8;color:#009688;font-size:11px;font-weight:700;vertical-align:middle;"><?= $cluster_count ?></span>
                         </h4>
                         <?php if (in_array($login_role, $allowed_values_2)): ?>
-                            <button type="button" class="btn btn-sm text-white" style="background:#394b7c;border-color:#394b7c;"
+                            <button type="button" class="btn btn-sm text-white" style="background:#009688;border-color:#009688;"
                                 data-bs-toggle="modal" data-bs-target="#modal">
                                 <i class="ri-add-circle-line me-1"></i>Create Cluster
                             </button>

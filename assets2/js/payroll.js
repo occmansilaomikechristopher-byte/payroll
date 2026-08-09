@@ -25,9 +25,7 @@ $(document).ready(function () {
         },
         columns: [
             { data: "ref_no" },
-            { data: "employer_name" },
             { data: "period" },
-            { data: "category" },
             { data: "type" },
             { data: "status" },
             { data: "action", orderable: false },
@@ -47,8 +45,10 @@ $(document).ready(function () {
     $("#search-input").keyup(function () {
         oTable.search($(this).val()).draw();
     });
-    $(".select2").select2({
+    $("#employer-select, #type").select2({
         dropdownParent: $("#modal"),
+        allowClear: true,
+        width: "100%",
     });
     $(document).ready(function () {
         $(".datetimepicker").datetimepicker({
@@ -196,75 +196,43 @@ $("#form-submit").on("submit", async function (e) {
     form.parsley().validate();
 
     if (form.parsley().isValid()) {
-        e.preventDefault();
         Swal.fire({
             title: "Creating, please wait...",
             allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            },
+            didOpen: () => { Swal.showLoading(); },
         });
         await new Promise((resolve) => setTimeout(resolve, 1000));
-        form_data = $(this).serialize();
         $.ajax({
-            url: "ajax.php?action=get_sites",
+            url: "ajax.php?action=save_payroll",
             method: "POST",
-            // dataType: "JSON",
-            data: $(this).serialize(),
+            dataType: "JSON",
+            data: form.serialize(),
             error: (xhr, status, error) => {
                 Swal.close();
                 handleError(error || "");
+                $(".submitbutton").removeAttr("disabled");
             },
             success: function (res) {
-                $("#modal").modal("hide");
-                $("#show-sites").html(res);
-                $("#modal-sites").modal("show");
-                Swal.close();
+                if (res?.result) {
+                    $("#modal").modal("hide");
+                    Swal.fire({
+                        icon: "success",
+                        title: "Success!",
+                        text: "Payroll successfully created.",
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            $("#settings-id").val(res?.id);
+                            $("#modal-settings").modal("show");
+                        }
+                    });
+                } else {
+                    Swal.close();
+                    handleError(res?.message || "");
+                    $(".submitbutton").removeAttr("disabled");
+                }
             },
         });
     }
-});
-
-$("#form-add").on("submit", async function (e) {
-    e.preventDefault();
-    Swal.fire({
-        title: "Creating, please wait...",
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        },
-    });
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    $.ajax({
-        url: "ajax.php?action=save_payroll",
-        method: "POST",
-        dataType: "JSON",
-        data: { site_ids: $(this).serialize(), form_data },
-        error: (xhr, status, error) => {
-            Swal.close();
-            handleError(error || "");
-            $(".submitbutton").removeAttr("disabled");
-        },
-        success: function (res) {
-            if (res?.result) {
-                Swal.fire({
-                    icon: "success",
-                    title: "Success!",
-                    text: "Payroll successfully create.",
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        $("#modal-sites").modal("hide");
-                        $("#settings-id").val(res?.id);
-                        $("#modal-settings").modal("show");
-                    }
-                });
-            } else {
-                Swal.close();
-                handleError(res?.message || "");
-                $(".submitbutton").removeAttr("disabled");
-            }
-        },
-    });
 });
 
 $("#form-settings").on("submit", async function (e) {

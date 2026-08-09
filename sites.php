@@ -1,10 +1,10 @@
 <style>
-    .site-code-badge { background:#394b7c; color:#fff; padding:2px 7px; border-radius:3px; font-size:11px; font-weight:700; display:inline-block; margin-bottom:3px; font-family:monospace; }
+    .site-code-badge { background:#009688; color:#fff; padding:2px 7px; border-radius:3px; font-size:11px; font-weight:700; display:inline-block; margin-bottom:3px; font-family:monospace; }
     .site-name { font-size:13px; font-weight:600; color:#222; }
     .site-addr { font-size:11px; color:#888; }
     .site-user { font-size:13px; font-weight:600; }
-    .site-cluster { font-size:12px; font-weight:600; color:#394b7c; }
-    #data-table thead th { background-color:#394b7c !important; border-color:#2d3d66 !important; color:#fff !important; }
+    .site-cluster { font-size:12px; font-weight:600; color:#009688; }
+    #data-table thead th { background-color:#009688 !important; border-color:#2d3d66 !important; color:#fff !important; }
     #data-table tbody tr:hover td { background:#f4f5fb; }
 </style>
 
@@ -15,7 +15,7 @@
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
                         <h4 class="mb-sm-0">
-                            <i class="ri-map-pin-2-line me-2" style="color:#394b7c;"></i>Sites
+                            <i class="ri-map-pin-2-line me-2" style="color:#009688;"></i>Sites
                         </h4>
                         <div class="page-title-right">
                             <ol class="breadcrumb m-0">
@@ -26,16 +26,16 @@
                     </div>
                 </div>
 
-                <div class="card" style="border-top:3px solid #394b7c;">
+                <div class="card" style="border-top:3px solid #009688;">
                     <div class="card-header align-items-center d-flex py-2">
                         <h4 class="card-title mb-0 flex-grow-1">
-                            <i class="ri-map-pin-2-line me-2" style="color:#394b7c;"></i>Sites List
+                            <i class="ri-map-pin-2-line me-2" style="color:#009688;"></i>Sites List
                             <?php
                             $site_count = $conn->query("SELECT COUNT(*) AS c FROM sites")->fetch_assoc()['c'];
                             ?>
-                            <span class="badge ms-1" style="background:#eef0f8;color:#394b7c;font-size:11px;font-weight:700;vertical-align:middle;"><?= $site_count ?></span>
+                            <span class="badge ms-1" style="background:#eef0f8;color:#009688;font-size:11px;font-weight:700;vertical-align:middle;"><?= $site_count ?></span>
                         </h4>
-                        <button type="button" class="btn btn-sm text-white" style="background:#394b7c;border-color:#394b7c;"
+                        <button type="button" class="btn btn-sm text-white" style="background:#009688;border-color:#009688;"
                             data-bs-toggle="modal" data-bs-target="#modal">
                             <i class="ri-add-circle-line me-1"></i>Create Site
                         </button>
@@ -49,7 +49,7 @@
                                         <th><i class="ri-map-pin-2-line me-1"></i>Site</th>
                                         <th><i class="ri-building-2-line me-1"></i>Employer</th>
                                         <th><i class="ri-global-line me-1"></i>Cluster</th>
-                                        <th><i class="ri-user-settings-line me-1"></i>Timekeeper</th>
+                                        <th><i class="ri-user-settings-line me-1"></i>Cashier</th>
                                         <th><i class="ri-user-3-line me-1"></i>PIC</th>
                                         <th class="text-center" style="width:90px;"><i class="ri-pulse-line me-1"></i>Status</th>
                                         <th class="text-center" style="width:90px;"><i class="ri-settings-3-line me-1"></i>Action</th>
@@ -57,7 +57,7 @@
                                 </thead>
                                 <tbody>
                                     <?php
-                                    $query = $conn->query("SELECT A.*, B.cluster, C.name AS timekeeper, P.name AS pic, P.id AS pic_id, C.id AS timekeeper_id, D.employer_name AS employer
+                                    $query = $conn->query("SELECT A.*, B.cluster, C.name AS cashier, P.name AS pic, P.id AS pic_id, C.id AS cashier_id, D.employer_name AS employer
                                         FROM sites AS A
                                         INNER JOIN clusters AS B ON A.cluster_id = B.id
                                         LEFT JOIN users AS C ON A.timekeeper_id = C.id
@@ -79,7 +79,7 @@
                                                 <span class="site-cluster"><i class="ri-global-line me-1"></i><?= htmlspecialchars($row['cluster']) ?></span>
                                             </td>
                                             <td>
-                                                <span class="site-user"><i class="ri-user-settings-line me-1 text-muted"></i><?= htmlspecialchars($row['timekeeper'] ?? '—') ?></span>
+                                                <span class="site-user"><i class="ri-user-settings-line me-1 text-muted"></i><?= htmlspecialchars($row['cashier'] ?? '—') ?></span>
                                             </td>
                                             <td>
                                                 <span class="site-user"><i class="ri-user-3-line me-1 text-muted"></i><?= htmlspecialchars($row['pic'] ?? '—') ?></span>
@@ -98,7 +98,7 @@
                                                     site_code="<?= htmlspecialchars($row['site_code']) ?>"
                                                     site_name="<?= htmlspecialchars($row['site_name']) ?>"
                                                     site_address="<?= htmlspecialchars($row['site_address']) ?>"
-                                                    timekeeper_id="<?= htmlspecialchars($row['timekeeper_id']) ?>"
+                                                    cashier_id="<?= htmlspecialchars($row['cashier_id']) ?>"
                                                     pic_id="<?= htmlspecialchars($row['pic_id']) ?>"
                                                     cluster_id="<?= htmlspecialchars($row['cluster_id']) ?>"
                                                     status="<?= htmlspecialchars($row['status']) ?>"

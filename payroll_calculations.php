@@ -14,37 +14,28 @@ if (isset($_GET['site_id'])  && $_GET['site_id'] !== 'all') {
 // LEFT JOIN payroll g ON g.id = a.payroll_id 
 // LEFT JOIN employers  h ON g.employer_id = h.id
 
-$query = "SELECT  employer_name, category,  clusters.cluster FROM payroll  
-        LEFT JOIN employers  ON payroll.employer_id = employers.id  
-        LEFT JOIN clusters  ON clusters.id = payroll.category 
-        WHERE payroll.id = ?";
-$stmt = $conn->prepare($query);
-$stmt->bind_param("i", $id);
-$stmt->execute();
-$result = $stmt->get_result();
-$payroll_r = $result->fetch_assoc();
-
-?>
-<?php
-$query2 = "SELECT * FROM payroll   WHERE id = ?";
+$query2 = "SELECT payroll.*, branches.branch_name FROM payroll LEFT JOIN branches ON branches.id = JSON_UNQUOTE(JSON_EXTRACT(payroll.site_ids, '$[0]')) WHERE payroll.id = ?";
 $stmt = $conn->prepare($query2);
+if (!$stmt) { die(json_encode(['error' => $conn->error])); }
 $stmt->bind_param("i", $id);
 $stmt->execute();
 $result = $stmt->get_result();
 $payroll = $result->fetch_assoc();
+$payroll_r = $payroll;
 $site_ids = json_decode($payroll['site_ids'], true);
 $site_ids = isset($site_ids) ? $site_ids : [];
 $commaSeparatedSites = implode(',', $site_ids);
 $status = $payroll['status'];
 
 $i = 0;
-$query = $conn->query("SELECT  a.*, f.site_code,f.site_name,f.site_address, e.employee_no, e.lastname, e.firstname, e.middlename, e.basic_pay, d.name as department, p.name as position
-FROM payroll_items a 
-INNER JOIN employee e ON a.employee_id = e.id 
-LEFT JOIN department d ON e.department_id = d.id 
-LEFT JOIN position p ON e.position_id = p.id 
-LEFT JOIN sites f ON f.id = a.site_id 
-WHERE  a.payroll_id = $id $filter_query  ORDER BY lastname ASC ");
+$query = $conn->query("SELECT a.*, f.branch_code, f.branch_name, e.employee_no, e.lastname, e.firstname, e.middlename, e.basic_pay, d.name as department, p.name as position
+FROM payroll_items a
+INNER JOIN employee e ON a.employee_id = e.id
+LEFT JOIN department d ON e.department_id = d.id
+LEFT JOIN position p ON e.position_id = p.id
+LEFT JOIN branches f ON f.id = a.site_id
+WHERE a.payroll_id = $id ORDER BY e.lastname ASC");
+if (!$query) { die('<p>Query error: ' . htmlspecialchars($conn->error) . '</p>'); }
 
 $contributions_settings = json_decode($payroll['settings'], true) ?: [];
 
@@ -64,6 +55,33 @@ $payroll_type = $payroll['type'];
 
 ?>
 <link rel="stylesheet" href="assets2/css/my-style.css">
+<style>
+/* remove freeze/sticky */
+#table-1 thead th,
+#table-1 tbody td:nth-child(1),
+#table-1 tbody td:nth-child(2),
+#table-1 tfoot th:nth-child(1),
+#table-1 tfoot th:nth-child(2),
+#table-1 thead tr:first-child th:nth-child(1),
+#table-1 thead tr:first-child th:nth-child(2),
+.net-content {
+    position: static !important;
+    z-index: auto !important;
+    box-shadow: none !important;
+    transform: none !important;
+    left: auto !important;
+    right: auto !important;
+}
+/* simple colors */
+#table-1 thead th { background-color: #219688 !important; color: #fff !important; border-color: #cccccc !important; }
+#table-1 thead tr:first-child th { background-color: #176358 !important; }
+#table-1 tbody td:nth-child(1), #table-1 tfoot th:nth-child(1) { background-color: #fff !important; color: #333 !important; border-right: 1px solid #cccccc !important; font-weight: normal !important; }
+#table-1 tbody td:nth-child(2), #table-1 tfoot th:nth-child(2) { background-color: #fff !important; color: #333 !important; border-right: 1px solid #cccccc !important; font-weight: normal !important; box-shadow: none !important; }
+#table-1 tbody tr:nth-child(even) td { background-color: #fff !important; }
+#table-1 tbody tr:hover td { background-color: #f0faf9 !important; }
+.net-content { background-color: #fff !important; color: #333 !important; border-left: 1px solid #cccccc !important; font-weight: bold !important; }
+.table-responsive2 { border: 1px solid #cccccc !important; height: auto !important; max-height: 600px; }
+</style>
 <div class="main-content">
     <div class="page-content">
         <div class="container-fluid">
@@ -85,10 +103,7 @@ $payroll_type = $payroll['type'];
                                     <i class="ri-calendar-2-line me-1"></i>
                                     <?= date('M d', strtotime($payroll['date_from'])) ?> &ndash; <?= date('M d, Y', strtotime($payroll['date_to'])) ?>
                                     &nbsp;&bull;&nbsp;
-                                    <i class="ri-user-2-line me-1"></i><?= htmlspecialchars($payroll_r['employer_name']) ?>
-                                    <?php if ($payroll_r['category'] != 0): ?>
-                                        &nbsp;&bull;&nbsp;<i class="ri-global-line me-1"></i><?= htmlspecialchars($payroll_r['cluster']) ?>
-                                    <?php endif; ?>
+                                    <i class="ri-building-line me-1"></i><?= htmlspecialchars($payroll['branch_name'] ?? '') ?>
                                 </small>
                             </div>
                         </div>
@@ -104,21 +119,17 @@ $payroll_type = $payroll['type'];
                 <div class="xl-panel" id="myDiv">
                     <div class="xl-ribbon">
                         <span class="xl-ribbon-title">
-                            <i class="ri-table-line" style="color:#1976d2;"></i> Payroll List
+                            <i class="ri-file-excel-2-line"></i> Payroll List
                         </span>
                         <div class="xl-ribbon-actions">
                             <button data-toggle="tooltip" id="sf" title="Fullscreen" onclick="openFullscreen()" class="xl-btn"><i class="ri-fullscreen-line"></i></button>
                             <button style="display:none;" id="hf" data-toggle="tooltip" title="Exit Fullscreen" onclick="closeFullscreen()" class="xl-btn"><i class="ri-fullscreen-exit-line"></i></button>
                             <div class="xl-ribbon-sep"></div>
-                            <button data-toggle="tooltip" title="Print Settings" data-bs-toggle="modal" data-bs-target="#modal-print-settings" class="xl-btn"><i class="ri-settings-3-line"></i> Print Settings</button>
-                            <button data-toggle="tooltip" title="Sites" onclick="view_site()" class="xl-btn"><i class="ri-building-line"></i> Sites</button>
-                            <div class="xl-ribbon-sep"></div>
-                            <?php if ($payroll_type == 5) { ?>
-                                <a data-toggle="tooltip" title="Print" href="print-montly.php?id=<?= $id ?>" class="xl-btn"><i class="ri-printer-line"></i> Print</a>
-                            <?php } else { ?>
-                                <a data-toggle="tooltip" title="Print Payroll" href="print-payroll.php?id=<?= $id ?>&site_id=<?= $sid ?>" class="xl-btn"><i class="ri-printer-line"></i> Print</a>
-                                <a data-toggle="tooltip" title="Print By Summary" href="print-payroll-employer.php?id=<?= $id ?>&type=all" class="xl-btn"><i class="ri-printer-fill"></i> Summary</a>
-                            <?php } ?>
+                            <a data-toggle="tooltip" title="Print Payroll for All Employees"
+                                href="print-payroll.php?id=<?= $id ?>"
+                                target="_self" class="xl-btn xl-btn-info">
+                                <i class="ri-printer-line"></i> Print All Employees
+                            </a>
                             <?php if ($status !== 2) { ?>
                                 <div class="xl-ribbon-sep"></div>
                                 <button data-toggle="tooltip" title="Lock Payroll" onclick="lockPayroll(<?= $id ?>)" class="xl-btn xl-btn-danger"><i class="ri-lock-line"></i> Lock</button>
@@ -145,63 +156,63 @@ $payroll_type = $payroll['type'];
                                         <thead>
                                             <!-- ═══ ROW 1 : Section group banners ═══ -->
                                             <tr>
-                                                <th rowspan="2" class="text-center primary-header">No.</th>
-                                                <th rowspan="2" class="text-center primary-header">Name</th>
-                                                <th rowspan="2" class="text-center primary-header">Position</th>
-                                                <th rowspan="2" class="text-center primary-header">Project Code</th>
+                                                <th rowspan="2" class="text-center">No.</th>
+                                                <th rowspan="2" class="text-center">Name</th>
+                                                <th rowspan="2" class="text-center">Position</th>
+                                                
                                                 <!-- Basic Earnings (3 cols) -->
-                                                <th colspan="3" class="text-center primary-header">Basic Earnings</th>
+                                                <th colspan="3" class="text-center">Basic Earnings</th>
                                                 <!-- Allowance (3 cols) -->
-                                                <th colspan="3" class="text-center info-header">Allowance</th>
+                                                <th colspan="3" class="text-center">Allowance</th>
                                                 <!-- Attendance (4 cols) -->
-                                                <th colspan="4" class="text-center primary-header">Attendance</th>
+                                                <th colspan="4" class="text-center">Attendance</th>
                                                 <!-- Holidays & Extra Duties (6 cols) -->
-                                                <th colspan="6" class="text-center info-header">Holidays &amp; Extra Duties</th>
+                                                <th colspan="6" class="text-center">Holidays &amp; Extra Duties</th>
                                                 <!-- Overtime (3 cols) -->
-                                                <th colspan="3" class="text-center info-header">Overtime</th>
+                                                <th colspan="3" class="text-center">Overtime</th>
                                                 <!-- Late (3 cols) -->
-                                                <th colspan="3" class="text-center info-header">Late</th>
-                                                <th rowspan="2" class="text-center success-header">Total Gross Pay</th>
+                                                <th colspan="3" class="text-center">Late</th>
+                                                <th rowspan="2" class="text-center">Total Gross Pay</th>
                                                 <!-- Deductions -->
-                                                <th colspan="<?= count($contributions_settings) + 4 ?>" class="text-center danger-header">Deductions</th>
-                                                <th rowspan="2" class="text-center danger-header">Total Deduction</th>
+                                                <th colspan="<?= count($contributions_settings) + 4 ?>" class="text-center">Deductions</th>
+                                                <th rowspan="2" class="text-center">Total Deduction</th>
                                                 <?php if (count($refunds_settings) > 0) { ?>
-                                                    <th colspan="<?= count($refunds_settings) ?>" class="text-center success-header">Refunds</th>
+                                                    <th colspan="<?= count($refunds_settings) ?>" class="text-center">Refunds</th>
                                                 <?php } ?>
-                                                <th rowspan="2" class="text-center success-header">Net Pay</th>
-                                                <th rowspan="2" class="text-center primary-header">Actions</th>
-                                                <th rowspan="2" class="text-center primary-header">No.</th>
+                                                <th rowspan="2" class="text-center">Net Pay</th>
+                                                <th rowspan="2" class="text-center">Actions</th>
+                                                <th rowspan="2" class="text-center">No.</th>
                                             </tr>
                                             <!-- ═══ ROW 2 : Individual column labels ═══ -->
                                             <tr>
                                                 <!-- Basic Earnings -->
-                                                <th class="text-center primary-header">Monthly Basic Pay</th>
-                                                <th class="text-center primary-header">Quinsena Pay</th>
-                                                <th class="text-center success-header">Basic Daily Rate</th>
+                                                <th class="text-center">Monthly Basic Pay</th>
+                                                <th class="text-center">Quinsena Pay</th>
+                                                <th class="text-center">Basic Daily Rate</th>
                                                 <!-- Allowance -->
-                                                <th class="text-center info-header">No. Days</th>
-                                                <th class="text-center info-header">Rate</th>
-                                                <th class="text-center info-header">Amount</th>
+                                                <th class="text-center">No. Days</th>
+                                                <th class="text-center">Rate</th>
+                                                <th class="text-center">Amount</th>
                                                 <!-- Attendance -->
-                                                <th class="text-center primary-header">No. of Duty</th>
-                                                <th class="text-center primary-header">Absences</th>
-                                                <th class="text-center primary-header">Amt. Absences</th>
-                                                <th class="text-center success-header">Total Amount</th>
+                                                <th class="text-center">No. of Duty</th>
+                                                <th class="text-center">Absences</th>
+                                                <th class="text-center">Amt. Absences</th>
+                                                <th class="text-center">Total Amount</th>
                                                 <!-- Holidays & Extra Duties -->
-                                                <th class="text-center info-header">Legal Holiday</th>
-                                                <th class="text-center info-header">Amount</th>
-                                                <th class="text-center info-header">Sunday Duty</th>
-                                                <th class="text-center info-header">Amount</th>
-                                                <th class="text-center info-header">Special Holiday</th>
-                                                <th class="text-center info-header">Amount</th>
+                                                <th class="text-center">Legal Holiday</th>
+                                                <th class="text-center">Amount</th>
+                                                <th class="text-center">Sunday Duty</th>
+                                                <th class="text-center">Amount</th>
+                                                <th class="text-center">Special Holiday</th>
+                                                <th class="text-center">Amount</th>
                                                 <!-- Overtime -->
-                                                <th class="text-center info-header">No. Hrs</th>
-                                                <th class="text-center info-header">Rate</th>
-                                                <th class="text-center info-header">Amount</th>
+                                                <th class="text-center">No. Hrs</th>
+                                                <th class="text-center">Rate</th>
+                                                <th class="text-center">Amount</th>
                                                 <!-- Late -->
-                                                <th class="text-center info-header">Minutes</th>
-                                                <th class="text-center info-header">Rate</th>
-                                                <th class="text-center info-header">Amount</th>
+                                                <th class="text-center">Minutes</th>
+                                                <th class="text-center">Rate</th>
+                                                <th class="text-center">Amount</th>
                                                 <!-- Deduction sub-headers -->
                                                 <?php if (count($contributions_settings) > 0) {
                                                     foreach ($contributions_settings as $k) {
@@ -228,12 +239,12 @@ $payroll_type = $payroll['type'];
                                                             $name_deduction = $contribution['deduction'];
                                                         }
                                                 ?>
-                                                        <th class="text-center danger-header"><?= htmlspecialchars($name_deduction) ?></th>
+                                                        <th class="text-center"><?= htmlspecialchars($name_deduction) ?></th>
                                                 <?php } } ?>
-                                                <th class="text-center danger-header">SSS Provident Fund</th>
-                                                <th class="text-center danger-header">JEI Advance</th>
-                                                <th class="text-center danger-header">JCC Advances</th>
-                                                <th class="text-center danger-header">Tax</th>
+                                                <th class="text-center">SSS Provident Fund</th>
+                                                <th class="text-center">JEI Advance</th>
+                                                <th class="text-center">JCC Advances</th>
+                                                <th class="text-center">Tax</th>
                                                 <!-- Refund sub-headers -->
                                                 <?php if (count($refunds_settings) > 0) {
                                                     foreach ($refunds_settings as $k) {
@@ -243,7 +254,7 @@ $payroll_type = $payroll['type'];
                                                         $stmt_con->execute();
                                                         $rfund = $stmt_con->get_result()->fetch_assoc();
                                                 ?>
-                                                        <th class="text-center success-header"><?= htmlspecialchars($rfund['refunds']) ?></th>
+                                                        <th class="text-center"><?= htmlspecialchars($rfund['refunds']) ?></th>
                                                 <?php } } ?>
                                             </tr>
                                         </thead>
@@ -316,9 +327,6 @@ $payroll_type = $payroll['type'];
                                                     </td>
                                                     <td style="min-width: 200px;" class="text-center">
                                                         <?= $row['position'] ?>
-                                                    </td>
-                                                    <td style="min-width: 200px;" class="text-center">
-                                                        <span style="cursor: help;" data-toggle="tooltip" data-html="true" title='<?= $row['site_name'] ?>'><?= $row['site_code'] ?></span>
                                                     </td>
                                                     <td class="text-right" style="min-width: 130px;">
                                                         <b><?= number_format($row['basic_pay'], 2) ?></b>
@@ -648,7 +656,7 @@ $payroll_type = $payroll['type'];
                                                         <b><?= number_format($net, 2) ?></b>
                                                     </td>
                                                     <td style="min-width: 90px;" class="text-center">
-                                                        <a href="view_payslip.php?id=<?= $row['id'] ?>" class="xl-btn" data-toggle="tooltip" title="View Payslip" id="<?= $row['id'] ?>" site_name="<?= htmlspecialchars($row['site_name']) ?>" onclick="edit_function(this)">
+                                                        <a href="view_payslip.php?id=<?= $row['id'] ?>" class="xl-btn" data-toggle="tooltip" title="View Payslip" id="<?= $row['id'] ?>" site_name="<?= htmlspecialchars($row['branch_name']) ?>" onclick="edit_function(this)">
                                                             <i class="ri-file-text-line"></i> View
                                                         </a>
                                                     </td>
@@ -709,38 +717,38 @@ $payroll_type = $payroll['type'];
                                     <table cellspacing="0" id="table-1">
                                         <thead>
                                             <tr>
-                                                <th rowspan="2" class="text-center primary-header">No.</th>
-                                                <th rowspan="2" class="text-center primary-header">Name</th>
-                                                <th rowspan="2" class="text-center primary-header">Position</th>
-                                                <th rowspan="2" class="text-center  primary-header">No. of Days</th>
-                                                <th rowspan="2" class="text-center primary-header">Project Code</th>
-                                                <th rowspan="2" class="text-center  primary-header">Basic Rate</th>
-                                                <th rowspan="2" class="text-center  primary-header">Total Basic Rate</th>
-                                                <th colspan="3" class="text-center  info-header">Allowance</th>
-                                                <th colspan="3" class="text-center info-header">Overtime</th>
-                                                <th colspan="3" class="text-center info-header">Late</th>
-                                                <th rowspan="2" class="text-center success-header">GROSS SALARY</th>
-                                                <th colspan="<?= count($contributions_settings) ?>" class="text-center danger-header">Deduction</th>
-                                                <th rowspan="2" class="text-center danger-header">Total Deduction</th>
+                                                <th rowspan="2" class="text-center">No.</th>
+                                                <th rowspan="2" class="text-center">Name</th>
+                                                <th rowspan="2" class="text-center">Position</th>
+                                                <th rowspan="2" class="text-center">No. of Days</th>
+                                                
+                                                <th rowspan="2" class="text-center">Basic Rate</th>
+                                                <th rowspan="2" class="text-center">Total Basic Rate</th>
+                                                <th colspan="3" class="text-center">Allowance</th>
+                                                <th colspan="3" class="text-center">Overtime</th>
+                                                <th colspan="3" class="text-center">Late</th>
+                                                <th rowspan="2" class="text-center">GROSS SALARY</th>
+                                                <th colspan="<?= count($contributions_settings) ?>" class="text-center">Deduction</th>
+                                                <th rowspan="2" class="text-center">Total Deduction</th>
                                                 <?php if (count($refunds_settings) > 0) { ?>
-                                                    <th colspan="<?= count($refunds_settings) ?>" class="text-center primary-header">Refunds</th>
+                                                    <th colspan="<?= count($refunds_settings) ?>" class="text-center">Refunds</th>
                                                 <?php } ?>
-                                                <th rowspan="2" class="text-center success-header">Net Pay</th>
-                                                <th rowspan="2" class="text-center  primary-header">Actions</th>
-                                                <th rowspan="2" class="text-center  primary-header">No.</th>
+                                                <th rowspan="2" class="text-center">Net Pay</th>
+                                                <th rowspan="2" class="text-center">Actions</th>
+                                                <th rowspan="2" class="text-center">No.</th>
                                             </tr>
                                             <tr>
-                                                <th class="text-center  info-header">No. dys</th>
-                                                <th class="text-center  info-header">Rate</th>
-                                                <th class="text-center  info-header">Amount</th>
+                                                <th class="text-center">No. dys</th>
+                                                <th class="text-center">Rate</th>
+                                                <th class="text-center">Amount</th>
 
-                                                <th class="text-center  info-header">No. hr</th>
-                                                <th class="text-center  info-header">Rate</th>
-                                                <th class="text-center  info-header">Amount</th>
+                                                <th class="text-center">No. hr</th>
+                                                <th class="text-center">Rate</th>
+                                                <th class="text-center">Amount</th>
 
-                                                <th class="text-center  info-header">Min</th>
-                                                <th class="text-center  info-header">Rate</th>
-                                                <th class="text-center  info-header">Amount</th>
+                                                <th class="text-center">Min</th>
+                                                <th class="text-center">Rate</th>
+                                                <th class="text-center">Amount</th>
 
                                                 <?php if (count($contributions_settings) > 0) {
                                                     foreach ($contributions_settings as $k) {
@@ -751,7 +759,7 @@ $payroll_type = $payroll['type'];
                                                             $stmt_con->execute();
                                                             $result_con = $stmt_con->get_result();
                                                             $contribution = $result_con->fetch_assoc();
-                                                            $name_deduction = $contribution['contribution'];
+                                                                $name_deduction = $contribution['contribution'] ?? '';
                                                         } else if ($k['type'] == 3) {
                                                             $query_con = "SELECT * FROM contribution_loan_types   WHERE clt_id = ?";
                                                             $stmt_con = $conn->prepare($query_con);
@@ -759,7 +767,7 @@ $payroll_type = $payroll['type'];
                                                             $stmt_con->execute();
                                                             $result_con = $stmt_con->get_result();
                                                             $contribution = $result_con->fetch_assoc();
-                                                            $name_deduction =  $contribution['loan_type'];
+                                                                $name_deduction = $contribution['loan_type'] ?? '';
                                                         } else if ($k['type'] == 2) {
                                                             $query_con = "SELECT * FROM deductions   WHERE id = ?";
                                                             $stmt_con = $conn->prepare($query_con);
@@ -767,18 +775,18 @@ $payroll_type = $payroll['type'];
                                                             $stmt_con->execute();
                                                             $result_con = $stmt_con->get_result();
                                                             $contribution = $result_con->fetch_assoc();
-                                                            $name_deduction =  $contribution['deduction'];
+                                                                $name_deduction = $contribution['deduction'] ?? '';
                                                         }
 
 
                                                 ?>
-                                                        <th class="text-center danger-header"><?= $name_deduction ?></th>
+                                                        <th class="text-center"><?= $name_deduction ?></th>
                                                     <?php } ?>
                                                 <?php } else { ?>
                                                 <?php } ?>
-                                                <!-- <th class="text-center  danger-header">SSS PROVIDENT FUND </th>
-                                                <th class="text-center  danger-header">JEI ADVANCE</th>
-                                                <th class="text-center  danger-header">JCC ADVANCES</th> -->
+                                                <!-- <th class="text-center">SSS PROVIDENT FUND </th>
+                                                <th class="text-center">JEI ADVANCE</th>
+                                                <th class="text-center">JCC ADVANCES</th> -->
                                                 <?php if (count($refunds_settings) > 0) {
                                                     foreach ($refunds_settings as $k) {
                                                         $query_con = "SELECT * FROM refunds   WHERE id = ?";
@@ -787,10 +795,10 @@ $payroll_type = $payroll['type'];
                                                         $stmt_con->execute();
                                                         $result_con = $stmt_con->get_result();
                                                         $rfund = $result_con->fetch_assoc();
-                                                        $name_refunds =  $rfund['refunds'];
+                                                        $name_refunds = $rfund['refunds'] ?? '';
 
                                                 ?>
-                                                        <th class="text-center success-header"><?= $name_refunds ?></th>
+                                                        <th class="text-center"><?= $name_refunds ?></th>
                                                 <?php }
                                                 } ?>
 
@@ -873,9 +881,6 @@ $payroll_type = $payroll['type'];
                                                         <?php } else { ?>
                                                             <?= $row['present'] ?>
                                                         <?php } ?>
-                                                    </td>
-                                                    <td style="min-width: 200px;" class="text-center">
-                                                        <span style="cursor: help;" data-toggle="tooltip" data-html="true" title='<?= $row['site_name'] ?>'><?= $row['site_code'] ?></span>
                                                     </td>
                                                     <td style="min-width: 90px;" class="text-right">
                                                         <?php if ($status === 1) { ?>
@@ -1046,7 +1051,7 @@ $payroll_type = $payroll['type'];
                                                         <b><?= number_format($net, 2) ?></b>
                                                     </td>
                                                     <td style="min-width: 90px;" class="text-center">
-                                                        <a href="view_payslip.php?id=<?= $row['id'] ?>" class="xl-btn" data-toggle="tooltip" title="View Payslip" id="<?= $row['id'] ?>" site_name="<?= htmlspecialchars($row['site_name']) ?>" onclick="edit_function(this)">
+                                                        <a href="view_payslip.php?id=<?= $row['id'] ?>" class="xl-btn" data-toggle="tooltip" title="View Payslip" id="<?= $row['id'] ?>" site_name="<?= htmlspecialchars($row['branch_name']) ?>" onclick="edit_function(this)">
                                                             <i class="ri-file-text-line"></i> View
                                                         </a>
                                                     </td>
@@ -1173,7 +1178,7 @@ $payroll_type = $payroll['type'];
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="modal-sitesModalLabel">Sites</h5>
+                <h5 class="modal-title" id="modal-sitesModalLabel">Branches</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -1183,7 +1188,7 @@ $payroll_type = $payroll['type'];
                             <th>Code</th>
                             <th>Name</th>
                             <th>Address</th>
-                            <th>Timekeeper</th>
+                            <th>Cashier</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -1192,25 +1197,26 @@ $payroll_type = $payroll['type'];
                             foreach ($site_ids as $k) {  ?>
 
                                 <?php
-                                $query_site = "SELECT A.*,  C.name AS timekeeper 
-                                        FROM sites AS A 
-                                        LEFT JOIN users AS C ON A.timekeeper_id = C.id 
-                           
-                                        WHERE A.id = ?
-                                    ";
+                                $query_site = "SELECT branches.*, users.name AS timekeeper
+                                        FROM branches
+                                        LEFT JOIN users ON branches.timekeeper_id = users.id
+                                        WHERE branches.id = ?";
                                 $stmt_site = $conn->prepare($query_site);
-                                $stmt_site->bind_param("i", $k);
-                                $stmt_site->execute();
-                                $result_site = $stmt_site->get_result();
-                                $site_details = $result_site->fetch_assoc();
+                                if ($stmt_site) {
+                                    $stmt_site->bind_param("i", $k);
+                                    $stmt_site->execute();
+                                    $site_details = $stmt_site->get_result()->fetch_assoc();
+                                } else {
+                                    $site_details = [];
+                                }
                                 ?>
                                 <tr>
-                                    <td><?php echo htmlspecialchars($site_details['site_code']); ?></td>
-                                    <td><?php echo htmlspecialchars($site_details['site_name']); ?></td>
-                                    <td><?php echo htmlspecialchars($site_details['site_address']); ?></td>
-                                    <td><?php echo htmlspecialchars($site_details['timekeeper']); ?></td>
+                                    <td><?php echo htmlspecialchars($site_details['branch_code'] ?? ''); ?></td>
+                                    <td><?php echo htmlspecialchars($site_details['branch_name'] ?? ''); ?></td>
+                                    <td><?php echo htmlspecialchars($site_details['branch_address'] ?? ''); ?></td>
+                                    <td><?php echo htmlspecialchars($site_details['timekeeper'] ?? ''); ?></td>
                                     <td class="text-center" width="100">
-                                        <a data-toggle="tooltip" title="Print Payroll on this Site" href="print-payroll.php?id=<?= $id ?>&type=site&site_id=<?= $site_details['id'] ?>" class="btn btn-sm btn-outline-info mr-1" title="Print"><span class="sr-only">Print</span> <i class="fa fa-print"></i></a>
+                                        <a data-toggle="tooltip" title="Print Payroll on this Branch" href="print-payroll.php?id=<?= $id ?>&type=site&site_id=<?= $site_details['id'] ?? '' ?>" class="btn btn-sm btn-outline-info mr-1"><i class="fa fa-print"></i></a>
                                     </td>
                                 </tr>
                         <?php }

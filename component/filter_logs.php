@@ -1,10 +1,11 @@
 <div class="modal fade" id="modal-filter-add" tabindex="-1" role="dialog">
-    <form id="form-filter" novalidate>
+    <form id="form-filter" method="get" action="" novalidate>
+        <input type="hidden" name="page" value="visitors-logs">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h6 class="modal-title mb-0">
-                        <i class="ri-filter-3-line me-2" style="color:#394b7c;"></i>Filter Visitor Logs
+                        <i class="ri-filter-3-line me-2" style="color:#009688;"></i>Filter Visitor Logs
                     </h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -12,7 +13,7 @@
 
                     <!-- Date Range -->
                     <div class="mb-3">
-                        <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#394b7c;">
+                        <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
                             <i class="ri-calendar-range-line me-1"></i>Date Range <span class="text-danger">*</span>
                         </label>
                         <div class="row g-2">
@@ -39,7 +40,7 @@
 
                     <!-- Site -->
                     <div class="mb-1">
-                        <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#394b7c;">
+                        <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
                             <i class="ri-map-pin-2-line me-1"></i>Site <span class="text-muted fw-normal">(optional)</span>
                         </label>
                         <select id="site-select" class="form-control select2" name="site_id"
@@ -61,7 +62,7 @@
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">
                         <i class="ri-close-line me-1"></i>Cancel
                     </button>
-                    <button type="submit" class="btn btn-sm text-white" style="background:#394b7c;border-color:#394b7c;">
+                    <button type="submit" class="btn btn-sm text-white" style="background:#009688;border-color:#009688;">
                         <i class="ri-search-line me-1"></i>Apply Filter
                     </button>
                 </div>

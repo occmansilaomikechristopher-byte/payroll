@@ -1,29 +1,38 @@
 <?php
-if ($login_role === 6) {
-    echo "<script>location.href='index.php?page=dtr';</script>";
+$home_login_role = (int)($_SESSION['login_role'] ?? 0);
+if ($home_login_role === 6) {
+    echo "<script>location.href='dtr';</script>";
     exit;
 }
 
 // ── Stat counters ──────────────────────────────────────────────
-$total_employees   = (int) $conn->query("SELECT COUNT(*) AS c FROM employee WHERE status=1")->fetch_assoc()['c'];
-$total_inactive    = (int) $conn->query("SELECT COUNT(*) AS c FROM employee WHERE status=0")->fetch_assoc()['c'];
-$total_sites       = (int) $conn->query("SELECT COUNT(*) AS c FROM sites WHERE status=1")->fetch_assoc()['c'];
-$total_clusters    = (int) $conn->query("SELECT COUNT(*) AS c FROM clusters")->fetch_assoc()['c'];
-$total_positions   = (int) $conn->query("SELECT COUNT(*) AS c FROM position")->fetch_assoc()['c'];
-$total_users       = (int) $conn->query("SELECT COUNT(*) AS c FROM users WHERE role!=1 AND status=1")->fetch_assoc()['c'];
-$total_payrolls    = (int) $conn->query("SELECT COUNT(*) AS c FROM payroll")->fetch_assoc()['c'];
-$pending_dtr       = (int) $conn->query("SELECT COUNT(*) AS c FROM DTR WHERE status=1")->fetch_assoc()['c'];
-$approved_dtr      = (int) $conn->query("SELECT COUNT(*) AS c FROM DTR WHERE status=2")->fetch_assoc()['c'];
-$visitors_today    = (int) $conn->query("SELECT COUNT(*) AS c FROM visitors_logs WHERE DATE(date_visited)=CURDATE()")->fetch_assoc()['c'];
+function db_count($conn, $sql) {
+    try {
+        $r = $conn->query($sql);
+        return $r ? (int)$r->fetch_assoc()['c'] : 0;
+    } catch (Throwable $e) {
+        return 0;
+    }
+}
+$total_employees   = db_count($conn, "SELECT COUNT(*) AS c FROM employee WHERE status=1");
+$total_inactive    = db_count($conn, "SELECT COUNT(*) AS c FROM employee WHERE status=0");
+$total_sites       = db_count($conn, "SELECT COUNT(*) AS c FROM branches WHERE status=1");
+$total_clusters    = 0;
+$total_positions   = db_count($conn, "SELECT COUNT(*) AS c FROM position");
+$total_users       = db_count($conn, "SELECT COUNT(*) AS c FROM users WHERE role!=1 AND status=1");
+$total_payrolls    = db_count($conn, "SELECT COUNT(*) AS c FROM payroll");
+$pending_dtr       = db_count($conn, "SELECT COUNT(*) AS c FROM DTR WHERE status=1");
+$approved_dtr      = db_count($conn, "SELECT COUNT(*) AS c FROM DTR WHERE status=2");
+$visitors_today    = db_count($conn, "SELECT COUNT(*) AS c FROM visitors_logs WHERE DATE(date_visited)=CURDATE()");
 
 // ── Payroll status breakdown ────────────────────────────────────
-$pay_new        = (int) $conn->query("SELECT COUNT(*) AS c FROM payroll WHERE status=0")->fetch_assoc()['c'];
-$pay_calculated = (int) $conn->query("SELECT COUNT(*) AS c FROM payroll WHERE status=1")->fetch_assoc()['c'];
-$pay_locked     = (int) $conn->query("SELECT COUNT(*) AS c FROM payroll WHERE status=2")->fetch_assoc()['c'];
+$pay_new        = db_count($conn, "SELECT COUNT(*) AS c FROM payroll WHERE status=0");
+$pay_calculated = db_count($conn, "SELECT COUNT(*) AS c FROM payroll WHERE status=1");
+$pay_locked     = db_count($conn, "SELECT COUNT(*) AS c FROM payroll WHERE status=2");
 
 // ── Employee by payroll type ────────────────────────────────────
-$emp_weekly  = (int) $conn->query("SELECT COUNT(*) AS c FROM employee WHERE weekly_payroll=1 AND status=1")->fetch_assoc()['c'];
-$emp_monthly = (int) $conn->query("SELECT COUNT(*) AS c FROM employee WHERE weekly_payroll=0 AND status=1")->fetch_assoc()['c'];
+$emp_weekly  = db_count($conn, "SELECT COUNT(*) AS c FROM employee WHERE weekly_payroll=1 AND status=1");
+$emp_monthly = db_count($conn, "SELECT COUNT(*) AS c FROM employee WHERE weekly_payroll=0 AND status=1");
 
 // ── Monthly payroll count – last 7 months ──────────────────────
 $monthly_labels = [];
@@ -59,32 +68,31 @@ while ($r = $pos_res->fetch_assoc()) {
 
 // ── Recent payrolls ─────────────────────────────────────────────
 $recent_payrolls = $conn->query("
-    SELECT p.*, e.employer_name
+    SELECT p.*
     FROM payroll p
-    LEFT JOIN employers e ON p.employer_id = e.id
     ORDER BY p.id DESC LIMIT 6
 ");
 
 // ── Recent DTR uploads ──────────────────────────────────────────
 $recent_dtr = $conn->query("
-    SELECT d.*, s.site_name, s.site_code, u.name AS uploader
+    SELECT d.*, s.branch_name, s.branch_code, u.name AS uploader
     FROM DTR d
-    LEFT JOIN sites s ON d.site_id = s.id
+    LEFT JOIN branches s ON d.branch_id = s.id
     LEFT JOIN users u ON d.uploaded_by = u.id
     ORDER BY d.id DESC LIMIT 6
 ");
 ?>
 <style>
-    .dash-stat { border-top:3px solid #394b7c; border-radius:6px; background:#fff; padding:16px 18px; display:flex; align-items:center; gap:14px; box-shadow:0 1px 4px rgba(57,75,124,.07); transition:box-shadow .2s; }
+    .dash-stat { border-top:3px solid #009688; border-radius:6px; background:#fff; padding:16px 18px; display:flex; align-items:center; gap:14px; box-shadow:0 1px 4px rgba(57,75,124,.07); transition:box-shadow .2s; }
     .dash-stat:hover { box-shadow:0 4px 16px rgba(57,75,124,.13); }
     .dash-stat .ds-icon { width:46px; height:46px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
-    .dash-stat .ds-val { font-size:24px; font-weight:800; color:#394b7c; line-height:1; }
+    .dash-stat .ds-val { font-size:24px; font-weight:800; color:#009688; line-height:1; }
     .dash-stat .ds-lbl { font-size:11px; color:#888; text-transform:uppercase; letter-spacing:.4px; margin-top:3px; }
     .dash-stat .ds-sub { font-size:11px; color:#aaa; margin-top:2px; }
-    .dash-section-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#394b7c; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+    .dash-section-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#009688; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
     .pay-status-dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:5px; }
     #data-table thead th,
-    #dtr-recent-table thead th { background-color:#394b7c !important; border-color:#2d3d66 !important; color:#fff !important; }
+    #dtr-recent-table thead th { background-color:#009688 !important; border-color:#2d3d66 !important; color:#fff !important; }
 </style>
 
 <div class="main-content">
@@ -95,7 +103,7 @@ $recent_dtr = $conn->query("
             <div class="row">
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
-                        <h4 class="mb-sm-0"><i class="ri-dashboard-line me-2" style="color:#394b7c;"></i>Dashboard</h4>
+                        <h4 class="mb-sm-0"><i class="ri-dashboard-line me-2" style="color:#009688;"></i>Dashboard</h4>
                         <div class="page-title-right">
                             <ol class="breadcrumb m-0">
                                 <li class="breadcrumb-item"><a href="javascript:void(0);">Pages</a></li>
@@ -110,7 +118,7 @@ $recent_dtr = $conn->query("
             <div class="row g-3 mb-3">
                 <div class="col-xl-2 col-md-4 col-sm-6">
                     <div class="dash-stat">
-                        <div class="ds-icon" style="background:#eef0f8;"><i class="ri-group-line" style="color:#394b7c;"></i></div>
+                        <div class="ds-icon" style="background:#eef0f8;"><i class="ri-group-line" style="color:#009688;"></i></div>
                         <div>
                             <div class="ds-val"><?= $total_employees ?></div>
                             <div class="ds-lbl">Employees</div>
@@ -170,197 +178,7 @@ $recent_dtr = $conn->query("
                 </div>
             </div>
 
-            <!-- ── ROW 2: Charts ── -->
-            <div class="row g-3 mb-3">
-
-                <!-- Monthly Payroll Bar Chart -->
-                <div class="col-xl-8">
-                    <div class="card h-100" style="border-top:3px solid #394b7c;">
-                        <div class="card-header d-flex align-items-center py-2">
-                            <h6 class="card-title mb-0 flex-grow-1">
-                                <i class="ri-bar-chart-2-line me-2" style="color:#394b7c;"></i>Payroll Activity (Last 7 Months)
-                            </h6>
-                        </div>
-                        <div class="card-body pb-2">
-                            <div id="chart-payroll-monthly" style="min-height:240px;"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Payroll Status + Employee Type -->
-                <div class="col-xl-4">
-                    <div class="card mb-3" style="border-top:3px solid #394b7c;">
-                        <div class="card-header py-2">
-                            <h6 class="card-title mb-0">
-                                <i class="ri-pie-chart-line me-2" style="color:#394b7c;"></i>Payroll Status
-                            </h6>
-                        </div>
-                        <div class="card-body py-2">
-                            <div id="chart-payroll-status" style="min-height:160px;"></div>
-                            <div class="d-flex justify-content-center gap-3 mt-1" style="font-size:12px;">
-                                <span><span class="pay-status-dot" style="background:#394b7c;"></span>New (<?= $pay_new ?>)</span>
-                                <span><span class="pay-status-dot" style="background:#28a745;"></span>Calculated (<?= $pay_calculated ?>)</span>
-                                <span><span class="pay-status-dot" style="background:#dc3545;"></span>Locked (<?= $pay_locked ?>)</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card" style="border-top:3px solid #394b7c;">
-                        <div class="card-header py-2">
-                            <h6 class="card-title mb-0">
-                                <i class="ri-donut-chart-line me-2" style="color:#394b7c;"></i>Employee Payroll Type
-                            </h6>
-                        </div>
-                        <div class="card-body py-2">
-                            <div id="chart-emp-type" style="min-height:130px;"></div>
-                            <div class="d-flex justify-content-center gap-3 mt-1" style="font-size:12px;">
-                                <span><span class="pay-status-dot" style="background:#394b7c;"></span>Monthly (<?= $emp_monthly ?>)</span>
-                                <span><span class="pay-status-dot" style="background:#17a2b8;"></span>Weekly (<?= $emp_weekly ?>)</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ── ROW 3: Recent records ── -->
-            <div class="row g-3 mb-3">
-
-                <!-- Recent Payrolls -->
-                <div class="col-xl-7">
-                    <div class="card h-100" style="border-top:3px solid #394b7c;">
-                        <div class="card-header d-flex align-items-center py-2">
-                            <h6 class="card-title mb-0 flex-grow-1">
-                                <i class="ri-money-dollar-circle-line me-2" style="color:#394b7c;"></i>Recent Payrolls
-                            </h6>
-                            <a href="index.php?page=payroll" class="btn btn-sm btn-outline-secondary" style="font-size:11px;">
-                                View All <i class="ri-arrow-right-line ms-1"></i>
-                            </a>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="table-responsive">
-                                <table class="table table-hover table-sm align-middle mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th style="background:#394b7c;color:#fff;padding:8px 12px;font-size:11px;border:none;">Ref No.</th>
-                                            <th style="background:#394b7c;color:#fff;padding:8px 12px;font-size:11px;border:none;">Employer</th>
-                                            <th style="background:#394b7c;color:#fff;padding:8px 12px;font-size:11px;border:none;">Period</th>
-                                            <th style="background:#394b7c;color:#fff;padding:8px 12px;font-size:11px;border:none;text-align:center;">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php while ($r = $recent_payrolls->fetch_assoc()): ?>
-                                        <tr>
-                                            <td style="padding:7px 12px;font-size:12px;">
-                                                <span style="font-family:monospace;font-weight:700;color:#394b7c;"><?= htmlspecialchars($r['ref_no']) ?></span>
-                                            </td>
-                                            <td style="padding:7px 12px;font-size:12px;font-weight:600;"><?= htmlspecialchars($r['employer_name']) ?></td>
-                                            <td style="padding:7px 12px;font-size:11px;color:#555;">
-                                                <?= date('M d', strtotime($r['date_from'])) ?> &ndash; <?= date('M d, Y', strtotime($r['date_to'])) ?>
-                                            </td>
-                                            <td style="padding:7px 12px;text-align:center;">
-                                                <?php if ($r['status'] == 0): ?>
-                                                    <span class="badge bg-primary" style="font-size:10px;">New</span>
-                                                <?php elseif ($r['status'] == 1): ?>
-                                                    <span class="badge bg-success" style="font-size:10px;">Calculated</span>
-                                                <?php else: ?>
-                                                    <span class="badge bg-danger" style="font-size:10px;"><i class="ri-lock-fill me-1"></i>Locked</span>
-                                                <?php endif; ?>
-                                            </td>
-                                        </tr>
-                                        <?php endwhile; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Recent DTR -->
-                <div class="col-xl-5">
-                    <div class="card h-100" style="border-top:3px solid #394b7c;">
-                        <div class="card-header d-flex align-items-center py-2">
-                            <h6 class="card-title mb-0 flex-grow-1">
-                                <i class="ri-time-line me-2" style="color:#394b7c;"></i>Recent DTR Uploads
-                            </h6>
-                            <a href="index.php?page=dtr" class="btn btn-sm btn-outline-secondary" style="font-size:11px;">
-                                View All <i class="ri-arrow-right-line ms-1"></i>
-                            </a>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="table-responsive">
-                                <table class="table table-hover table-sm align-middle mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th style="background:#394b7c;color:#fff;padding:8px 12px;font-size:11px;border:none;">Site</th>
-                                            <th style="background:#394b7c;color:#fff;padding:8px 12px;font-size:11px;border:none;">Uploaded By</th>
-                                            <th style="background:#394b7c;color:#fff;padding:8px 12px;font-size:11px;border:none;text-align:center;">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php while ($r = $recent_dtr->fetch_assoc()): ?>
-                                        <tr>
-                                            <td style="padding:7px 12px;">
-                                                <span style="background:#394b7c;color:#fff;padding:1px 5px;border-radius:3px;font-size:10px;font-weight:700;font-family:monospace;"><?= htmlspecialchars($r['site_code']) ?></span>
-                                                <div style="font-size:12px;font-weight:600;margin-top:2px;"><?= htmlspecialchars($r['site_name']) ?></div>
-                                            </td>
-                                            <td style="padding:7px 12px;font-size:12px;"><?= htmlspecialchars($r['uploader'] ?? '—') ?></td>
-                                            <td style="padding:7px 12px;text-align:center;">
-                                                <?php if ($r['status'] == 2): ?>
-                                                    <span class="badge bg-success" style="font-size:10px;"><i class="ri-check-line me-1"></i>Approved</span>
-                                                <?php else: ?>
-                                                    <span class="badge bg-warning text-dark" style="font-size:10px;">Pending</span>
-                                                <?php endif; ?>
-                                            </td>
-                                        </tr>
-                                        <?php endwhile; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ── ROW 4: Quick Links ── -->
-            <div class="row g-3 mb-3">
-                <div class="col-12">
-                    <div class="card" style="border-top:3px solid #394b7c;">
-                        <div class="card-header py-2">
-                            <h6 class="card-title mb-0">
-                                <i class="ri-apps-line me-2" style="color:#394b7c;"></i>Quick Access
-                            </h6>
-                        </div>
-                        <div class="card-body py-3">
-                            <div class="d-flex flex-wrap gap-2">
-                                <a href="index.php?page=employee" class="btn btn-sm" style="background:#eef0f8;color:#394b7c;border:1px solid #d0d7ee;font-weight:600;">
-                                    <i class="ri-group-line me-1"></i>Employees
-                                </a>
-                                <a href="index.php?page=payroll" class="btn btn-sm" style="background:#eef0f8;color:#394b7c;border:1px solid #d0d7ee;font-weight:600;">
-                                    <i class="ri-money-dollar-circle-line me-1"></i>Payroll
-                                </a>
-                                <a href="index.php?page=dtr" class="btn btn-sm" style="background:#eef0f8;color:#394b7c;border:1px solid #d0d7ee;font-weight:600;">
-                                    <i class="ri-time-line me-1"></i>DTR
-                                </a>
-                                <a href="index.php?page=attendance" class="btn btn-sm" style="background:#eef0f8;color:#394b7c;border:1px solid #d0d7ee;font-weight:600;">
-                                    <i class="ri-calendar-check-line me-1"></i>Attendance
-                                </a>
-                                <a href="index.php?page=sites" class="btn btn-sm" style="background:#eef0f8;color:#394b7c;border:1px solid #d0d7ee;font-weight:600;">
-                                    <i class="ri-map-pin-2-line me-1"></i>Sites
-                                </a>
-                                <a href="index.php?page=clusters" class="btn btn-sm" style="background:#eef0f8;color:#394b7c;border:1px solid #d0d7ee;font-weight:600;">
-                                    <i class="ri-global-line me-1"></i>Clusters
-                                </a>
-                                <a href="index.php?page=visitors-logs" class="btn btn-sm" style="background:#eef0f8;color:#394b7c;border:1px solid #d0d7ee;font-weight:600;">
-                                    <i class="ri-user-search-line me-1"></i>Visitor Logs
-                                </a>
-                                <a href="index.php?page=users" class="btn btn-sm" style="background:#eef0f8;color:#394b7c;border:1px solid #d0d7ee;font-weight:600;">
-                                    <i class="ri-shield-user-line me-1"></i>Users
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
+          
         </div>
     </div>
 </div>
@@ -368,7 +186,7 @@ $recent_dtr = $conn->query("
 <script src="assets/libs/apexcharts/apexcharts.min.js"></script>
 <script>
 (function () {
-    var primary = '#394b7c';
+    var primary = '#009688';
 
     // ── Monthly Payroll Bar Chart ───────────────────────────────
     new ApexCharts(document.getElementById('chart-payroll-monthly'), {

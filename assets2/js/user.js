@@ -19,14 +19,19 @@ $(document).ready(function () {
     // Select2 setup
     $("#role").select2({ dropdownParent: $("#modal") });
     $("#employer-select").select2({ dropdownParent: $("#modal") });
+    $("#branch-select").select2({ dropdownParent: $("#modal") });
 
-    // Hide site selection by default
+    // Hide conditional selections by default
     $("#site-select").removeAttr("required");
+    $("#branch-select").removeAttr("required");
+    $("#branch-wrapper").hide();
     $(".fa-spinner-button").hide();
 
     // Role change toggle
     $("#role").on("change", function () {
         const selectedValue = $(this).val();
+
+        // Timekeeper / PIC → site selection
         if (selectedValue == 5 || selectedValue == 6) {
             $("#site-select").attr("required", true);
             $("#site-wrapper").show();
@@ -34,7 +39,27 @@ $(document).ready(function () {
             $("#site-select").removeAttr("required");
             $("#site-wrapper").hide();
         }
+
+        // Cashier → branch selection
+        if (selectedValue == 9) {
+            $("#branch-select").attr("required", true);
+            $("#branch-wrapper").show();
+            $("#all-branches-option").hide();
+        }
+        // Owner → branch is optional and can be all branches
+        else if (selectedValue == 10) {
+            $("#branch-select").removeAttr("required");
+            $("#branch-wrapper").show();
+            $("#all-branches-option").show();
+        } else {
+            $("#branch-select").removeAttr("required");
+            $("#branch-wrapper").hide();
+            $("#all-branches-option").hide();
+        }
     });
+
+    // Apply the current role immediately (including a browser-restored Cashier selection).
+    $("#role").trigger("change");
 });
 
 // Track mode
@@ -127,6 +152,12 @@ function edit_function(e) {
     $("#id").val($(e).attr("id"));
     $("#employer-select").val($(e).attr("employer_id")).trigger("change");
     $("#role").val($(e).attr("role")).trigger("change");
+
+    // Cashier / Owner branch (role change above already toggled visibility)
+    if ($(e).attr("role") == 9 || $(e).attr("role") == 10) {
+        const branchId = $(e).attr("branch_id") || ($(e).attr("role") == 10 ? '0' : '');
+        $("#branch-select").val(branchId).trigger("change");
+    }
 }
 
 $(document).on("hide.bs.modal", "#modal", function () {
@@ -143,4 +174,8 @@ $(document).on("hide.bs.modal", "#modal", function () {
     $("#role").closest(".form-group").show();
     $("#username-wrapper").show();
     $("#password-wrapper").show();
+
+    // Reset conditional selects
+    $("#branch-wrapper").hide();
+    $("#branch-select").val("").trigger("change").removeAttr("required");
 });

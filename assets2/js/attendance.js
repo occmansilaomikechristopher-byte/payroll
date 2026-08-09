@@ -68,7 +68,7 @@ $(function () {
 
     $('#site-select').select2({
         dropdownParent: $('#modal-filter'),
-        placeholder: '— All Sites —',
+        placeholder: '— All Branches —',
         allowClear: true,
         width: '100%',
     });
@@ -228,7 +228,7 @@ if ($('#attendance-table').length) {
         var fmt  = { month: 'short', day: 'numeric', year: 'numeric' };
         $('#filter-date-label').text(from.toLocaleDateString('en-US', fmt) + ' – ' + to.toLocaleDateString('en-US', fmt));
         $('#filter-emp-label').text(attFilter.emp_label || (attFilter.employee_ids ? attFilter.employee_ids.split(',').length + ' selected' : 'All'));
-        $('#filter-site-label').text(attFilter.site_label || 'All Sites');
+        $('#filter-site-label').text(attFilter.site_label || 'All Branches');
     }
 
     $('#form-filter').on('submit', function (e) {
@@ -242,7 +242,7 @@ if ($('#attendance-table').length) {
         attFilter.employee_ids = empIds.join(',');
         attFilter.site_id      = siteVal || '';
         attFilter.emp_label    = empIds.length ? empIds.length + ' employee(s)' : 'All';
-        attFilter.site_label   = siteVal ? siteTxt.split('(')[0].trim() : 'All Sites';
+        attFilter.site_label   = siteVal ? siteTxt.split('(')[0].trim() : 'All Branches';
 
         $('#modal-filter').modal('hide');
         attTable.draw();

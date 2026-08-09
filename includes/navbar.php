@@ -1,289 +1,309 @@
 <?php $page = isset($_GET['page']) ? $_GET['page'] : 'home'; ?>
+<?php $login_role = intval($_SESSION['login_role'] ?? 0); ?>
+<?php $is_cashier = ($login_role === 9); ?>
 
 <div class="app-menu navbar-menu">
     <!-- LOGO -->
     <div class="navbar-brand-box">
-        <!-- Dark Logo-->
-        <a href="index.php" class="logo logo-dark">
-            <span class="logo-sm">
-                JP
-            </span>
-            <span class="logo-lg">
-                <img src="assets/images/logo-dark.png" alt="" height="17">
-            </span>
-        </a>
-        <!-- Light Logo-->
-        <a href="index.php" class="logo logo-light">
-            <span class="logo-sm">
-                JP
-            </span>
-            <span class="logo-lg">
-                <div class="logo">JEJORS Payroll</div>
-            </span>
+       
+        <a href="home" class="logo logo-light">
+            <span class="logo-sm">Gv</span>
+            <span class="logo-lg"><div class="logo"> Payroll</div></span>
         </a>
         <button type="button" class="btn btn-sm p-0 fs-20 header-item float-end btn-vertical-sm-hover" id="vertical-hover">
             <i class="ri-record-circle-line"></i>
         </button>
     </div>
 
-
     <div id="scrollbar">
         <div class="container-fluid">
+            <div id="two-column-menu"></div>
 
-            <div id="two-column-menu">
-            </div>
-   
             <ul class="navbar-nav" id="navbar-nav">
-                <?php if ($login_role !== 6 && $login_role !== 7) { ?>
-                    <li class="menu-title"><span data-key="t-menu">Links</span></li>
-                    <li class="nav-item">
-                        <a class="nav-link menu-link <?php if ($page == 'home') {
-                                                            echo 'active';
-                                                        } ?>" href="index.php">
-                            <i class=" ri-dashboard-fill"></i> <span data-key="t-widgets">Dashboard</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link menu-link" href="#sidebarLanding" data-bs-toggle="collapse" role="button" aria-expanded="true" aria-controls="sidebarLanding">
-                            <i class="ri-shield-user-line"></i> <span data-key="t-landing">Workforce Information</span>
-                        </a>
-                        <div class="menu-dropdown collapse <?php if ($page == 'employee' || $page == 'employee-details' || $page == 'position') {
-                                                                echo 'show';
-                                                            } ?>" id="sidebarLanding" style="">
-                            <ul class="nav nav-sm flex-column">
-                                <li class="nav-item">
-                                    <a href="index.php?page=employee" class="nav-link <?php if ($page == 'employee' || $page == 'employee-details') {
-                                                                                            echo 'active';
-                                                                                        } ?>" data-key="t-nft-landing">Employees</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="index.php?page=position" class="nav-link <?php if ($page == 'position') {
-                                                                                            echo 'active';
-                                                                                        } ?>" data-key=" t-job">Position</a>
-                                </li>
-                            </ul>
-                        </div>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link menu-link <?php
-                                                        if (($page == 'payroll' || $page == 'payroll_items' || $page == 'payroll_calculations') && (!isset($_GET['p2']) || $_GET['p2'] == 'false')) {
-                                                            echo 'active';
-                                                        }
-                                                        ?>" href="index.php?page=payroll&p2=false">
-                            <i class="ri-calculator-line"></i><span>Payroll</span>
-                        </a>
-                    </li>
 
-                    <li class="nav-item">
-                        <a class="nav-link menu-link <?php
-                                                        if (($page == 'payroll' || $page == 'payroll_items' || $page == 'payroll_calculations') && isset($_GET['p2']) && $_GET['p2'] == 'true') {
-                                                            echo 'active';
-                                                        }
-                                                        ?>" href="index.php?page=payroll&p2=true">
-                            <i class="ri-calculator-line"></i><span>P2</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link menu-link" href="#sidebarLanding2" data-bs-toggle="collapse" role="button" aria-expanded="true" aria-controls="sidebarLanding">
-                            <i class="ri-gift-line"></i> <span data-key="t-landing">Benefits & Compensation</span>
-                        </a>
-                        <div class="menu-dropdown collapse <?php if ($page == 'deductions' || $page == 'contributions' || $page == 'refunds') {
-                                                                echo 'show';
-                                                            } ?>" id="sidebarLanding2" style="">
-                            <ul class="nav nav-sm flex-column">
-                                <li class="nav-item">
-                                    <a href="index.php?page=contributions" class="nav-link <?php if ($page == 'contributions') {
-                                                                                                echo 'active';
-                                                                                            } ?>" data-key=" t-job">Contributions</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="index.php?page=deductions" class="nav-link <?php if ($page == 'deductions') {
-                                                                                            echo 'active';
-                                                                                        } ?>" data-key="t-nft-landing">Deductions</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="index.php?page=refunds" class="nav-link <?php if ($page == 'refunds') {
-                                                                                            echo 'active';
-                                                                                        } ?>" data-key="t-nft-landing">Refunds</a>
-                                </li>
+                <?php if ($login_role === 10): ?>
 
-                                <!-- <li class="nav-item"> <a href="#" class="nav-link">Holidays</a></li>
-                            <li class="nav-item"> <a href="#" class="nav-link">Leave</a></li>
-                            <li class="nav-item"> <a href="#" class="nav-link">Bunos & Allowances</a></li> -->
-                            </ul>
-                        </div>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link menu-link" href="#sidebarLanding3" data-bs-toggle="collapse" role="button" aria-expanded="true" aria-controls="sidebarLanding">
-                            <i class="ri-calendar-line"></i> <span data-key="t-landing">Time & Attendance</span>
-                        </a>
-                        <div class="menu-dropdown collapse <?php if ($page == 'attendance' || $page == 'dtr'  ||  $page == 'dtr-details') {
-                                                                echo 'show';
-                                                            } ?>" id="sidebarLanding3" style="">
-                            <ul class="nav nav-sm flex-column">
-                                <li class="nav-item">
-                                    <a href="index.php?page=dtr" class="nav-link <?php if ($page == 'dtr'  ||  $page == 'dtr-details') {
-                                                                                        echo 'active';
-                                                                                    } ?>" data-key=" t-job">Daily Time Record</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="index.php?page=attendance" class="nav-link <?php if ($page == 'attendance') {
-                                                                                            echo 'active';
-                                                                                        } ?>" data-key="t-nft-landing">Attendance Record</a>
-                                </li>
-
-                            </ul>
-                        </div>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link menu-link" href="#sidebarLanding4" data-bs-toggle="collapse" role="button" aria-expanded="true" aria-controls="sidebarLanding">
-                            <i class=" ri-map-pin-2-line"></i> <span data-key="t-landing">Projects</span>
-                        </a>
-                        <div class="menu-dropdown collapse <?php if ($page == 'clusters' || $page == 'sites') {
-                                                                echo 'show';
-                                                            } ?>" id="sidebarLanding4" style="">
-                            <ul class="nav nav-sm flex-column">
-                                <li class="nav-item">
-                                    <a href="index.php?page=clusters" class="nav-link <?php if ($page == 'clusters') {
-                                                                                            echo 'active';
-                                                                                        } ?>" data-key=" t-job">Clusters</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="index.php?page=sites" class="nav-link <?php if ($page == 'sites') {
-                                                                                        echo 'active';
-                                                                                    } ?>" data-key="t-nft-landing">Sites</a>
-                                </li>
-
-                            </ul>
-                        </div>
-                    </li>
-                    <!-- <li class="nav-item">
-                    <a class="nav-link menu-link" href="#sidebarLanding5" data-bs-toggle="collapse" role="button" aria-expanded="true" aria-controls="sidebarLanding">
-                        <i class=" ri-bar-chart-line"></i> <span data-key="t-landing">Performance Mgmt</span>
+                <!-- Reports Only for Owner -->
+                <li class="nav-item">
+                    <a class="nav-link menu-link" href="javascript:void(0)">
+                        <i class="ri-bar-chart-box-line"></i> <span>Reports</span>
                     </a>
-                    <div class="menu-dropdown collapse" id="sidebarLanding5" style="">
+                </li>
+                <li class="nav-item ps-3">
+                    <a href="sales-report" class="nav-link <?= $page === 'sales-report' ? 'active' : '' ?>">
+                        <i class="ri-money-dollar-circle-line me-1"></i>Sales
+                    </a>
+                </li>
+                <li class="nav-item ps-3">
+                    <a href="attendance" class="nav-link <?= $page === 'attendance' ? 'active' : '' ?>">
+                        <i class="ri-calendar-check-line me-1"></i>Attendance
+                    </a>
+                </li>
+                <li class="nav-item ps-3">
+                    <a href="inventory-report" class="nav-link <?= $page === 'inventory-report' ? 'active' : '' ?>">
+                        <i class="ri-store-3-line me-1"></i>Inventory
+                    </a>
+                </li>
+                <li class="nav-item ps-3">
+                    <a href="payroll-report" class="nav-link <?= $page === 'payroll-report' ? 'active' : '' ?>">
+                        <i class="ri-file-list-3-line me-1"></i>Payroll
+                    </a>
+                </li>
+
+                <?php elseif ($login_role !== 6 && $login_role !== 7): ?>
+
+                <!-- Dashboard -->
+                <li class="nav-item">
+                    <a class="nav-link menu-link <?= $page === 'home' ? 'active' : '' ?>" href="home">
+                        <i class="ri-dashboard-fill"></i> <span>Dashboard</span>
+                    </a>
+                </li>
+
+                <!-- Workforce Information -->
+                <?php if (!$is_cashier): ?>
+                <li class="nav-item">
+                    <a href="employee" class="nav-link <?= in_array($page, ['employee','employee-details']) ? 'active' : '' ?>">
+                        <i class="ri-group-line"></i> <span>Employees</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="position" class="nav-link <?= $page === 'position' ? 'active' : '' ?>">
+                        <i class="ri-briefcase-4-line"></i> <span>Position</span>
+                    </a>
+                </li>
+
+                <!-- Payroll -->
+                <li class="nav-item">
+                    <a class="nav-link menu-link <?= (in_array($page, ['payroll','payroll_items','payroll_calculations']) && (!isset($_GET['p2']) || $_GET['p2'] === 'false')) ? 'active' : '' ?>"
+                        href="payroll?p2=false">
+                        <i class="ri-calculator-line"></i> <span>Payroll</span>
+                    </a>
+                </li>
+                <!-- Benefits & Compensation -->
+                <li class="nav-item">
+                    <a class="nav-link menu-link" href="#sidebarBenefits" data-bs-toggle="collapse" role="button"
+                        aria-expanded="<?= in_array($page, ['deductions','contributions','refunds']) ? 'true' : 'false' ?>">
+                        <i class="ri-gift-line"></i> <span>Benefits & Compensation</span>
+                    </a>
+                    <div class="menu-dropdown collapse <?= in_array($page, ['deductions','contributions']) ? 'show' : '' ?>" id="sidebarBenefits">
                         <ul class="nav nav-sm flex-column">
-                            <li class="nav-item"> <a href="#" class="nav-link">Employee Evaluation</a></li>
-                            <li class="nav-item"> <a href="#" class="nav-link">Performance</a></li>
-                            <li class="nav-item"> <a href="#" class="nav-link">Attendance Analytics</a></li>
+                            <li class="nav-item">
+                                <a href="contributions" class="nav-link <?= $page === 'contributions' ? 'active' : '' ?>">
+                                    <i class="ri-hand-coin-line me-1"></i>Contributions
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="deductions" class="nav-link <?= $page === 'deductions' ? 'active' : '' ?>">
+                                    <i class="ri-subtract-line me-1"></i>Deductions
+                                </a>
+                            </li>
                         </ul>
                     </div>
-                </li> -->
-                    <!-- <li class="nav-item">
-                    <a class="nav-link menu-link" href="#sidebarLanding6" data-bs-toggle="collapse" role="button" aria-expanded="true" aria-controls="sidebarLanding">
-                        <i class="ri-slideshow-3-line"></i> <span data-key="t-landing">Training & Development</span>
-                    </a>
-                    <div class="menu-dropdown collapse " id="sidebarLanding6">
-                        <ul class="nav nav-sm flex-column">
-                            <li class="nav-item"> <a href="#" class="nav-link">Traing</a></li>
-                            <li class="nav-item"> <a href="#" class="nav-link">Seminar</a></li>
-                        </ul>
-                    </div>
-                </li> -->
-                    <!-- <li class="nav-item">
-                    <a class="nav-link menu-link" href="#sidebarLanding7" data-bs-toggle="collapse" role="button" aria-expanded="true" aria-controls="sidebarLanding">
-                        <i class=" ri-file-edit-line"></i> <span data-key="t-landing">Compliance & Legal</span>
-                    </a>
-                    <div class="menu-dropdown collapse " id="sidebarLanding7">
-                        <ul class="nav nav-sm flex-column">
-                            <li class="nav-item"> <a href="#" class="nav-link">Company Policy</a></li>
-                            <li class="nav-item"> <a href="#" class="nav-link">Memorandum & Announcement</a></li>
-                        </ul>
-                    </div>
-                </li> -->
-                    <!-- <li class="nav-item ">
-                    <a class="nav-link menu-link" href="#sidebarLanding8" data-bs-toggle="collapse" role="button" aria-expanded="true" aria-controls="sidebarLanding">
-                        <i class=" ri-bar-chart-box-line"></i> <span data-key="t-landing">Reports</span>
-                    </a>
-                    <div class="menu-dropdown collapse <?php if ($page == 'payroll-report') {
-                                                            echo 'show';
-                                                        } ?>" id="sidebarLanding8">
-                        <ul class="nav nav-sm flex-column">
-                            <li class="nav-item"> <a href="#" class="nav-link">Employee Masterlist</a></li>
-                            <li class="nav-item"> <a href="index.php?page=payroll-report" class="nav-link <?php if ($page == 'payroll-report') {
-                                                                                                                echo 'active';
-                                                                                                            } ?>">Payroll</a></li>
-                        </ul>
-                    </div>
-                </li> -->
-                <?php if($login_role !== 4) { ?>
-                    <li class="nav-item">
-                        <a class="nav-link menu-link <?php if ($page == 'visitors-logs') {
-                                                            echo 'active';
-                                                        } ?>" href="index.php?page=visitors-logs">
-                            <i class="ri-timer-line"></i> <span data-key="t-widgets">Visitors Logs</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link menu-link <?php if ($page == 'users') {
-                                                            echo 'active';
-                                                        } ?>" href="index.php?page=users">
-                            <i class=" ri-team-line"></i> <span data-key="t-widgets">User Profile</span>
-                        </a>
-                    </li>
-                    <?php } ?>
-                <?php } ?>
-                <?php if ($login_role  === 6) { ?>
-                    <li class="menu-title"><span data-key="t-menu">Links</span></li>
-                    <li class="nav-item">
-                        <a class="nav-link menu-link" href="#sidebarLanding3" data-bs-toggle="collapse" role="button" aria-expanded="true" aria-controls="sidebarLanding">
-                            <i class="ri-calendar-line"></i> <span data-key="t-landing">Time & Attendance</span>
-                        </a>
-                        <div class="menu-dropdown collapse <?php if ($page == 'attendance' || $page == 'dtr'  ||  $page == 'dtr-details') {
-                                                                echo 'show';
-                                                            } ?>" id="sidebarLanding3" style="">
-                            <ul class="nav nav-sm flex-column">
-                                <li class="nav-item">
-                                    <a href="index.php?page=dtr" class="nav-link <?php if ($page == 'dtr'  ||  $page == 'dtr-details') {
-                                                                                        echo 'active';
-                                                                                    } ?>" data-key=" t-job">Daily Time Record</a>
-                                </li>
-                                <!-- <li class="nav-item">
-                                <a href="index.php?page=attendance" class="nav-link <?php if ($page == 'attendance') {
-                                                                                        echo 'active';
-                                                                                    } ?>" data-key="t-nft-landing">Attendance Record</a>
-                            </li> -->
+                </li>
+                <?php endif; ?>
 
-                            </ul>
-                        </div>
-                    </li>
-                <?php } ?>
-                <?php if ($login_role  === 7) { ?>
-                    <li class="menu-title"><span data-key="t-menu">Links</span></li>
-                    <li class="nav-item">
-                        <a class="nav-link menu-link <?php if ($page == 'home') {
-                                                            echo 'active';
-                                                        } ?>" href="index.php">
-                            <i class=" ri-dashboard-fill"></i> <span data-key="t-widgets">Dashboard</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link menu-link" href="#sidebarLanding3" data-bs-toggle="collapse" role="button" aria-expanded="true" aria-controls="sidebarLanding">
-                            <i class="ri-calendar-line"></i> <span data-key="t-landing">Time & Attendance</span>
-                        </a>
-                        <div class="menu-dropdown collapse <?php if ($page == 'attendance' || $page == 'dtr'  ||  $page == 'dtr-details') {
-                                                                echo 'show';
-                                                            } ?>" id="sidebarLanding3" style="">
-                            <ul class="nav nav-sm flex-column">
-                                <li class="nav-item">
-                                    <a href="index.php?page=dtr" class="nav-link <?php if ($page == 'dtr'  ||  $page == 'dtr-details') {
-                                                                                        echo 'active';
-                                                                                    } ?>" data-key=" t-job">Daily Time Record</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="index.php?page=attendance" class="nav-link <?php if ($page == 'attendance') {
-                                                                                            echo 'active';
-                                                                                        } ?>" data-key="t-nft-landing">Attendance Record</a>
-                                </li>
+                <!-- Time & Attendance -->
+                <?php if (!$is_cashier): ?>
+                <li class="nav-item">
+                    <a href="dtr" class="nav-link <?= in_array($page, ['dtr','dtr-details','attendance']) ? 'active' : '' ?>">
+                        <i class="ri-calendar-line"></i> <span>Time & Attendance</span>
+                    </a>
+                </li>
+                <?php endif; ?>
+                <!-- POS Systems -->
+                <li class="nav-item">
+                    <a class="nav-link menu-link js-sidebar-collapse-toggle" href="#sidebarPOS" role="button"
+                        aria-controls="sidebarPOS"
+                        aria-expanded="<?= in_array($page, ['branches','categories','products','inventory-report']) ? 'true' : 'false' ?>">
+                        <i class="ri-shopping-cart-2-line"></i> <span>POS Systems</span> <i class="ri-arrow-right-s-line float-end"></i>
+                    </a>
+                    <div class="menu-dropdown collapse <?= in_array($page, ['branches','categories','products','inventory-report']) ? 'show' : '' ?>" id="sidebarPOS">
+                        <ul class="nav nav-sm flex-column">
+                            <?php if (!$is_cashier): ?>
+                            <li class="nav-item">
+                                <a href="branches" class="nav-link <?= $page === 'branches' ? 'active' : '' ?>">
+                                    <i class="ri-git-branch-line me-1"></i>Branches
+                                </a>
+                            </li>
+                            <?php endif; ?>
+                            <li class="nav-item">
+                                <a href="categories" class="nav-link <?= $page === 'categories' ? 'active' : '' ?>">
+                                    <i class="ri-layout-grid-line me-1"></i>Categories
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="products" class="nav-link <?= $page === 'products' ? 'active' : '' ?>">
+                                    <i class="ri-shopping-bag-2-line me-1"></i>Products
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="inventory-report" class="nav-link <?= $page === 'inventory-report' ? 'active' : '' ?>">
+                                    <i class="ri-store-3-line me-1"></i>Inventory
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
 
-                            </ul>
-                        </div>
-                    </li>
-                <?php } ?>
+                <!-- Reports -->
+                <li class="nav-item">
+                    <a class="nav-link menu-link js-sidebar-collapse-toggle" href="#sidebarReports" role="button"
+                        aria-controls="sidebarReports"
+                        aria-expanded="<?= $page === 'sales-report' ? 'true' : 'false' ?>">
+                        <i class="ri-bar-chart-box-line"></i> <span>Reports</span> <i class="ri-arrow-right-s-line float-end"></i>
+                    </a>
+                    <div class="menu-dropdown collapse <?= $page === 'sales-report' ? 'show' : '' ?>" id="sidebarReports">
+                        <ul class="nav nav-sm flex-column">
+                            <li class="nav-item">
+                                <a href="sales-report" class="nav-link <?= $page === 'sales-report' ? 'active' : '' ?>">
+                                    <i class="ri-money-dollar-circle-line me-1"></i>Sales
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+
+                <!-- Users — Admin only -->
+                <?php if ($login_role === 1): ?>
+                <li class="nav-item">
+                    <a class="nav-link menu-link <?= $page === 'users' ? 'active' : '' ?>" href="users">
+                        <i class="ri-shield-user-line"></i> <span>User Management</span>
+                    </a>
+                </li>
+                <?php endif; ?>
+
+                <?php endif; ?>
+
+                <!-- Role 9 (Cashier) -->
+                <?php if ($login_role === 9): ?>
+                <li class="nav-item">
+                    <a class="nav-link menu-link js-sidebar-collapse-toggle" href="#sidebarCashierTools" role="button"
+                            aria-controls="sidebarCashierTools"
+                                aria-expanded="<?= in_array($page, ['damage-items','damage-items-details']) ? 'true' : 'false' ?>">
+                        <i class="ri-file-damage-line"></i> <span>Damage Items</span> <i class="ri-arrow-right-s-line float-end"></i>
+                    </a>
+                    <div class="menu-dropdown collapse <?= in_array($page, ['damage-items','damage-items-details']) ? 'show' : '' ?>" id="sidebarCashierTools">
+                        <ul class="nav nav-sm flex-column">
+                            <li class="nav-item">
+                                <a href="damage-items" class="nav-link <?= $page === 'damage-items' ? 'active' : '' ?>">
+                                    <i class="ri-tools-line me-1"></i>Manage Damage Items
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <!-- <a href="damage-items-details" class="nav-link <?= $page === 'damage-items-details' ? 'active' : '' ?>">
+                                    <i class="ri-file-list-3-line me-1"></i>Damage Items Details
+                                </a> -->
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+                <li class="nav-item">
+                    <a href="owner-requisition" class="nav-link <?= $page === 'owner-requisition' ? 'active' : '' ?>">
+                        <i class="ri-file-list-3-line me-1"></i>Owner Requisition
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link menu-link <?= $page === 'sales-transaction' ? 'active' : '' ?>" href="sales-transaction">
+                        <i class="ri-shopping-cart-2-line"></i> <span>Sales Transaction</span>
+                    </a>
+                </li>
+                <?php endif; ?>
+
+
+                <!-- Role 6 (PIC) -->
+                <?php if ($login_role === 6): ?>
+                <li class="nav-item">
+                    <a class="nav-link menu-link" href="#sidebarAttendance6" data-bs-toggle="collapse" role="button"
+                        aria-expanded="<?= in_array($page, ['attendance','dtr','dtr-details']) ? 'true' : 'false' ?>">
+                        <i class="ri-calendar-line"></i> <span>Time & Attendance</span>
+                    </a>
+                    <div class="menu-dropdown collapse <?= in_array($page, ['attendance','dtr','dtr-details']) ? 'show' : '' ?>" id="sidebarAttendance6">
+                        <ul class="nav nav-sm flex-column">
+                            <li class="nav-item">
+                                <a href="dtr" class="nav-link <?= in_array($page, ['dtr','dtr-details']) ? 'active' : '' ?>">
+                                    <i class="ri-time-line me-1"></i>Daily Time Record
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+                <?php endif; ?>
+
+                <!-- Role 7 (Auditor) -->
+                <?php if ($login_role === 7): ?>
+                <li class="nav-item">
+                    <a class="nav-link menu-link <?= $page === 'home' ? 'active' : '' ?>" href="home">
+                        <i class="ri-dashboard-fill"></i> <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link menu-link" href="#sidebarAttendance7" data-bs-toggle="collapse" role="button"
+                        aria-expanded="<?= in_array($page, ['attendance','dtr','dtr-details']) ? 'true' : 'false' ?>">
+                        <i class="ri-calendar-line"></i> <span>Time & Attendance</span>
+                    </a>
+                    <div class="menu-dropdown collapse <?= in_array($page, ['attendance','dtr','dtr-details']) ? 'show' : '' ?>" id="sidebarAttendance7">
+                        <ul class="nav nav-sm flex-column">
+                            <li class="nav-item">
+                                <a href="dtr" class="nav-link <?= in_array($page, ['dtr','dtr-details']) ? 'active' : '' ?>">
+                                    <i class="ri-time-line me-1"></i>Daily Time Record
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="attendance" class="nav-link <?= $page === 'attendance' ? 'active' : '' ?>">
+                                    <i class="ri-calendar-check-line me-1"></i>Attendance Record
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+                <?php endif; ?>
+
             </ul>
         </div>
-        <!-- Sidebar -->
     </div>
 
     <div class="sidebar-background"></div>
 </div>
+
+<script>
+(function () {
+function initSidebarDropdowns() {
+    document.querySelectorAll('.js-sidebar-collapse-toggle').forEach(function (toggle) {
+        var targetSelector = toggle.getAttribute('href');
+        var target = targetSelector ? document.querySelector(targetSelector) : null;
+
+        if (!target) {
+            return;
+        }
+
+        target.addEventListener('shown.bs.collapse', function () {
+            toggle.setAttribute('aria-expanded', 'true');
+        });
+
+        target.addEventListener('hidden.bs.collapse', function () {
+            toggle.setAttribute('aria-expanded', 'false');
+        });
+
+        toggle.addEventListener('click', function (event) {
+            event.preventDefault();
+
+            if (window.bootstrap && bootstrap.Collapse) {
+                var collapse = bootstrap.Collapse.getInstance(target) || new bootstrap.Collapse(target, { toggle: false });
+                collapse.toggle();
+                return;
+            }
+
+            var willOpen = !target.classList.contains('show');
+            target.classList.toggle('show', willOpen);
+            toggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        });
+    });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSidebarDropdowns);
+} else {
+    initSidebarDropdowns();
+}
+})();
+</script>

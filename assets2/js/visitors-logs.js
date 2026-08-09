@@ -105,10 +105,9 @@ $("#form-filter").on('submit', function(e){
 
     form.parsley().validate();
 
-    if (form.parsley().isValid()){ 
-        e.preventDefault()
-        let fullUrl = window.location.href + '&' +  $(this).serialize();
-        window.location.href = fullUrl
+    if (form.parsley().isValid()){
+        var params = $(this).serializeArray().filter(function(p){ return p.name !== 'page'; });
+        window.location.href = window.location.pathname + '?' + $.param(params);
     }
 });
 

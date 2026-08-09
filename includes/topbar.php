@@ -7,8 +7,8 @@
             </div>
 
             <div class="navbar-brand">
-                <a   href="index.php"><img  style="width: 25px;" src="assets/images/logo.jpeg" alt="Lucid Logo" class="img-responsive "></a> 
-                <span>JEJORS Payroll</span>               
+                <a   href="index.php"><img  style="width: 25px;" src="assets/images/gv-logo.png" alt="Lucid Logo" class="img-responsive "></a> 
+                <span> Payroll</span>               
             </div>
             
             <!-- <div class="navbar-right">

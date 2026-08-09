@@ -1,5 +1,5 @@
 <?php
-$staticToken = 'jejors_api_token9343876536753';
+$staticToken = 'api_token9343876536753';
 $encodedToken = base64_encode($staticToken);
 define('API_TOKEN', $encodedToken );
 ob_start();
@@ -48,6 +48,12 @@ if ($action == "mobile-save-logs") {
 	return;
 }
 
+if ($action == "mobile-get-branches") {
+	$data = $crud->mobile_get_branches();
+	echo json_encode($data);
+	return;
+}
+
 if ($action == "mobile-push-dtr") {
 	$save = $crud->save_employee_attendance_mobile();
 	echo json_encode($save);
@@ -60,6 +66,106 @@ if ($action == "manual-push-dtr") {
 	return;
 }
 
+if ($action == "upload-biometric-dtr") {
+	$save = $crud->upload_biometric_dtr();
+	header('Content-Type: application/json; charset=utf-8');
+	if (ob_get_length()) {
+		ob_clean();
+	}
+	echo json_encode($save);
+	return;
+}
+
+// ── Mobile POS ──
+if ($action == "mobile-pos-products") {
+	$save = $crud->mobile_pos_products();
+	echo json_encode($save);
+	return;
+}
+
+if ($action == "mobile-pos-save-sale") {
+	$save = $crud->mobile_pos_save_sale();
+	echo json_encode($save);
+	return;
+}
+
+if ($action == "mobile-pos-sales") {
+	$save = $crud->mobile_pos_sales();
+	echo json_encode($save);
+	return;
+}
+
+if ($action == "mobile-pos-sale-details") {
+	$save = $crud->mobile_pos_sale_details();
+	echo json_encode($save);
+	return;
+}
+
+if ($action == "mobile-pos-update-product-stock") {
+	$save = $crud->mobile_pos_update_product_stock();
+	echo json_encode($save);
+	return;
+}
+
+if ($action == "mobile-pos-update-product-price") {
+	$save = $crud->mobile_pos_update_product_price();
+	echo json_encode($save);
+	return;
+}
+
+if ($action == "mobile-pos-save-damage") {
+	$save = $crud->mobile_pos_save_damage();
+	echo json_encode($save);
+	return;
+}
+
+if ($action == "mobile-pos-delete-damage") {
+	$save = $crud->mobile_pos_delete_damage();
+	echo json_encode($save);
+	return;
+}
+
+if ($action == "mobile-pos-save-owner-requisition") {
+	$save = $crud->mobile_pos_save_owner_requisition();
+	echo json_encode($save);
+	return;
+}
+
+if ($action == "mobile-pos-delete-owner-requisition") {
+	$save = $crud->mobile_pos_delete_owner_requisition();
+	echo json_encode($save);
+	return;
+}
+
+if ($action == "mobile-pos-update-owner-requisition-status") {
+	$save = $crud->mobile_pos_update_owner_requisition_status();
+	echo json_encode($save);
+	return;
+}
+
+if ($action == "mobile-notification-list") {
+	$save = $crud->mobile_notification_list();
+	echo json_encode($save);
+	return;
+}
+
+if ($action == "mobile-notification-all") {
+	$save = $crud->mobile_notification_all();
+	echo json_encode($save);
+	return;
+}
+
+if ($action == "mobile-notification-delete") {
+	$save = $crud->mobile_notification_delete();
+	echo json_encode($save);
+	return;
+}
+
+if ($action == 'add_pos_product_stock') {
+	$save = $crud->add_pos_product_stock();
+	echo is_array($save) ? json_encode($save) : $save;
+	return;
+}
 
 if ($action == 'login2') {
 	$login = $crud->login2();
@@ -80,12 +186,42 @@ if ($action == 'logout2') {
 	return;
 }
 
+function getAuthorizationHeader() {
+	if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+		return trim($_SERVER['HTTP_AUTHORIZATION']);
+	}
+	if (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+		return trim($_SERVER['REDIRECT_HTTP_AUTHORIZATION']);
+	}
+	if (function_exists('getallheaders')) {
+		$headers = getallheaders();
+		foreach ($headers as $name => $value) {
+			if (strtolower($name) === 'authorization') {
+				return trim($value);
+			}
+		}
+	}
+	return '';
+}
+
+function isValidApiTokenRequest($action) {
+	$authHeader = getAuthorizationHeader();
+	if (preg_match('/Bearer\s+(.+)$/i', $authHeader, $matches)) {
+		$token = trim($matches[1]);
+		if ($token === API_TOKEN && preg_match('/^(mobile-|owner-report-)/', $action)) {
+			return true;
+		}
+	}
+	return false;
+}
 
 // end mobile
-if (!isset($_SESSION['is_login']) && !$_SESSION['is_login'] === true) {
-	header("HTTP/1.0 403 Forbidden");
-	echo "<h1>403 Error: Access Forbidden</h1>";
-	exit();
+if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) {
+	if (!isValidApiTokenRequest($action)) {
+		header("HTTP/1.0 403 Forbidden");
+		echo json_encode(['success' => false, 'message' => 'Access Forbidden']);
+		exit();
+	}
 }
 
 
@@ -273,15 +409,10 @@ if ($action == "update_status_dtr") {
 if ($action == "delete_dtr") {
 	$save = $crud->delete_dtr();
 	if ($save)
-		echo $save;
+		echo json_encode($save);
 }
 
 
-if ($action == "get_sites") {
-	$save = $crud->get_sites();
-	if ($save)
-		echo $save;
-}
 
 if ($action == "save_settings") {
 	$save = $crud->save_payroll_settings();
@@ -360,6 +491,260 @@ if ($action == "import_employee") {
 	$save = $crud->import_employee();
 	if ($save)
 		echo $save;
+}
+
+if ($action == "get_pos_sale_details") {
+	echo json_encode($crud->get_pos_sale_details());
+}
+
+// ── POS: Branches ──
+if ($action == "add_pos_branch") {
+	$save = $crud->add_pos_branch();
+	echo $save;
+}
+if ($action == "update_pos_branch") {
+	$save = $crud->update_pos_branch();
+	echo $save;
+}
+
+// ── POS: Categories ──
+if ($action == "add_pos_category") {
+	$save = $crud->add_pos_category();
+	echo $save;
+}
+if ($action == "update_pos_category") {
+	$save = $crud->update_pos_category();
+	echo $save;
+}
+
+// ── POS: Products ──
+if ($action == "add_pos_product") {
+	$save = $crud->add_pos_product();
+	echo $save;
+}
+if ($action == "update_pos_product") {
+	$save = $crud->update_pos_product();
+	echo $save;
+}
+
+// ── OWNER: Reports (All Branches) ──
+if ($action == "owner-report-sales") {
+	global $conn;
+	$totalSales = 0;
+	$result = $conn->query("SELECT SUM(total) as total FROM pos_sales");
+	if ($result) {
+		$row = $result->fetch_assoc();
+		$totalSales = floatval($row['total'] ?? 0);
+	}
+	echo json_encode(['success' => true, 'total' => $totalSales]);
+	return;
+}
+
+if ($action == "owner-report-sales-branches") {
+	global $conn;
+	$branches = [];
+	$result = $conn->query(
+		"SELECT b.id, b.branch_name, IFNULL(SUM(s.total), 0) AS total_sales " .
+		"FROM branches b LEFT JOIN pos_sales s ON s.branch_id = b.id " .
+		"GROUP BY b.id, b.branch_name ORDER BY b.branch_name ASC"
+	);
+	if ($result) {
+		while ($row = $result->fetch_assoc()) {
+			$branches[] = [
+				'id' => intval($row['id']),
+				'branch_name' => $row['branch_name'],
+				'total_sales' => floatval($row['total_sales']),
+			];
+		}
+	}
+	echo json_encode(['success' => true, 'branches' => $branches]);
+	return;
+}
+
+if ($action == "owner-report-inventory-branches") {
+	global $conn;
+	$branches = [];
+	$result = $conn->query(
+		"SELECT b.id, b.branch_name, IFNULL(COUNT(p.id), 0) AS total_products " .
+		"FROM branches b LEFT JOIN products p ON p.branch_id = b.id AND p.status = 1 " .
+		"GROUP BY b.id, b.branch_name ORDER BY b.branch_name ASC"
+	);
+	if ($result) {
+		while ($row = $result->fetch_assoc()) {
+			$branches[] = [
+				'id' => intval($row['id']),
+				'branch_name' => $row['branch_name'],
+				'total_products' => intval($row['total_products']),
+			];
+		}
+	}
+	echo json_encode(['success' => true, 'branches' => $branches]);
+	return;
+}
+
+if ($action == "owner-report-attendance-branches") {
+	global $conn;
+	$branches = [];
+	$result = $conn->query(
+		"SELECT b.id, b.branch_name, " .
+		"IFNULL(SUM(CASE WHEN dd.attendance_type IN ('1','3') THEN 1 ELSE 0 END), 0) AS present_count, " .
+		"IFNULL(COUNT(dd.id), 0) AS total_logs " .
+		"FROM branches b " .
+		"LEFT JOIN dtr d ON d.branch_id = b.id " .
+		"LEFT JOIN dtr_details dd ON dd.ddtr_id = d.id " .
+		"GROUP BY b.id, b.branch_name ORDER BY b.branch_name ASC"
+	);
+	if ($result) {
+		while ($row = $result->fetch_assoc()) {
+			$totalLogs = intval($row['total_logs']);
+			$present = intval($row['present_count']);
+			$attendanceRate = $totalLogs > 0 ? round(($present / $totalLogs) * 100, 1) : 0;
+			$branches[] = [
+				'id' => intval($row['id']),
+				'branch_name' => $row['branch_name'],
+				'attendance_rate' => $attendanceRate,
+			];
+		}
+	}
+	echo json_encode(['success' => true, 'branches' => $branches]);
+	return;
+}
+
+if ($action == "owner-report-payroll-branches") {
+	global $conn;
+	$branches = [];
+	$result = $conn->query(
+		"SELECT b.id, b.branch_name, IFNULL(COUNT(DISTINCT dd.employee_id), 0) AS employee_count " .
+		"FROM branches b " .
+		"LEFT JOIN dtr d ON d.branch_id = b.id " .
+		"LEFT JOIN dtr_details dd ON dd.ddtr_id = d.id " .
+		"GROUP BY b.id, b.branch_name ORDER BY b.branch_name ASC"
+	);
+	if ($result) {
+		while ($row = $result->fetch_assoc()) {
+			$branches[] = [
+				'id' => intval($row['id']),
+				'branch_name' => $row['branch_name'],
+				'employee_count' => intval($row['employee_count']),
+			];
+		}
+	}
+	echo json_encode(['success' => true, 'branches' => $branches]);
+	return;
+}
+
+if ($action == "owner-report-inventory") {
+	global $conn;
+	$totalProducts = 0;
+	$result = $conn->query("SELECT COUNT(*) as count FROM products WHERE status = 1");
+	if ($result) {
+		$row = $result->fetch_assoc();
+		$totalProducts = intval($row['count'] ?? 0);
+	}
+	echo json_encode(['success' => true, 'count' => $totalProducts]);
+	return;
+}
+
+if ($action == "owner-report-attendance") {
+	global $conn;
+	$attendanceRate = 0;
+	$totalDays = $conn->query("SELECT COUNT(DISTINCT DATE(datetime_log)) as days FROM attendance");
+	$presentLogs = $conn->query("SELECT COUNT(*) as presents FROM attendance WHERE log_type IN (1,3)");
+
+	if ($totalDays && $presentLogs) {
+		$totalRow = $totalDays->fetch_assoc();
+		$presentRow = $presentLogs->fetch_assoc();
+		$total = intval($totalRow['days'] ?? 0);
+		$present = intval($presentRow['presents'] ?? 0);
+		$attendanceRate = $total > 0 ? ($present / ($total * 2)) * 100 : 0;
+	}
+	echo json_encode(['success' => true, 'rate' => round($attendanceRate, 1)]);
+	return;
+}
+
+if ($action == "owner-report-payroll") {
+	global $conn;
+	$employeeCount = 0;
+	$result = $conn->query("SELECT COUNT(*) as count FROM employee WHERE status = 1");
+	if ($result) {
+		$row = $result->fetch_assoc();
+		$employeeCount = intval($row['count'] ?? 0);
+	}
+	echo json_encode(['success' => true, 'count' => $employeeCount]);
+	return;
+}
+
+if ($action == "owner-report-payable") {
+	global $conn;
+	$totalPayable = 0;
+	$payableCount = 0;
+	$result = $conn->query(
+		"SELECT " .
+		"IFNULL(ps.count, 0) + IFNULL(orq.count, 0) AS count, " .
+		"IFNULL(ps.total_payable, 0) + IFNULL(orq.total_payable, 0) AS total_payable " .
+		"FROM (" .
+			"SELECT COUNT(*) AS count, IFNULL(SUM(total - payment), 0) AS total_payable " .
+			"FROM pos_sales WHERE total > payment" .
+		") ps " .
+		"CROSS JOIN (" .
+			"SELECT COUNT(*) AS count, IFNULL(SUM(r.quantity * COALESCE(p.unit_price, 0)), 0) AS total_payable " .
+			"FROM owner_requisitions r " .
+			"LEFT JOIN products p ON p.product_name COLLATE utf8mb4_unicode_ci = r.item_name COLLATE utf8mb4_unicode_ci " .
+			"AND p.status = 1 AND p.branch_id = r.branch_id " .
+			"WHERE r.status = 'Approved'" .
+		") orq"
+	);
+	if (!$result) {
+		echo json_encode([
+			'success' => false,
+			'message' => $conn->error,
+		]);
+		return;
+	}
+	$row = $result->fetch_assoc();
+	$payableCount = intval($row['count'] ?? 0);
+	$totalPayable = floatval($row['total_payable'] ?? 0);
+	echo json_encode([
+		'success' => true,
+		'count' => $payableCount,
+		'total' => $totalPayable,
+	]);
+	return;
+}
+
+if ($action == "owner-report-payable-branches") {
+	global $conn;
+	$branches = [];
+	$result = $conn->query(
+		"SELECT b.id, b.branch_name, " .
+		"IFNULL(ps.payable_count, 0) + IFNULL(orq.payable_count, 0) AS payable_count, " .
+		"IFNULL(ps.total_payable, 0) + IFNULL(orq.total_payable, 0) AS total_payable " .
+		"FROM branches b " .
+		"LEFT JOIN (" .
+			"SELECT branch_id AS pos_branch_id, COUNT(*) AS payable_count, IFNULL(SUM(total - payment), 0) AS total_payable " .
+			"FROM pos_sales WHERE total > payment GROUP BY branch_id" .
+		") ps ON ps.pos_branch_id = b.id " .
+		"LEFT JOIN (" .
+			"SELECT r.branch_id AS orq_branch_id, COUNT(*) AS payable_count, IFNULL(SUM(r.quantity * COALESCE(p.unit_price, 0)), 0) AS total_payable " .
+			"FROM owner_requisitions r " .
+			"LEFT JOIN products p ON p.product_name COLLATE utf8mb4_unicode_ci = r.item_name COLLATE utf8mb4_unicode_ci " .
+			"AND p.status = 1 AND p.branch_id = r.branch_id " .
+			"WHERE r.status = 'Approved' GROUP BY r.branch_id" .
+		") orq ON orq.orq_branch_id = b.id " .
+		"GROUP BY b.id, b.branch_name ORDER BY b.branch_name ASC"
+	);
+	if ($result) {
+		while ($row = $result->fetch_assoc()) {
+			$branches[] = [
+				'id' => intval($row['id']),
+				'branch_name' => $row['branch_name'],
+				'payable_count' => intval($row['payable_count']),
+				'total_payable' => floatval($row['total_payable']),
+			];
+		}
+	}
+	echo json_encode(['success' => true, 'branches' => $branches]);
+	return;
 }
 
 

@@ -62,12 +62,12 @@ $result_array = stringToArrayBySpaces($decoded_data);
 <html lang="en">
 
 <head>
-    <title>JEJORS Payroll</title>
+    <title> Payroll</title>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=Edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <meta name="description" content="JEJORS Payroll">
-    <meta name="author" content="design by: Niel Daculan">
+    <meta name="description" content=" Payroll">
+    <meta name="author" content="design by:">
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <!-- VENDOR CSS -->
     <link rel="stylesheet" href="assets/vendor/bootstrap/css/bootstrap.min.css">

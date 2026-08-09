@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title> Payroll — Developer Guide</title>
+<style>
+  :root{
+    --brand:#219688; --brand-dark:#176358; --brand-light:#e6f5f3;
+    --ink:#1e293b; --muted:#64748b; --line:#e2e8f0; --bg:#f8fafc;
+    --code-bg:#0f172a; --code-ink:#e2e8f0; --amber:#c98a00; --red:#dc2626;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Segoe UI',Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.6}
+  header{background:linear-gradient(135deg,var(--brand-dark),var(--brand));color:#fff;padding:34px 40px}
+  header h1{margin:0;font-size:26px;font-weight:800;letter-spacing:.3px}
+  header p{margin:6px 0 0;opacity:.9;font-size:14px}
+  .wrap{display:flex;max-width:1200px;margin:0 auto}
+  nav{width:240px;flex-shrink:0;padding:24px 16px;position:sticky;top:0;align-self:flex-start;height:100vh;overflow:auto;border-right:1px solid var(--line)}
+  nav a{display:block;padding:7px 12px;color:var(--muted);text-decoration:none;border-radius:7px;font-size:13.5px;font-weight:500}
+  nav a:hover{background:var(--brand-light);color:var(--brand-dark)}
+  nav .grp{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:#94a3b8;margin:16px 12px 4px;font-weight:700}
+  main{flex:1;padding:28px 40px;min-width:0}
+  section{margin-bottom:40px;scroll-margin-top:16px}
+  h2{font-size:20px;border-bottom:2px solid var(--brand);padding-bottom:8px;margin-top:0}
+  h3{font-size:15.5px;color:var(--brand-dark);margin:22px 0 6px}
+  p,li{font-size:14.5px}
+  code{background:#eef2f7;color:#0f172a;padding:1.5px 6px;border-radius:4px;font-family:'SF Mono',Consolas,monospace;font-size:13px}
+  pre{background:var(--code-bg);color:var(--code-ink);padding:16px 18px;border-radius:10px;overflow:auto;font-family:'SF Mono',Consolas,monospace;font-size:12.8px;line-height:1.5}
+  pre .c{color:#7dd3fc}.pre .k{color:#f0abfc}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:var(--brand-light);color:var(--brand-dark);font-weight:700}
+  tr:nth-child(even) td{background:#fff}
+  .card{background:#fff;border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:8px;padding:14px 18px;margin:14px 0}
+  .warn{border-left-color:var(--amber);background:#fffdf5}
+  .danger{border-left-color:var(--red);background:#fef5f5}
+  .tag{display:inline-block;background:var(--brand);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;vertical-align:middle}
+  .file{font-family:'SF Mono',Consolas,monospace;font-weight:600;color:var(--brand-dark)}
+  .step{display:flex;gap:12px;margin:10px 0}
+  .step .n{flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--brand);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+  a.ext{color:var(--brand)}
+  kbd{background:#1e293b;color:#fff;border-radius:4px;padding:1px 6px;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1> Payroll &amp; POS — Developer Guide</h1>
+  <p>Onboarding reference for the PHP web app (XAMPP) and the React Native mobile app. Read this before touching code.</p>
+</header>
+
+<div class="wrap">
+<nav>
+  <div class="grp">Overview</div>
+  <a href="#stack">Tech Stack</a>
+  <a href="#setup">Local Setup</a>
+  <a href="#structure">Project Structure</a>
+  <div class="grp">How it works</div>
+  <a href="#lifecycle">Request Lifecycle</a>
+  <a href="#dbconnect">db_connect.php</a>
+  <a href="#index">index.php (router)</a>
+  <a href="#adminclass">admin_class.php</a>
+  <a href="#ajax">ajax.php (dispatcher)</a>
+  <div class="grp">Front-end</div>
+  <a href="#libs">Libraries / Tools</a>
+  <a href="#validation">Validation (Parsley)</a>
+  <a href="#conventions">UI Conventions</a>
+  <div class="grp">Recipes</div>
+  <a href="#addpage">Add a New Page</a>
+  <a href="#addaction">Add an AJAX Action</a>
+  <a href="#upload">File Uploads</a>
+  <div class="grp">Domain</div>
+  <a href="#roles">User Roles</a>
+  <a href="#pos">POS Module</a>
+  <a href="#mobile">Mobile App</a>
+  <a href="#db">Database Setup</a>
+</nav>
+
+<main>
+
+<section id="stack">
+  <h2>Tech Stack</h2>
+  <table>
+    <tr><th>Layer</th><th>Technology</th></tr>
+    <tr><td>Server</td><td>PHP (procedural + one <code>Action</code> class), Apache via <b>XAMPP</b></td></tr>
+    <tr><td>Database</td><td>MySQL / MariaDB — database name <code>payroll</code>, accessed with <b>mysqli</b></td></tr>
+    <tr><td>Templating</td><td>Plain PHP includes (no framework). Bootstrap 5 admin theme (Velzon-style)</td></tr>
+    <tr><td>JS</td><td>jQuery, Bootstrap bundle, DataTables, Select2, Parsley.js, SweetAlert2, Toastr, Moment + bootstrap-datetimepicker</td></tr>
+    <tr><td>Excel</td><td>PhpSpreadsheet (import/export) via Composer <code>vendor/</code></td></tr>
+    <tr><td>Mobile</td><td>React Native (TypeScript), Zustand store, Axios, React Navigation, react-native-paper</td></tr>
+  </table>
+  <div class="card warn"><b>No framework.</b> Routing, auth, and DB access are hand-rolled. Follow the existing patterns in this guide rather than introducing new ones.</div>
+</section>
+
+<section id="setup">
+  <h2>Local Setup</h2>
+  <div class="step"><div class="n">1</div><div>Install <b>XAMPP</b>. Put the project in <span class="file">/xamppfiles/htdocs/payroll</span> (macOS) or <span class="file">C:\xampp\htdocs\payroll</span> (Windows).</div></div>
+  <div class="step"><div class="n">2</div><div>Start <b>Apache</b> and <b>MySQL</b> from the XAMPP control panel.</div></div>
+  <div class="step"><div class="n">3</div><div>Open <a class="ext" href="http://localhost/phpmyadmin">phpMyAdmin</a>, create a database named <code>payroll</code>, and import the schema (see <a href="#db">Database Setup</a>).</div></div>
+  <div class="step"><div class="n">4</div><div>Confirm credentials in <span class="file">db_connect.php</span> (default XAMPP: user <code>root</code>, empty password).</div></div>
+  <div class="step"><div class="n">5</div><div>Run <code>composer install</code> in the project root (PhpSpreadsheet lives in <span class="file">vendor/</span>).</div></div>
+  <div class="step"><div class="n">6</div><div>Visit <a class="ext" href="http://localhost/payroll">http://localhost/payroll</a>. Clean URLs require <b>mod_rewrite</b> (the bundled <span class="file">.htaccess</span> handles routing).</div></div>
+</section>
+
+<section id="structure">
+  <h2>Project Structure</h2>
+<pre>payroll/
+├─ index.php            <span style="color:#7dd3fc"># front controller: layout + page router</span>
+├─ ajax.php             <span style="color:#7dd3fc"># single endpoint: ?action=xxx -> Action method</span>
+├─ admin_class.php      <span style="color:#7dd3fc"># class Action — ALL business logic / CRUD</span>
+├─ db_connect.php       <span style="color:#7dd3fc"># mysqli $conn</span>
+├─ login.php            <span style="color:#7dd3fc"># standalone login page</span>
+├─ .htaccess            <span style="color:#7dd3fc"># clean-URL rewrite to index.php</span>
+│
+├─ &lt;page&gt;.php           <span style="color:#7dd3fc"># content-only views: employee.php, dtr.php,</span>
+│                       <span style="color:#7dd3fc">#   payroll.php, users.php, branches.php, products.php ...</span>
+│
+├─ includes/
+│   ├─ header.php       <span style="color:#7dd3fc"># &lt;head&gt;, CSS</span>
+│   └─ navbar.php       <span style="color:#7dd3fc"># left sidebar menu (role-gated)</span>
+│
+├─ component/           <span style="color:#7dd3fc"># reusable modals / form partials</span>
+│   ├─ add_user_form.php, pos_modals.php, filter_logs.php ...
+│
+├─ assets2/js/          <span style="color:#7dd3fc"># page-specific JS (employee.js, dtr.js, products.js...)</span>
+├─ assets2/css/my-style.css
+├─ assets/              <span style="color:#7dd3fc"># theme assets + images</span>
+├─ uploads/             <span style="color:#7dd3fc"># user uploads (uploads/products/ for POS images)</span>
+└─ vendor/              <span style="color:#7dd3fc"># Composer (PhpSpreadsheet)</span></pre>
+</section>
+
+<section id="lifecycle">
+  <h2>Request Lifecycle</h2>
+  <h3>Page render (GET)</h3>
+<pre>Browser  ──/payroll/employee──►  .htaccess rewrite ──►  index.php?page=employee
+index.php:  db_connect.php  →  header.php  →  navbar.php  →  include 'employee.php'  →  footer + page JS</pre>
+  <h3>Data change (AJAX)</h3>
+<pre>page JS (jQuery $.ajax) ──POST ?action=save_employee──►  ajax.php
+ajax.php:  new Action()  →  $crud->save_employee()  →  echo result (text or JSON)
+page JS:  toastr/Swal feedback  →  location.reload()</pre>
+  <p>Two entry points only: <b>index.php</b> renders pages, <b>ajax.php</b> handles every data operation. There are no other endpoints.</p>
+</section>
+
+<section id="dbconnect">
+  <h2><span class="file">db_connect.php</span></h2>
+  <p>Creates the global <code>$conn</code> mysqli handle used everywhere. It also <code>return $conn;</code> at the end, so a double-include is harmless.</p>
+<pre>$conn = new mysqli('localhost','root','','payroll');
+if ($conn->connect_error) die('Connection failed: '.$conn->connect_error);
+$conn->set_charset('utf8mb4');
+return $conn;</pre>
+  <div class="card"><b>Where it comes from:</b> <code>index.php</code> includes it once at the top, so any page rendered through the router already has <code>$conn</code>. <code>admin_class.php</code> includes it in its constructor for AJAX calls. <b>Content-only page files should NOT re-include it.</b></div>
+  <div class="card danger"><b>SQL safety:</b> the codebase mixes prepared statements and string-interpolated queries. For any new query that takes user input, use <code>$conn-&gt;real_escape_string()</code> or prepared statements. Never concatenate raw <code>$_POST</code> into SQL.</div>
+</section>
+
+<section id="index">
+  <h2><span class="file">index.php</span> — the router</h2>
+  <p>Single layout file. After auth + header + navbar, it maps the <code>page</code> query param to a PHP file via a whitelist array, then includes it. Unknown pages fall back to <code>home</code>.</p>
+<pre>$routes = [
+  'home'=>'home', 'employee'=>'employee', 'payroll'=>'payroll',
+  'dtr'=>'dtr', 'attendance'=>'attendance', 'users'=>'users',
+  'branches'=>'branches', 'categories'=>'categories', 'products'=>'products',
+  /* ...add your page here... */
+];
+$page = isset($_GET['page']) ? trim($_GET['page']) : 'home';
+if (!array_key_exists($page, $routes)) $page = 'home';
+include $routes[$page] . '.php';</pre>
+  <p>Two more responsibilities live here:</p>
+  <ul>
+    <li><b><code>getRole($n)</code></b> — maps role numbers to labels (see <a href="#roles">Roles</a>).</li>
+    <li><b>Page-specific JS</b> — at the bottom, <code>&lt;?php if ($page=='employee') ?&gt;&lt;script src="assets2/js/employee.js"&gt;</code> blocks load only the JS that page needs.</li>
+  </ul>
+  <div class="card"><b>Clean URLs</b> come from <span class="file">.htaccess</span>: <code>^([a-zA-Z0-9_-]+)/?$ → index.php?page=$1</code>. So <code>/payroll/products</code> serves <code>index.php?page=products</code>. Real files (ajax.php, assets, uploads) are passed through untouched.</div>
+</section>
+
+<section id="adminclass">
+  <h2><span class="file">admin_class.php</span> — business logic</h2>
+  <p>One big class <code>Action</code>. Every create/update/delete/calculation is a method here. The constructor opens the DB and an output buffer; the destructor closes them.</p>
+<pre>class Action {
+  private $db;
+  function __construct(){ ob_start(); include 'db_connect.php'; $this->db = $conn; }
+  function __destruct(){ $this->db->close(); ob_end_flush(); }
+
+  function save_employee(){
+    extract($_POST);                         <span style="color:#7dd3fc">// $name, $id, ...</span>
+    $name = $this->db->real_escape_string($name);
+    if (empty($id)) $this->db->query("INSERT INTO employee SET name='$name'");
+    else            $this->db->query("UPDATE employee SET name='$name' WHERE id=".intval($id));
+    return 1;                                <span style="color:#7dd3fc">// echoed back by ajax.php</span>
+  }
+}</pre>
+  <h3>Return conventions</h3>
+  <ul>
+    <li>Simple methods <b>return <code>1</code></b> on success or an <b>error string</b> on failure → echoed as plain text.</li>
+    <li>Newer methods <b>return an array</b> <code>['result'=&gt;true,'message'=&gt;'...']</code> → <code>ajax.php</code> wraps it with <code>json_encode()</code>.</li>
+    <li>Strict DB errors are enabled in some methods with <code>mysqli_report(MYSQLI_REPORT_ERROR|MYSQLI_REPORT_STRICT)</code> + try/catch.</li>
+  </ul>
+</section>
+
+<section id="ajax">
+  <h2><span class="file">ajax.php</span> — the dispatcher</h2>
+  <p>Maps <code>?action=name</code> to <code>$crud-&gt;name()</code>. Mobile actions run first (before the login guard) because they authenticate with a token; the browser/admin actions sit below a session check.</p>
+<pre>$action = $_GET['action'];
+include 'admin_class.php';
+$crud = new Action();
+
+<span style="color:#7dd3fc">// ── mobile (token-auth, returns JSON, return early) ──</span>
+if ($action == 'mobile-login-check'){ echo json_encode($crud->loginMobile()); return; }
+if ($action == 'mobile-pos-save-sale'){ echo json_encode($crud->mobile_pos_save_sale()); return; }
+
+<span style="color:#7dd3fc">// ── session guard for everything below ──</span>
+if (!isset($_SESSION['is_login'])){ http_response_code(403); exit('Forbidden'); }
+
+if ($action == 'save_employee'){ $save=$crud->save_employee(); if($save) echo $save; }
+if ($action == 'add_pos_branch'){ echo $crud->add_pos_branch(); }
+<span style="color:#7dd3fc">// ...one if-block per action...</span></pre>
+  <div class="card warn"><b>Gotcha:</b> a missing <code>if ($action == ...)</code> block means the request returns an empty body and the JS reports a generic error. If a new AJAX call &ldquo;does nothing&rdquo;, check that its dispatch line exists here.</div>
+</section>
+
+<section id="libs">
+  <h2>Libraries / Tools (loaded in index.php footer)</h2>
+  <table>
+    <tr><th>Library</th><th>Used for</th><th>How</th></tr>
+    <tr><td><b>jQuery</b></td><td>DOM + all AJAX</td><td><code>$.ajax({url:'ajax.php?action=...'})</code></td></tr>
+    <tr><td><b>Bootstrap 5</b></td><td>Layout, modals</td><td><code>data-bs-toggle="modal" data-bs-target="#modal"</code></td></tr>
+    <tr><td><b>DataTables</b></td><td>Sortable/searchable tables</td><td><code>$('#data-table').DataTable()</code></td></tr>
+    <tr><td><b>Select2</b></td><td>Searchable dropdowns</td><td><code>$('#sel').select2({dropdownParent:$('#modal')})</code></td></tr>
+    <tr><td><b>Parsley.js</b></td><td><b>Form validation</b></td><td><code>data-parsley-*</code> attrs + <code>form.parsley().isValid()</code></td></tr>
+    <tr><td><b>SweetAlert2</b> (<code>Swal</code>)</td><td>Confirm dialogs, success/error</td><td><code>Swal.fire({icon:'success',...})</code></td></tr>
+    <tr><td><b>Toastr</b></td><td>Corner toast notifications</td><td><code>toastr.success('Saved!')</code></td></tr>
+    <tr><td><b>Moment + datetimepicker</b></td><td>Date range pickers</td><td><code>$('.datetimepicker').datetimepicker()</code></td></tr>
+    <tr><td><b>PhpSpreadsheet</b></td><td>Excel import/export (server)</td><td><code>use PhpOffice\PhpSpreadsheet\...</code></td></tr>
+  </table>
+</section>
+
+<section id="validation">
+  <h2>Form Validation — Parsley.js</h2>
+  <p>Validation is declarative on the HTML, then triggered in JS before sending the AJAX. Reference implementation: <span class="file">component/add_user_form.php</span> + <span class="file">assets2/js/user.js</span>.</p>
+  <h3>1. Markup — <code>novalidate</code> + per-field rules &amp; messages</h3>
+<pre>&lt;form id="form-add" novalidate&gt;
+  &lt;input name="name" required
+         data-parsley-required-message="Name is required."&gt;
+  &lt;select name="role" class="select2" required
+          data-parsley-required-message="Please select role."&gt;...&lt;/select&gt;
+&lt;/form&gt;</pre>
+  <h3>2. JS — validate, then submit</h3>
+<pre>$('#form-add').on('submit', function(e){
+  e.preventDefault();
+  var form = $(this);
+  form.parsley().validate();
+  if (!form.parsley().isValid()) return;        <span style="color:#7dd3fc">// blocked: messages show inline</span>
+
+  $.ajax({ url:'ajax.php?action=save_user', method:'POST',
+    data: form.serialize(),
+    success(resp){ /* toastr / Swal, then location.reload() */ }
+  });
+});</pre>
+  <div class="card"><b>File uploads:</b> swap <code>form.serialize()</code> for <code>new FormData(form[0])</code> and add <code>processData:false, contentType:false</code> (see <span class="file">assets2/js/products.js</span>).</div>
+</section>
+
+<section id="conventions">
+  <h2>UI Conventions</h2>
+  <ul>
+    <li><b>Tables:</b> give them <code>id="data-table"</code> and init DataTables. Never put a <code>colspan</code> &ldquo;no records&rdquo; row inside a DataTable — it breaks cell indexing. Leave the tbody empty and let DataTables show its own message.</li>
+    <li><b>Add/Edit in one modal:</b> a hidden <code>&lt;input name="id"&gt;</code> distinguishes update from insert. The Edit button copies row data into the modal via <code>data-*</code> attributes.</li>
+    <li><b>No hard deletes in newer modules:</b> records carry a <code>status</code> (1=active, 0=inactive). &ldquo;Delete&rdquo; sets status to 0.</li>
+    <li><b>Feedback:</b> <code>toastr</code> for lightweight saves; <code>Swal</code> for confirmations and blocking success/error.</li>
+    <li><b>After a successful save:</b> <code>location.reload()</code> (the app is server-rendered).</li>
+    <li><b>Brand color:</b> POS &amp; newer pages use teal <code>#219688</code> (dark <code>#176358</code>, light bg <code>#e6f5f3</code>). The legacy payroll spreadsheet view keeps Excel green.</li>
+  </ul>
+</section>
+
+<section id="addpage">
+  <h2>Recipe: Add a New Page</h2>
+  <div class="step"><div class="n">1</div><div>Create <span class="file">myreport.php</span> in the root. Start directly with the content (a <code>&lt;style&gt;</code> block + <code>&lt;div class="main-content"&gt;</code>) — <b>no</b> <code>&lt;html&gt;</code>/<code>db_connect</code>; the router provides the layout and <code>$conn</code>. Model it on <span class="file">users.php</span>.</div></div>
+  <div class="step"><div class="n">2</div><div>Register the route in <span class="file">index.php</span>: add <code>'myreport'=&gt;'myreport',</code> to the <code>$routes</code> array.</div></div>
+  <div class="step"><div class="n">3</div><div>Add a menu link in <span class="file">includes/navbar.php</span>: <code>&lt;a href="myreport" class="nav-link &lt;?= $page==='myreport'?'active':'' ?&gt;"&gt;</code>. Gate it by <code>$login_role</code> if needed.</div></div>
+  <div class="step"><div class="n">4</div><div>If it needs JS, create <span class="file">assets2/js/myreport.js</span> and add a conditional <code>&lt;script&gt;</code> at the bottom of <span class="file">index.php</span>.</div></div>
+</section>
+
+<section id="addaction">
+  <h2>Recipe: Add an AJAX Action</h2>
+  <div class="step"><div class="n">1</div><div>Add a method to <span class="file">admin_class.php</span>: <code>function save_myreport(){ extract($_POST); ...escape...; $this-&gt;db-&gt;query(...); return 1; }</code></div></div>
+  <div class="step"><div class="n">2</div><div>Add the dispatch in <span class="file">ajax.php</span>: <code>if ($action=='save_myreport'){ echo $crud-&gt;save_myreport(); }</code></div></div>
+  <div class="step"><div class="n">3</div><div>Call it from JS: <code>$.ajax({url:'ajax.php?action=save_myreport',method:'POST',data:form.serialize()})</code>.</div></div>
+  <div class="card warn">Forget step 2 and the call silently returns nothing. This is the #1 &ldquo;why isn&rsquo;t it saving&rdquo; cause.</div>
+</section>
+
+<section id="upload">
+  <h2>Recipe: File Uploads</h2>
+  <p>Form needs <code>enctype="multipart/form-data"</code>; JS sends <code>FormData</code>; the method moves the file and stores the filename.</p>
+<pre>$ext   = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
+$fname = 'prod_'.uniqid().'_'.time().'.'.strtolower($ext);
+move_uploaded_file($_FILES['image']['tmp_name'], 'uploads/products/'.$fname);
+<span style="color:#7dd3fc">// save $fname in the DB; render with  uploads/products/&lt;file&gt;</span></pre>
+  <p>Validate the MIME type (<code>mime_content_type()</code>) and keep only the filename in the DB.</p>
+</section>
+
+<section id="roles">
+  <h2>User Roles</h2>
+  <p>Role is an integer on <code>users.role</code>, labeled by <code>getRole()</code> in <span class="file">index.php</span>. The navbar and pages gate features on <code>$login_role</code>.</p>
+  <table>
+    <tr><th>#</th><th>Role</th><th>Notes</th></tr>
+    <tr><td>1</td><td>Administrator</td><td>Full access. <b>Only role that sees User Management.</b></td></tr>
+    <tr><td>2</td><td>Staff</td><td></td></tr>
+    <tr><td>3 / 7</td><td>Auditor</td><td>Read-oriented</td></tr>
+    <tr><td>4</td><td>Payroll Clerk</td><td></td></tr>
+    <tr><td>5</td><td>Timekeeper</td><td>Assigned to <b>sites</b>; mobile DTR user</td></tr>
+    <tr><td>6</td><td>PIC</td><td>Person-in-charge; limited menu</td></tr>
+    <tr><td>8</td><td>Cashier</td><td>Assigned to a <b>branch</b>; mobile POS only</td></tr>
+    <tr><td>9</td><td>Secretary</td><td>All pages <b>except</b> User Management; mobile portal chooser</td></tr>
+  </table>
+  <div class="card"><b>&ldquo;Site&rdquo; vs &ldquo;Branch&rdquo;:</b> Timekeeping/payroll data is keyed on the <code>sites</code> table (<code>site_id</code> FKs in DTR/payroll/attendance). The POS module uses the newer <code>branches</code> table. In the UI, &ldquo;Site&rdquo; labels were renamed to &ldquo;Branch&rdquo; — but the underlying timekeeping data still stores <code>site_id</code>.</div>
+</section>
+
+<section id="pos">
+  <h2>POS Module</h2>
+  <p>Three independent, routed pages plus shared modals and AJAX. Brand teal <code>#219688</code>.</p>
+  <table>
+    <tr><th>File</th><th>Purpose</th></tr>
+    <tr><td><span class="file">branches.php</span> / <span class="file">categories.php</span> / <span class="file">products.php</span></td><td>List + DataTable + Add/Edit buttons (routed via <code>?page=</code>)</td></tr>
+    <tr><td><span class="file">component/pos_modals.php</span></td><td>All add/edit modals (shared by the three pages)</td></tr>
+    <tr><td><span class="file">assets2/js/branches.js · categories.js · products.js</span></td><td>DataTable init, edit-fill, Parsley + AJAX submit</td></tr>
+    <tr><td><span class="file">admin_class.php</span></td><td><code>add_pos_branch</code>, <code>update_pos_*</code>, <code>add_pos_product</code> (with image), <code>mobile_pos_products</code>, <code>mobile_pos_save_sale</code></td></tr>
+  </table>
+  <p><b>Tables:</b> <code>branches</code>, <code>product_categories</code>, <code>products</code> (has <code>image</code>), <code>pos_sales</code>, <code>pos_sale_items</code>. No hard deletes — toggle <code>status</code>. Sales save in a transaction and decrement stock.</p>
+</section>
+
+<section id="mobile">
+  <h2>Mobile App (React Native — <span class="file">payroll</span>)</h2>
+  <ul>
+    <li><b><span class="file">src/AppNavigator.tsx</span></b> — stack navigator + <code>RootStackParamList</code>. Register every screen here.</li>
+    <li><b><span class="file">src/store/globalState.ts</span></b> — Zustand store; <code>checkLogin()</code> calls the API and saves <code>userType</code> (role), site (timekeeper) or branch (cashier/secretary) to AsyncStorage.</li>
+    <li><b><span class="file">src/utils/axiosConfig.ts</span></b> — Axios instance; <code>baseURL</code> points at <code>ajax.php</code>. POST to <code>?action=...</code> exactly like the web.</li>
+    <li><b>Role routing</b> — Cashier (8) → <span class="file">POSDashboard</span>; Secretary (9) → <span class="file">PortalScreen</span> (chooser); Timekeeper (5) → existing Dashboard. Logic lives in <span class="file">LoginScreen</span> and <span class="file">MainScreen</span>.</li>
+    <li><b>POS cart</b> — <span class="file">src/screens/pos/POSSaleTab.tsx</span> + <span class="file">src/utils/posService.ts</span> (<code>fetchPosProducts</code>, <code>savePosSale</code>).</li>
+    <li><b>Primary color</b> <code>#219688</code> (constant <code>PRIMARY_COLOR</code> in <span class="file">src/utils/constant.ts</span>).</li>
+  </ul>
+</section>
+
+<section id="db">
+  <h2>Database Setup</h2>
+  <p>Core payroll tables come from your existing schema dump. The POS / cashier additions are run once on the <code>payroll</code> DB:</p>
+  <ul>
+    <li><span class="file">SQL_POS_SETUP.sql</span> — <code>branches</code>, <code>product_categories</code>, <code>products</code>, <code>pos_audit_log</code></li>
+    <li><span class="file">SQL_POS_SALES.sql</span> — <code>pos_sales</code>, <code>pos_sale_items</code></li>
+    <li><code>ALTER TABLE products ADD COLUMN image VARCHAR(255) NULL;</code> (if not already in the create)</li>
+    <li><code>ALTER TABLE users ADD COLUMN branch_id INT NULL AFTER site_id;</code></li>
+  </ul>
+  <div class="card">Use <code>CREATE TABLE IF NOT EXISTS</code> so re-running is safe. The full one-shot script was provided in the project notes.</div>
+</section>
+
+<p style="color:#94a3b8;font-size:12.5px;border-top:1px solid var(--line);padding-top:14px">
+  Payroll &amp; POS — internal developer guide. Keep this file updated as patterns change.
+</p>
+
+</main>
+</div>
+</body>
+</html>

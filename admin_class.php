@@ -19,9 +19,11 @@ class Action
     {
         ob_start();
 
+        global $conn;
         include 'db_connect.php';
 
         $this->db = $conn;
+        $this->ensureNotificationTable();
     }
 
     function __destruct()
@@ -29,6 +31,96 @@ class Action
         $this->db->close();
 
         ob_end_flush();
+    }
+
+    private function ensureNotificationTable()
+    {
+        $this->db->query("CREATE TABLE IF NOT EXISTS notifications (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(255) NOT NULL,
+            message TEXT NOT NULL,
+            target_role INT NULL,
+            target_user_id INT NULL,
+            branch_id INT NULL,
+            type VARCHAR(100) NOT NULL DEFAULT 'admin',
+            is_read TINYINT(1) NOT NULL DEFAULT 0,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_target_role (target_role),
+            KEY idx_target_user_id (target_user_id),
+            KEY idx_branch_id (branch_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $result = $this->db->query("SHOW COLUMNS FROM notifications LIKE 'branch_id'");
+        if ($result && $result->num_rows === 0) {
+            $this->db->query("ALTER TABLE notifications ADD COLUMN branch_id INT NULL AFTER target_user_id");
+        }
+    }
+
+    function log_cashier_notification($title, $message, $user_id = null, $branch_id = null)
+    {
+        $titleEscaped = $this->db->real_escape_string($title);
+        $messageEscaped = $this->db->real_escape_string($message);
+        $targetUserId = $user_id !== null ? intval($user_id) : 'NULL';
+        $branchIdValue = $branch_id !== null ? intval($branch_id) : 'NULL';
+        $query = "INSERT INTO notifications (title, message, target_role, target_user_id, branch_id) VALUES ('$titleEscaped', '$messageEscaped', 9, $targetUserId, $branchIdValue)";
+        return $this->db->query($query);
+    }
+
+    function mobile_notification_list()
+    {
+        $role = intval($_GET['role'] ?? 0);
+        $branch_id = intval($_GET['branch_id'] ?? 0);
+        $where = [];
+        if ($role > 0) {
+            $where[] = "(target_role = $role OR target_role IS NULL)";
+        }
+        if ($branch_id > 0) {
+            $where[] = "(branch_id IS NULL OR branch_id = $branch_id)";
+        }
+        $whereClause = count($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+        $query = "SELECT id, title, message, is_read, created_at FROM notifications $whereClause ORDER BY created_at DESC LIMIT 100";
+        $result = $this->db->query($query);
+        $items = [];
+        while ($row = $result->fetch_assoc()) {
+            $items[] = $row;
+        }
+        return ['result' => true, 'data' => $items];
+    }
+
+    function mobile_notification_all()
+    {
+        return $this->mobile_notification_list();
+    }
+
+    function mobile_notification_delete()
+    {
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $notification_id = intval($input['notification_id'] ?? 0);
+
+        if ($notification_id <= 0) {
+            return ['result' => false, 'message' => 'Invalid notification ID.'];
+        }
+
+        $stmt = $this->db->prepare('DELETE FROM notifications WHERE id = ?');
+        if (!$stmt) {
+            return ['result' => false, 'message' => 'Failed to prepare delete statement.'];
+        }
+
+        $stmt->bind_param('i', $notification_id);
+        if (!$stmt->execute()) {
+            $error = $stmt->error;
+            $stmt->close();
+            return ['result' => false, 'message' => 'Error: ' . $error];
+        }
+
+        $deleted = $stmt->affected_rows > 0;
+        $stmt->close();
+
+        return [
+            'result' => true,
+            'deleted' => $deleted,
+            'message' => $deleted ? 'Notification deleted successfully.' : 'Notification not found.',
+        ];
     }
 
     function save_cluster()
@@ -695,12 +787,65 @@ class Action
 
     function delete_dtr()
     {
-        extract($_POST);
+        $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+        $login_role = isset($_SESSION['login_role']) ? intval($_SESSION['login_role']) : 0;
+        $branch_id = isset($_SESSION['login_branch_id']) ? intval($_SESSION['login_branch_id']) : 0;
 
-        $delete = $this->db->query("DELETE FROM DTR where id = " . $id);
+        if ($id <= 0) {
+            return ['result' => false, 'message' => 'Invalid DTR ID'];
+        }
 
-        if ($delete) {
-            return 1;
+        $stmt = $this->db->prepare("SELECT branch_id, status FROM DTR WHERE id = ? LIMIT 1");
+        if (!$stmt) {
+            return ['result' => false, 'message' => 'Failed to validate DTR'];
+        }
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+
+        if (!$row) {
+            return ['result' => false, 'message' => 'DTR not found'];
+        }
+
+        $dtr_status = intval($row['status']);
+        if (!in_array($dtr_status, [1, 2], true)) {
+            return ['result' => false, 'message' => 'This DTR cannot be deleted.'];
+        }
+
+        if ($dtr_status === 2 && !in_array($login_role, [1, 10], true)) {
+            return ['result' => false, 'message' => 'Only an administrator or owner can delete an approved DTR.'];
+        }
+
+        if (!in_array($login_role, [1, 10], true) && $branch_id > 0 && intval($row['branch_id']) !== $branch_id) {
+            return ['result' => false, 'message' => 'You do not have permission to delete this upload.'];
+        }
+
+        $this->db->begin_transaction();
+        try {
+            $stmtDelDetails = $this->db->prepare("DELETE FROM DTR_details WHERE ddtr_id = ?");
+            if (!$stmtDelDetails) {
+                throw new Exception($this->db->error);
+            }
+            $stmtDelDetails->bind_param('i', $id);
+            if (!$stmtDelDetails->execute()) {
+                throw new Exception($stmtDelDetails->error);
+            }
+
+            $stmtDelete = $this->db->prepare("DELETE FROM DTR WHERE id = ?");
+            if (!$stmtDelete) {
+                throw new Exception($this->db->error);
+            }
+            $stmtDelete->bind_param('i', $id);
+            if (!$stmtDelete->execute()) {
+                throw new Exception($stmtDelete->error);
+            }
+
+            $this->db->commit();
+            return ['result' => true, 'message' => 'deleted'];
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return ['result' => false, 'message' => $e->getMessage()];
         }
     }
 
@@ -827,13 +972,13 @@ class Action
 
             // Build SQL data string
             $data = "
-            site_name = '$site_name',
-            site_address = '$site_address',
-            employer_id = '$employer_id',
-            cluster_id = '$cluster_id',
-            site_code = '$site_code',
-            status = '$status',
-            timekeeper_id = '$timekeeper_id'
+                site_name = '$site_name',
+                site_address = '$site_address',
+                employer_id = '$employer_id',
+                cluster_id = '$cluster_id',
+                site_code = '$site_code',
+                status = '$status',
+                timekeeper_id = '$timekeeper_id'
         ";
 
             // Insert or update
@@ -889,7 +1034,8 @@ class Action
             $password     = isset($_POST['password']) ? $_POST['password'] : '';
             $role         = isset($_POST['role']) ? $_POST['role'] : '';
             $site_id      = isset($_POST['site_id']) ? $_POST['site_id'] : '';
-            $employer_id  = isset($_POST['employer_id']) ? $_POST['employer_id'] : '';
+            $branch_id    = isset($_POST['branch_id']) ? $_POST['branch_id'] : '';
+            $employer_id  = 1;
             $id           = isset($_POST['id']) ? $_POST['id'] : '';
 
             // Sanitize inputs
@@ -897,6 +1043,7 @@ class Action
             $username    = mysqli_real_escape_string($this->db, $username);
             $role        = mysqli_real_escape_string($this->db, $role);
             $site_id     = mysqli_real_escape_string($this->db, $site_id);
+            $branch_id   = mysqli_real_escape_string($this->db, $branch_id);
             $employer_id = mysqli_real_escape_string($this->db, $employer_id);
             $id          = mysqli_real_escape_string($this->db, $id);
 
@@ -930,13 +1077,34 @@ class Action
             $data = "
             name = '$name',
             username = '$username',
-            role = '$role',
-            employer_id = '$employer_id'
+            role = '$role'
             $password_sql
         ";
 
+            // Employer is optional (field may be hidden in the form)
+            if (!empty($employer_id)) {
+                $data .= ", employer_id = '$employer_id'";
+            }
+
             if (!empty($site_id)) {
                 $data .= ", site_id = '$site_id'";
+            }
+
+            // Branch assignment
+            if ($role == '9') {
+                if (!empty($branch_id)) {
+                    $data .= ", branch_id = '$branch_id'";
+                } else {
+                    $data .= ", branch_id = NULL";
+                }
+            } elseif ($role == '10') {
+                if (!empty($branch_id) && $branch_id !== '0') {
+                    $data .= ", branch_id = '$branch_id'";
+                } else {
+                    $data .= ", branch_id = NULL";
+                }
+            } else {
+                $data .= ", branch_id = NULL";
             }
 
             // Insert or update user
@@ -949,9 +1117,7 @@ class Action
             }
 
             // Optional: update related site for timekeeper role
-            if ($role == '5') {
-                $this->db->query("UPDATE sites SET timekeeper_id = '$user_id' WHERE id = '$site_id'");
-            }
+            // Relationship stored on users.site_id, not sites.cashier_id
 
             // Success response
             if ($save) {
@@ -1046,6 +1212,559 @@ class Action
         }
     }
 
+    function mobile_get_branches()
+    {
+        $result = $this->db->query("SELECT id, branch_code, branch_name FROM branches WHERE status = 1 ORDER BY branch_name ASC");
+        $branches = [];
+        while ($row = $result->fetch_assoc()) {
+            $branches[] = $row;
+        }
+        return ['result' => true, 'data' => $branches];
+    }
+
+    // ── Mobile POS: fetch active products for a branch ──
+    function mobile_pos_products()
+    {
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $branch_id = isset($input['branch_id']) ? intval($input['branch_id']) : 0;
+
+            $where = "status = 1";
+            if ($branch_id > 0) {
+                $where .= " AND branch_id = $branch_id";
+            }
+            $res = $this->db->query("SELECT id, product_code, product_name, unit_price, quantity_on_hand, unit, image
+                                     FROM products WHERE $where ORDER BY product_name ASC");
+            $products = [];
+            while ($row = $res->fetch_assoc()) {
+                $products[] = $row;
+            }
+            return ['result' => true, 'products' => $products];
+        } catch (Exception $e) {
+            return ['result' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    // ── Mobile POS: recent sales for a branch ──
+    function mobile_pos_sales()
+    {
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $branch_id = isset($input['branch_id']) ? intval($input['branch_id']) : 0;
+            $from = isset($input['from']) ? $this->db->real_escape_string($input['from']) : '';
+            $to   = isset($input['to'])   ? $this->db->real_escape_string($input['to'])   : '';
+
+            $where = "1";
+            if ($branch_id > 0) {
+                $where .= " AND branch_id = $branch_id";
+            }
+            if ($from !== '') {
+                $where .= " AND created_at >= '$from 00:00:00'";
+            }
+            if ($to !== '') {
+                $where .= " AND created_at <= '$to 23:59:59'";
+            }
+            $res = $this->db->query("SELECT id, invoice_no, subtotal, discount, total, payment, change_due, created_at
+                                     FROM pos_sales WHERE $where ORDER BY created_at DESC LIMIT 200");
+            $sales = [];
+            while ($row = $res->fetch_assoc()) {
+                $sales[] = $row;
+            }
+            return ['result' => true, 'sales' => $sales];
+        } catch (Exception $e) {
+            return ['result' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    // ── Web admin: sale + line items (reads $_POST) ──
+    function get_pos_sale_details()
+    {
+        $sale_id = isset($_POST['sale_id']) ? intval($_POST['sale_id']) : 0;
+        if ($sale_id <= 0) return ['result' => false, 'message' => 'Invalid sale.'];
+
+        $sale = $this->db->query("SELECT s.*, b.branch_name, b.branch_code, u.name AS cashier_name
+                                  FROM pos_sales s
+                                  LEFT JOIN branches b ON b.id = s.branch_id
+                                  LEFT JOIN users u ON u.id = s.cashier_id
+                                  WHERE s.id = $sale_id")->fetch_assoc();
+        if (!$sale) return ['result' => false, 'message' => 'Sale not found.'];
+
+        $res = $this->db->query("SELECT product_name, price, qty, line_total
+                                 FROM pos_sale_items WHERE sale_id = $sale_id ORDER BY id ASC");
+        $items = [];
+        while ($row = $res->fetch_assoc()) $items[] = $row;
+
+        return ['result' => true, 'sale' => $sale, 'items' => $items];
+    }
+
+    // ── Mobile POS: one sale with its line items ──
+    function mobile_pos_sale_details()
+    {
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $sale_id = isset($input['sale_id']) ? intval($input['sale_id']) : 0;
+            if ($sale_id <= 0) {
+                return ['result' => false, 'message' => 'Invalid sale.'];
+            }
+
+            $sale = $this->db->query("SELECT * FROM pos_sales WHERE id = $sale_id")->fetch_assoc();
+            if (!$sale) {
+                return ['result' => false, 'message' => 'Sale not found.'];
+            }
+
+            $res = $this->db->query("SELECT product_id, product_name, price, qty, line_total
+                                     FROM pos_sale_items WHERE sale_id = $sale_id ORDER BY id ASC");
+            $items = [];
+            while ($row = $res->fetch_assoc()) {
+                $items[] = $row;
+            }
+
+            return ['result' => true, 'sale' => $sale, 'items' => $items];
+        } catch (Exception $e) {
+            return ['result' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    // ── Mobile POS: save a sale (header + items), decrement stock ──
+    function mobile_pos_save_sale()
+    {
+        try {
+            mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+            $input = json_decode(file_get_contents('php://input'), true);
+
+            if (!$input || empty($input['items'])) {
+                return ['result' => false, 'message' => 'No items in cart.'];
+            }
+
+            $branch_id  = intval($input['branch_id'] ?? 0);
+            $cashier_id = intval($input['cashier_id'] ?? 0);
+            $discount   = floatval($input['discount'] ?? 0);
+            $payment    = floatval($input['payment'] ?? 0);
+            $items      = $input['items'];
+
+            // Compute subtotal from items (server-side, don't trust client total)
+            $subtotal = 0;
+            foreach ($items as $it) {
+                $subtotal += floatval($it['price']) * floatval($it['qty']);
+            }
+            if ($discount < 0) $discount = 0;
+            if ($discount > $subtotal) $discount = $subtotal;
+            $total = $subtotal - $discount;
+            $change = $payment > 0 ? max(0, $payment - $total) : 0;
+
+            $invoice_no = 'INV-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
+
+            $this->db->begin_transaction();
+
+            $stmt = $this->db->prepare("INSERT INTO pos_sales
+                (invoice_no, branch_id, cashier_id, subtotal, discount, total, payment, change_due)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param('siiddddd', $invoice_no, $branch_id, $cashier_id, $subtotal, $discount, $total, $payment, $change);
+            $stmt->execute();
+            $sale_id = $this->db->insert_id;
+            $stmt->close();
+
+            $itemStmt = $this->db->prepare("INSERT INTO pos_sale_items
+                (sale_id, product_id, product_name, price, qty, line_total)
+                VALUES (?, ?, ?, ?, ?, ?)");
+            // ensure quantity does not go below zero using GREATEST
+            $stockStmt = $this->db->prepare("UPDATE products SET quantity_on_hand = GREATEST(quantity_on_hand - ?, 0) WHERE id = ?");
+
+            foreach ($items as $it) {
+                $pid   = intval($it['product_id']);
+                $pname = $it['product_name'];
+                $price = floatval($it['price']);
+                $qty   = floatval($it['qty']);
+                $line  = $price * $qty;
+
+                $itemStmt->bind_param('iisddd', $sale_id, $pid, $pname, $price, $qty, $line);
+                $itemStmt->execute();
+
+                $stockStmt->bind_param('di', $qty, $pid);
+                $stockStmt->execute();
+            }
+            $itemStmt->close();
+            $stockStmt->close();
+            // prepare updated stocks map to return to client
+            $pids = array_map(function($it){ return intval($it['product_id']); }, $items);
+            $pids = array_unique($pids);
+            $updated_stocks = [];
+            if (count($pids) > 0) {
+                $ids_list = implode(',', array_map('intval', $pids));
+                $res2 = $this->db->query("SELECT id, quantity_on_hand FROM products WHERE id IN ($ids_list)");
+                while ($r = $res2->fetch_assoc()) {
+                    $updated_stocks[intval($r['id'])] = floatval($r['quantity_on_hand']);
+                }
+            }
+
+            $this->db->commit();
+
+            return [
+                'result'        => true,
+                'message'       => 'Sale completed.',
+                'invoice_no'    => $invoice_no,
+                'subtotal'      => $subtotal,
+                'discount'      => $discount,
+                'total'         => $total,
+                'change'        => $change,
+                'updated_stocks'=> $updated_stocks,
+            ];
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return ['result' => false, 'message' => 'Error: ' . $e->getMessage()];
+        }
+    }
+
+    function mobile_pos_update_product_stock()
+    {
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $branch_id = isset($input['branch_id']) ? intval($input['branch_id']) : 0;
+            $product_id = isset($input['product_id']) ? intval($input['product_id']) : 0;
+            $quantity = isset($input['quantity']) ? floatval($input['quantity']) : 0;
+
+            if ($product_id <= 0 || $quantity <= 0) {
+                return ['result' => false, 'message' => 'Invalid product or quantity.'];
+            }
+
+            $stmt = $this->db->prepare("UPDATE products SET quantity_on_hand = quantity_on_hand + ? WHERE id = ?");
+            if (!$stmt) {
+                return ['result' => false, 'message' => 'Failed to prepare stock update.'];
+            }
+            $stmt->bind_param('di', $quantity, $product_id);
+            $stmt->execute();
+            $affected = $stmt->affected_rows;
+            $stmt->close();
+
+            if ($affected === 0) {
+                return ['result' => false, 'message' => 'No product updated.'];
+            }
+
+            return ['result' => true, 'message' => 'Stock updated successfully.'];
+        } catch (Exception $e) {
+            return ['result' => false, 'message' => 'Error: ' . $e->getMessage()];
+        }
+    }
+
+    function mobile_pos_save_damage()
+    {
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $branch_id = intval($input['branch_id'] ?? 0);
+            $cashier_id = intval($input['cashier_id'] ?? 0);
+            $product_id = intval($input['product_id'] ?? 0);
+            $item_name = trim($input['item_name'] ?? '');
+            $quantity = floatval($input['quantity'] ?? 0);
+            $description = trim($input['description'] ?? '');
+
+            if ($branch_id <= 0 || $cashier_id <= 0) {
+                return ['result' => false, 'message' => 'Invalid branch or cashier.'];
+            }
+            if ($item_name === '' || $quantity <= 0) {
+                return ['result' => false, 'message' => 'Invalid damage item data.'];
+            }
+
+            $columnCheck = $this->db->query("SELECT COUNT(*) AS cnt FROM information_schema.COLUMNS WHERE table_schema = DATABASE() AND table_name = 'damage_items' AND column_name = 'product_id'");
+            if ($columnCheck) {
+                $col = $columnCheck->fetch_assoc();
+                if (intval($col['cnt']) === 0) {
+                    $this->db->query("ALTER TABLE damage_items ADD COLUMN product_id INT NULL DEFAULT NULL AFTER damage_code");
+                }
+            }
+
+            $this->db->begin_transaction();
+
+            if ($product_id > 0) {
+                $stockStmt = $this->db->prepare("UPDATE products SET quantity_on_hand = GREATEST(quantity_on_hand - ?, 0) WHERE id = ?");
+                if (!$stockStmt) {
+                    $this->db->rollback();
+                    return ['result' => false, 'message' => 'Failed to prepare stock deduction.'];
+                }
+                $stockStmt->bind_param('di', $quantity, $product_id);
+                $stockStmt->execute();
+                if ($stockStmt->affected_rows === 0) {
+                    $stockStmt->close();
+                    $this->db->rollback();
+                    return ['result' => false, 'message' => 'Product not found or insufficient stock.'];
+                }
+                $stockStmt->close();
+            }
+
+            $damage_code = 'DMG-' . date('YmdHis') . '-' . rand(100, 999);
+            $stmt = $this->db->prepare("INSERT INTO damage_items (damage_code, product_id, item_name, quantity, description, branch_id, reported_by, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending')");
+            if (!$stmt) {
+                $this->db->rollback();
+                return ['result' => false, 'message' => 'Failed to prepare damage item insert.'];
+            }
+
+            $stmt->bind_param('sisdiii', $damage_code, $product_id, $item_name, $quantity, $description, $branch_id, $cashier_id);
+            if (!$stmt->execute()) {
+                $error = $stmt->error;
+                $stmt->close();
+                $this->db->rollback();
+                return ['result' => false, 'message' => 'Error: ' . $error];
+            }
+
+            $damage_id = $this->db->insert_id;
+            $stmt->close();
+            $this->db->commit();
+            return [
+                'result' => true,
+                'message' => 'Damage item recorded and inventory adjusted.',
+                'damage_id' => $damage_id,
+            ];
+        } catch (Exception $e) {
+            if ($this->db->errno === 0) {
+                $this->db->rollback();
+            }
+            return ['result' => false, 'message' => 'Error: ' . $e->getMessage()];
+        }
+    }
+
+    function mobile_pos_delete_damage()
+    {
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $damage_id = intval($input['damage_id'] ?? 0);
+
+            if ($damage_id <= 0) {
+                return ['result' => false, 'message' => 'Invalid damage ID.'];
+            }
+
+            $stmt = $this->db->prepare('SELECT product_id, quantity FROM damage_items WHERE id = ?');
+            if (!$stmt) {
+                return ['result' => false, 'message' => 'Failed to prepare damage lookup.'];
+            }
+            $stmt->bind_param('i', $damage_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            if (!$result) {
+                $stmt->close();
+                return ['result' => false, 'message' => 'Failed to fetch damage item.'];
+            }
+
+            $damage = $result->fetch_assoc();
+            $stmt->close();
+
+            if (!$damage) {
+                return ['result' => false, 'message' => 'Damage item not found.'];
+            }
+
+            $product_id = intval($damage['product_id'] ?? 0);
+            $quantity = floatval($damage['quantity'] ?? 0);
+
+            $this->db->begin_transaction();
+
+            if ($product_id > 0 && $quantity > 0) {
+                $stockStmt = $this->db->prepare('UPDATE products SET quantity_on_hand = quantity_on_hand + ? WHERE id = ?');
+                if (!$stockStmt) {
+                    $this->db->rollback();
+                    return ['result' => false, 'message' => 'Failed to prepare stock restoration.'];
+                }
+                $stockStmt->bind_param('di', $quantity, $product_id);
+                $stockStmt->execute();
+                $stockStmt->close();
+            }
+
+            $deleteStmt = $this->db->prepare('DELETE FROM damage_items WHERE id = ?');
+            if (!$deleteStmt) {
+                $this->db->rollback();
+                return ['result' => false, 'message' => 'Failed to prepare damage delete.'];
+            }
+            $deleteStmt->bind_param('i', $damage_id);
+            if (!$deleteStmt->execute()) {
+                $error = $deleteStmt->error;
+                $deleteStmt->close();
+                $this->db->rollback();
+                return ['result' => false, 'message' => 'Error: ' . $error];
+            }
+            $deleteStmt->close();
+
+            $this->db->commit();
+            return ['result' => true, 'message' => 'Damage item deleted successfully.'];
+        } catch (Exception $e) {
+            if ($this->db->errno === 0) {
+                $this->db->rollback();
+            }
+            return ['result' => false, 'message' => 'Error: ' . $e->getMessage()];
+        }
+    }
+
+    function mobile_pos_save_owner_requisition()
+    {
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $item_name = trim($input['item_name'] ?? '');
+            $quantity = floatval($input['quantity'] ?? 0);
+            $branch_id = intval($input['branch_id'] ?? 0);
+            $description = trim($input['description'] ?? '');
+
+            if ($item_name === '' || $quantity <= 0) {
+                return ['result' => false, 'message' => 'Invalid requisition data.'];
+            }
+
+            $requisition_code = 'REQ-' . date('YmdHis') . '-' . rand(100, 999);
+            $stmt = $this->db->prepare("INSERT INTO owner_requisitions (requisition_code, item_name, quantity, branch_id, description, status) VALUES (?, ?, ?, ?, ?, 'Pending')");
+            if (!$stmt) {
+                return ['result' => false, 'message' => 'Failed to prepare requisition insert.'];
+            }
+            $stmt->bind_param('ssdss', $requisition_code, $item_name, $quantity, $branch_id, $description);
+            if (!$stmt->execute()) {
+                $error = $stmt->error;
+                $stmt->close();
+                return ['result' => false, 'message' => 'Error: ' . $error];
+            }
+
+            $requisition_id = $this->db->insert_id;
+            $stmt->close();
+            return ['result' => true, 'message' => 'Requisition saved successfully.', 'requisition_id' => $requisition_id];
+        } catch (Exception $e) {
+            return ['result' => false, 'message' => 'Error: ' . $e->getMessage()];
+        }
+    }
+
+    function mobile_pos_delete_owner_requisition()
+    {
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $requisition_id = intval($input['requisition_id'] ?? 0);
+
+            if ($requisition_id <= 0) {
+                return ['result' => false, 'message' => 'Invalid requisition ID.'];
+            }
+
+            $stmt = $this->db->prepare('DELETE FROM owner_requisitions WHERE id = ?');
+            if (!$stmt) {
+                return ['result' => false, 'message' => 'Failed to prepare requisition delete.'];
+            }
+            $stmt->bind_param('i', $requisition_id);
+            if (!$stmt->execute()) {
+                $error = $stmt->error;
+                $stmt->close();
+                return ['result' => false, 'message' => 'Error: ' . $error];
+            }
+            $stmt->close();
+
+            return ['result' => true, 'message' => 'Requisition deleted successfully.'];
+        } catch (Exception $e) {
+            return ['result' => false, 'message' => 'Error: ' . $e->getMessage()];
+        }
+    }
+
+    function mobile_pos_update_owner_requisition_status()
+    {
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $requisition_id = intval($input['requisition_id'] ?? 0);
+            $status = trim($input['status'] ?? '');
+
+            if ($requisition_id <= 0 || $status === '') {
+                return ['result' => false, 'message' => 'Invalid requisition status update.'];
+            }
+
+            $stmt = $this->db->prepare('SELECT item_name, quantity, branch_id FROM owner_requisitions WHERE id = ?');
+            if (!$stmt) {
+                return ['result' => false, 'message' => 'Failed to prepare requisition lookup.'];
+            }
+            $stmt->bind_param('i', $requisition_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            if (!$result) {
+                $stmt->close();
+                return ['result' => false, 'message' => 'Failed to fetch requisition.'];
+            }
+
+            $requisition = $result->fetch_assoc();
+            $stmt->close();
+
+            if (!$requisition) {
+                return ['result' => false, 'message' => 'Requisition not found.'];
+            }
+
+            $item_name = trim($requisition['item_name'] ?? '');
+            $quantity = floatval($requisition['quantity'] ?? 0);
+            $branch_id = intval($requisition['branch_id'] ?? 0);
+
+            $this->db->begin_transaction();
+
+            if ($status === 'Approved' && $item_name !== '' && $quantity > 0 && $branch_id > 0) {
+                $product = $this->db->query("SELECT id, quantity_on_hand FROM products WHERE product_name = '" . $this->db->real_escape_string($item_name) . "' AND branch_id = $branch_id AND status = 1 LIMIT 1");
+                if ($product && $product->num_rows > 0) {
+                    $productData = $product->fetch_assoc();
+                    $productId = intval($productData['id']);
+                    $currentQty = floatval($productData['quantity_on_hand'] ?? 0);
+                    $newQty = max($currentQty - $quantity, 0);
+
+                    $stockStmt = $this->db->prepare('UPDATE products SET quantity_on_hand = ? WHERE id = ?');
+                    if (!$stockStmt) {
+                        $this->db->rollback();
+                        return ['result' => false, 'message' => 'Failed to prepare inventory update.'];
+                    }
+                    $stockStmt->bind_param('di', $newQty, $productId);
+                    if (!$stockStmt->execute()) {
+                        $error = $stockStmt->error;
+                        $stockStmt->close();
+                        $this->db->rollback();
+                        return ['result' => false, 'message' => 'Error: ' . $error];
+                    }
+                    $stockStmt->close();
+                }
+            }
+
+            $updateStmt = $this->db->prepare('UPDATE owner_requisitions SET status = ? WHERE id = ?');
+            if (!$updateStmt) {
+                $this->db->rollback();
+                return ['result' => false, 'message' => 'Failed to prepare status update.'];
+            }
+            $updateStmt->bind_param('si', $status, $requisition_id);
+            if (!$updateStmt->execute()) {
+                $error = $updateStmt->error;
+                $updateStmt->close();
+                $this->db->rollback();
+                return ['result' => false, 'message' => 'Error: ' . $error];
+            }
+            $updateStmt->close();
+
+            $this->db->commit();
+            return ['result' => true, 'message' => 'Requisition status updated successfully.'];
+        } catch (Exception $e) {
+            if ($this->db->errno === 0) {
+                $this->db->rollback();
+            }
+            return ['result' => false, 'message' => 'Error: ' . $e->getMessage()];
+        }
+    }
+
+    function mobile_pos_update_product_price()
+    {
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $product_id = isset($input['product_id']) ? intval($input['product_id']) : 0;
+            $unit_price = isset($input['unit_price']) ? floatval($input['unit_price']) : null;
+
+            if ($product_id <= 0 || $unit_price === null || $unit_price < 0) {
+                return ['result' => false, 'message' => 'Invalid product or price.'];
+            }
+
+            $stmt = $this->db->prepare("UPDATE products SET unit_price = ? WHERE id = ?");
+            if (!$stmt) {
+                return ['result' => false, 'message' => 'Failed to prepare price update.' ];
+            }
+            $stmt->bind_param('di', $unit_price, $product_id);
+            $stmt->execute();
+            $affected = $stmt->affected_rows;
+            $stmt->close();
+
+            if ($affected === 0) {
+                return ['result' => false, 'message' => 'No product updated.'];
+            }
+
+            return ['result' => true, 'message' => 'Price updated successfully.'];
+        } catch (Exception $e) {
+            return ['result' => false, 'message' => 'Error: ' . $e->getMessage()];
+        }
+    }
+
     function loginMobile()
     {
         try {
@@ -1063,9 +1782,8 @@ class Action
 
             // Fetch active user
             $stmt = $this->db->prepare("
-            SELECT users.*, employers.employer_name
+            SELECT *
             FROM users
-            LEFT JOIN employers ON employers.id = users.employer_id
             WHERE username = ? AND users.status = ?
         ");
             $stmt->bind_param('ss', $username, $status);
@@ -1083,11 +1801,44 @@ class Action
                 return ['result' => false, 'message' => 'Password incorrect'];
             }
 
-            // ✅ Only return ACTIVE sites assigned to this user
+            $role = intval($user['role']);
+
+            // Cashier (9) / Secretary (8) use a branch, not assigned sites
+            if ($role === 8 || $role === 9) {
+                $branch = null;
+                if (!empty($user['branch_id'])) {
+                    $branch_id = intval($user['branch_id']);
+                    $branch = $this->db->query("SELECT * FROM branches WHERE id = '$branch_id'")->fetch_assoc();
+                }
+
+                // Cashier must have a branch; Secretary may operate without one
+                if ($role === 9 && empty($branch)) {
+                    return ['result' => false, 'message' => 'No branch assigned to you.'];
+                }
+
+                return [
+                    'result' => true,
+                    'user'   => $user,
+                    'branch' => $branch,
+                    'sites'  => [],
+                ];
+            }
+
+            // Owner (10) has access to all branches and does not require active sites
+            if ($role === 10) {
+                return [
+                    'result' => true,
+                    'user'   => $user,
+                    'branch' => null,
+                    'sites'  => [],
+                ];
+            }
+
+            // ✅ Timekeeper (and others) — return ACTIVE sites assigned to this user
             $timekeeper_id = $user['id'];
             $qry_sites = $this->db->query("
-            SELECT sites.*, clusters.cluster 
-            FROM sites  
+            SELECT sites.*, clusters.cluster
+            FROM sites
             LEFT JOIN clusters ON sites.cluster_id = clusters.id
             WHERE sites.timekeeper_id = '$timekeeper_id' AND sites.status = 1
         ");
@@ -1159,7 +1910,7 @@ class Action
             if ($qry->num_rows == 0) {
                 throw new Exception('User not found');
             }
-            $sql = "INSERT INTO DTR (local_id, date_from, date_to, timekeeper_id, site_id, device_id, file, uploaded_by, employer_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?,?)";
+            $sql = "INSERT INTO DTR (local_id, date_from, date_to, cashier_id, site_id, device_id, file, uploaded_by, employer_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?,?)";
             $stmt = $this->db->prepare($sql);
             $stmt->bind_param('sssssssss', $local_id, $date_from, $date_to, $timekeeper_id, $site_id, $device_id, $file, $_SESSION['login_id'], $employer_id);
             $stmt->execute();
@@ -1214,92 +1965,442 @@ class Action
         $date_from =  date("Y-m-d", strtotime($post['dtr']['date_from']));
         $date_to =  date("Y-m-d", strtotime($post['dtr']['date_to']));
         $timekeeper_id =  $post['timekeeper_id'];
-        $site_id =  $post['site_id'];
+        $branch_id     = isset($post['branch_id']) ? intval($post['branch_id']) : 1;
 
         $device_id = $post['dtr']['device_id'];
         $file =  $post['dtr']['file'];
         $local_id = $post['dtr']['id'];
         $dtr_details = $post['dtr_details'];
-        $ptype = $post['dtr']['weekly_payroll']; //needd to fixed this from mobile
-        $qry = $this->db->query("SELECT * FROM users WHERE id = '$timekeeper_id' AND role = 5 ");
-        $user_data = $qry->fetch_assoc();
-        // $site_id = $user_data['site_id'];
-        $employer_id = $user_data['employer_id'];
-        $qry_exist = $this->db->query("SELECT * FROM DTR WHERE date_from = '$date_from' AND date_to = '$date_to' AND site_id = '$site_id'   AND ptype='$ptype' LIMIT 1 ");
+        $ptype = $post['dtr']['weekly_payroll'];
+        $qry = $this->db->query("SELECT id FROM users WHERE id = '$timekeeper_id' AND role IN (5,9) ");
+
+        $qry_exist = $this->db->query("SELECT * FROM DTR WHERE date_from = '$date_from' AND date_to = '$date_to' AND ptype='$ptype' AND timekeeper_id='$timekeeper_id' LIMIT 1 ");
         if ($qry_exist->num_rows > 0) {
             return ['result' => false, 'message' => 'DTR date already exist'];
         }
-        $qry_site = $this->db->query("SELECT * FROM sites WHERE id = '$site_id' AND  status = 1 ");
-        if ($qry_site->num_rows === 0) {
-            return ['result' => false, 'message' => 'Site is inactive'];
-        }
-
-        $qry_site_2 = $this->db->query("SELECT * FROM sites WHERE timekeeper_id = '$timekeeper_id' ");
-        if ($qry_site_2->num_rows === 0) {
-            return ['result' => false, 'message' => "You're not currently assigned to this site. Please log in again."];
-        }
-
-        // $qry_site_2 = $this->db->query("SELECT COUNT(*) AS total_sites FROM sites WHERE timekeeper_id = '$timekeeper_id' AND status = 1");
-        // if ($qry_site_2->num_rows > 0) {
-        //     $row_site = $qry_site_2->fetch_assoc();
-        //     if ($row_site['total_sites'] > 1) {
-        //         return ['result' => false, 'message' => "Too many sites are currently assigned. Please contact the administrator for assistance."];
-        //     }
-        // }
 
         $this->db->begin_transaction();
         try {
             if ($qry->num_rows == 0) {
-                throw new Exception('User not found'); // Throw exception for rollback
+                throw new Exception('User not found');
             }
 
-            $sql = "INSERT INTO DTR (local_id, date_from, date_to, timekeeper_id, site_id, device_id, file, uploaded_by, employer_id, ptype ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            $stmt = $this->db->prepare($sql);
-            $stmt->bind_param('ssssssssss', $local_id, $date_from, $date_to, $timekeeper_id, $site_id, $device_id, $file,  $timekeeper_id, $employer_id, $ptype);
-            $stmt->execute();
-            $ddtr_id = '';
-            if ($stmt->affected_rows == 0) {
-                throw new Exception('Failed to insert data'); // Throw exception for rollback
-            } else {
-                $ddtr_id = $this->db->insert_id; // Assuming $this->db is your connection object
+            $stmt = $this->db->prepare("INSERT INTO DTR (local_id, date_from, date_to, timekeeper_id, branch_id, device_id, file, uploaded_by, ptype) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            if (!$stmt) throw new Exception('DTR prepare failed: ' . $this->db->error);
+            $stmt->bind_param('sssssssss', $local_id, $date_from, $date_to, $timekeeper_id, $branch_id, $device_id, $file, $timekeeper_id, $ptype);
+            if (!$stmt->execute()) throw new Exception('DTR insert failed: ' . $stmt->error);
+            if ($stmt->affected_rows == 0) throw new Exception('DTR insert affected 0 rows');
+            $ddtr_id = $stmt->insert_id;
+
+            if (empty($dtr_details)) {
+                throw new Exception('No DTR details received');
             }
 
             foreach ($dtr_details as $k) {
-                $employee_id = $k['employee_id'];
+                $employee_id    = $k['employee_id'];
                 $attendance_type = $k['type'];
-                $logs = $k['logs'];
-                $hours = $k['hours']  > 8 ? 8 : $k['hours'];
-                $overtime = $k['ot'];
-                $notes = $k['notes'];
-                $date_time = $k['date_time'];
-                $code = $k['code'];
-                $qry_bio = $this->db->query("SELECT * FROM employee_bio  WHERE employee_id = '$employee_id' AND site_id = '$site_id' AND device_id = '$device_id'
-                 LIMIT 1 ");
+                $logs           = is_array($k['logs']) ? json_encode($k['logs']) : $k['logs'];
+                $hours          = $k['hours'] > 8 ? 8 : $k['hours'];
+                $overtime       = $k['ot'];
+                $notes          = $k['notes'] ?? '';
+                $date_time      = $k['date_time'];
+                $code           = $k['code'];
+
+                // upsert employee_bio
+                $qry_bio = $this->db->query("SELECT id FROM employee_bio WHERE employee_id='$employee_id' AND device_id='$device_id' LIMIT 1");
                 if ($qry_bio->num_rows == 0) {
-                    $sql2 = "INSERT INTO employee_bio (employee_id, device_id, site_id, code) VALUES (?, ?, ?, ?)";
-                    $stmtbio = $this->db->prepare($sql2);
-                    $stmtbio->bind_param('ssss', $employee_id, $device_id, $site_id, $code);
-                    try {
+                    $stmtbio = $this->db->prepare("INSERT INTO employee_bio (employee_id, device_id, site_id, code) VALUES (?, ?, ?, ?)");
+                    if ($stmtbio) {
+                        $stmtbio->bind_param('ssss', $employee_id, $device_id, $branch_id, $code);
                         $stmtbio->execute();
-                    } catch (Exception $e) {
-                        throw new Exception('Failed to insert data');
                     }
                 }
-                $sql2 = "INSERT INTO DTR_details (ddtr_id, employee_id, date_time, work_hours, logs, attendance_type, overtime, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-                $stmt2 = $this->db->prepare($sql2);
+
+                $stmt2 = $this->db->prepare("INSERT INTO DTR_details (ddtr_id, employee_id, date_time, work_hours, logs, attendance_type, overtime, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                if (!$stmt2) throw new Exception('DTR_details prepare failed: ' . $this->db->error);
                 $stmt2->bind_param('ssssssss', $ddtr_id, $employee_id, $date_time, $hours, $logs, $attendance_type, $overtime, $notes);
-                try {
-                    $stmt2->execute();
-                } catch (Exception $e) {
-                    throw new Exception('Failed to insert data');
-                }
+                if (!$stmt2->execute()) throw new Exception('DTR_details insert failed for employee ' . $employee_id . ': ' . $stmt2->error);
             }
 
             $this->db->commit();
-            return ['result' => true, 'message' => 'Data inserted successfully', 'id' => $this->db->insert_id]; //
+            return ['result' => true, 'message' => 'Data inserted successfully', 'id' => $ddtr_id];
 
         } catch (Exception $e) {
-            $this->db->rollback(); // Rollback on errors
+            $this->db->rollback();
+            return ['result' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    function upload_biometric_dtr()
+    {
+        $user_id = isset($_SESSION['login_id']) ? intval($_SESSION['login_id']) : 0;
+        $login_role = isset($_SESSION['login_role']) ? intval($_SESSION['login_role']) : 0;
+        $branch_id = isset($_SESSION['login_branch_id']) ? intval($_SESSION['login_branch_id']) : 0;
+
+        if ($user_id <= 0) {
+            return ['result' => false, 'message' => 'Please login again.'];
+        }
+
+        if (!in_array($login_role, [8], true)) {
+            return ['result' => false, 'message' => 'You are not allowed to upload biometric attendance.'];
+        }
+
+        if (!isset($_FILES['fileBiometric']) || $_FILES['fileBiometric']['error'] !== UPLOAD_ERR_OK) {
+            return ['result' => false, 'message' => 'No biometric file was uploaded or the upload failed.'];
+        }
+
+        $file = $_FILES['fileBiometric'];
+        $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if ($extension !== 'dat') {
+            return ['result' => false, 'message' => 'Only .dat files are accepted.'];
+        }
+
+        $content = @file_get_contents($file['tmp_name']);
+        if ($content === false) {
+            return ['result' => false, 'message' => 'Unable to read the uploaded file.'];
+        }
+
+        $content = trim($content);
+        if ($content === '') {
+            return ['result' => false, 'message' => 'The uploaded file is empty.'];
+        }
+
+        $lines = preg_split('/\r\n|\r|\n/', $content);
+        $parsed = [];
+        $invalid_count = 0;
+        $unknown_codes = [];
+        $imported_count = 0;
+        $date_from = null;
+        $date_to = null;
+
+        $file_branch_id = null;
+        $file_device_id = null;
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+
+            $parts = preg_split('/[\t,]+/', $line);
+            if (count($parts) < 3) {
+                $invalid_count++;
+                continue;
+            }
+
+            $code = trim($parts[0]);
+            $date_time_str = trim($parts[1]);
+            // Standard biometric DAT files store verify mode in column 3 and
+            // attendance state (0 = In, 1 = Out) in column 4.
+            $is_standard_dat = count($parts) >= 4 && in_array(trim($parts[3]), ['0', '1'], true);
+            $attendance_type = $is_standard_dat
+                ? trim($parts[3])
+                : trim($parts[2]);
+
+            if (!$is_standard_dat && $file_branch_id === null && count($parts) >= 4 && ctype_digit(trim($parts[3]))) {
+                $file_branch_id = trim($parts[3]);
+            }
+            if (!$is_standard_dat && $file_device_id === null && count($parts) >= 5 && trim($parts[4]) !== '') {
+                $file_device_id = trim($parts[4]);
+            }
+
+            if ($code === '' || $date_time_str === '') {
+                $invalid_count++;
+                continue;
+            }
+
+            $dateTime = DateTime::createFromFormat('Y-m-d H:i:s', $date_time_str);
+            if (!$dateTime) {
+                $timestamp = strtotime($date_time_str);
+                if ($timestamp === false) {
+                    $invalid_count++;
+                    continue;
+                }
+                $dateTime = new DateTime();
+                $dateTime->setTimestamp($timestamp);
+            }
+
+            if ($attendance_type === '0') {
+                $attendance_type = 'In';
+            } elseif ($attendance_type === '1') {
+                $attendance_type = 'Out';
+            }
+
+            $parsed[] = [
+                'code' => $code,
+                'date_time' => $dateTime,
+                'attendance_type' => $attendance_type,
+                'file_branch_id' => $file_branch_id,
+                'file_device_id' => $file_device_id,
+            ];
+
+            $ymd = $dateTime->format('Y-m-d');
+            if ($date_from === null || $ymd < $date_from) {
+                $date_from = $ymd;
+            }
+            if ($date_to === null || $ymd > $date_to) {
+                $date_to = $ymd;
+            }
+        }
+
+        if (empty($parsed)) {
+            return ['result' => false, 'message' => 'No valid biometric log lines were found in the uploaded file.'];
+        }
+
+        if ($login_role === 9 && $branch_id <= 0) {
+            return ['result' => false, 'message' => 'Your account is not assigned to a branch.'];
+        }
+
+        if ($file_branch_id !== null && ctype_digit($file_branch_id)) {
+            $branch_id = intval($file_branch_id);
+        } elseif ($branch_id <= 0) {
+            foreach ($parsed as $row) {
+                if (!empty($row['file_branch_id']) && ctype_digit($row['file_branch_id'])) {
+                    $branch_id = intval($row['file_branch_id']);
+                    break;
+                }
+            }
+        }
+
+        $branch_id = $branch_id > 0 ? $branch_id : 0;
+        $local_id = $branch_id;
+        $uploaded_file = 'data:text/plain;base64,' . base64_encode($content);
+        $device_id = isset($_POST['device_id']) ? trim($_POST['device_id']) : '';
+        if ($file_device_id !== null && $file_device_id !== '') {
+            $device_id = $file_device_id;
+        } elseif ($device_id === '') {
+            foreach ($parsed as $row) {
+                if (!empty($row['file_device_id'])) {
+                    $device_id = trim($row['file_device_id']);
+                    break;
+                }
+            }
+        }
+        $device_id = $device_id === '' ? '0' : $device_id;
+
+        $this->db->begin_transaction();
+        try {
+            $check_dup = $this->db->prepare("SELECT id FROM DTR WHERE date_from = ? AND date_to = ? AND branch_id = ? AND device_id = ? LIMIT 1");
+            if ($check_dup) {
+                $check_dup->bind_param('ssis', $date_from, $date_to, $branch_id, $device_id);
+                $check_dup->execute();
+                $result_dup = $check_dup->get_result();
+                if ($result_dup && $result_dup->num_rows > 0) {
+                    throw new Exception('A biometric upload with this date range and device already exists.');
+                }
+            }
+
+            $stmt = $this->db->prepare("INSERT INTO DTR (local_id, date_from, date_to, timekeeper_id, branch_id, device_id, file, uploaded_by, approved_by, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)");
+            if (!$stmt) {
+                throw new Exception('Failed to prepare DTR insert: ' . $this->db->error);
+            }
+            $status = 1;
+            $stmt->bind_param('sssissssi', $local_id, $date_from, $date_to, $user_id, $branch_id, $device_id, $uploaded_file, $user_id, $status);
+            if (!$stmt->execute()) {
+                throw new Exception('Failed to insert DTR: ' . $stmt->error);
+            }
+            $ddtr_id = $stmt->insert_id;
+
+            $insert_details = $this->db->prepare("INSERT INTO DTR_details (ddtr_id, employee_id, date_time, work_hours, logs, attendance_type, overtime, undertime, late, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            if (!$insert_details) {
+                throw new Exception('Failed to prepare DTR details insert: ' . $this->db->error);
+            }
+
+            $detail_keyset = [];
+            $employee_bio_query = $this->db->prepare("SELECT employee_id, device_id, site_id FROM employee_bio WHERE TRIM(code) = ? LIMIT 1");
+
+            foreach ($parsed as $row) {
+                $code_param = trim($row['code']);
+                $result_bio = null;
+
+                if ($employee_bio_query) {
+                    $employee_bio_query->bind_param('s', $code_param);
+                    if (!$employee_bio_query->execute()) {
+                        throw new Exception('Failed to query employee bio: ' . $employee_bio_query->error);
+                    }
+                    $result_bio = $employee_bio_query->get_result();
+                }
+
+                if (($result_bio === null || $result_bio->num_rows === 0) && $branch_id > 0) {
+                    $fallback = $this->db->prepare("SELECT employee_id, device_id, site_id FROM employee_bio WHERE TRIM(code) = ? AND site_id = ? LIMIT 1");
+                    if ($fallback) {
+                        $fallback->bind_param('si', $code_param, $branch_id);
+                        $fallback->execute();
+                        $result_bio = $fallback->get_result();
+                    }
+                }
+
+                $bio = null;
+                if ($result_bio && $result_bio->num_rows > 0) {
+                    $bio = $result_bio->fetch_assoc();
+                }
+
+                $is_employee_number = preg_match('/^[\d-]+$/', $code_param);
+                $is_numeric_id = preg_match('/^[0-9]+$/', $code_param);
+
+                if ($bio !== null) {
+                    $employee_id = intval($bio['employee_id']);
+                    $emp_check = $this->db->prepare("SELECT id FROM employee WHERE id = ? LIMIT 1");
+                    $emp_check->bind_param('i', $employee_id);
+                    $emp_check->execute();
+                    $emp_check_result = $emp_check->get_result();
+                    if ($emp_check_result->num_rows === 0) {
+                        $bio = null;
+                    }
+                }
+
+                if ($bio === null && $is_employee_number) {
+                    $direct_emp_stmt = $this->db->prepare("SELECT id, id as employee_id FROM employee WHERE employee_no = ? LIMIT 1");
+                    if ($direct_emp_stmt) {
+                        $emp_no_param = $code_param;
+                        $direct_emp_stmt->bind_param('s', $emp_no_param);
+                        $direct_emp_stmt->execute();
+                        $result_direct_emp = $direct_emp_stmt->get_result();
+                        if ($result_direct_emp && $result_direct_emp->num_rows > 0) {
+                            $bio = $result_direct_emp->fetch_assoc();
+                        } else {
+                            $normalized_emp_no = ltrim($code_param, '0');
+                            if ($normalized_emp_no === '') {
+                                $normalized_emp_no = '0';
+                            }
+                            if ($normalized_emp_no !== $code_param) {
+                                $direct_emp_stmt = $this->db->prepare("SELECT id, id as employee_id FROM employee WHERE employee_no = ? LIMIT 1");
+                                if ($direct_emp_stmt) {
+                                    $direct_emp_stmt->bind_param('s', $normalized_emp_no);
+                                    $direct_emp_stmt->execute();
+                                    $result_direct_emp = $direct_emp_stmt->get_result();
+                                    if ($result_direct_emp && $result_direct_emp->num_rows > 0) {
+                                        $bio = $result_direct_emp->fetch_assoc();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if ($bio === null && $is_numeric_id) {
+                    $direct_emp_stmt = $this->db->prepare("SELECT id, id as employee_id FROM employee WHERE id = ? LIMIT 1");
+                    if ($direct_emp_stmt) {
+                        $emp_id_param = intval($code_param);
+                        $direct_emp_stmt->bind_param('i', $emp_id_param);
+                        $direct_emp_stmt->execute();
+                        $result_direct_emp = $direct_emp_stmt->get_result();
+                        if ($result_direct_emp && $result_direct_emp->num_rows > 0) {
+                            $bio = $result_direct_emp->fetch_assoc();
+                        }
+                    }
+                }
+
+                if ($bio === null) {
+                    $unknown_codes[] = $row['code'];
+                    continue;
+                }
+
+                $employee_id = intval($bio['employee_id']);
+
+                // Persist fallback matches so the same biometric code is not
+                // reported as unmatched on the next upload.
+                if ($branch_id > 0 || ($device_id !== '0' && $device_id !== '')) {
+                    $map_site_id = $branch_id > 0 ? $branch_id : intval($bio['site_id'] ?? 0);
+                    $map_device_id = $device_id !== '0' && $device_id !== ''
+                        ? $device_id
+                        : (string)($bio['device_id'] ?? '0');
+                    $map = $this->db->prepare(
+                        "SELECT id FROM employee_bio WHERE employee_id = ? AND TRIM(code) = ? AND site_id = ? LIMIT 1"
+                    );
+                    if ($map) {
+                        $map->bind_param('isi', $employee_id, $code_param, $map_site_id);
+                        $map->execute();
+                        $map_result = $map->get_result();
+                        if (!$map_result || $map_result->num_rows === 0) {
+                            $insert_map = $this->db->prepare(
+                                "INSERT INTO employee_bio (employee_id, device_id, site_id, code) VALUES (?, ?, ?, ?)"
+                            );
+                            if ($insert_map) {
+                                $insert_map->bind_param('isis', $employee_id, $map_device_id, $map_site_id, $code_param);
+                                $insert_map->execute();
+                            }
+                        }
+                    }
+                }
+                
+                if ($device_id === '0' || $device_id === '') {
+                    $device_id = $bio['device_id'];
+                }
+
+                $date_key = $employee_id . '|' . $row['date_time']->format('Y-m-d H:i:s') . '|' . strtolower($row['attendance_type']);
+                if (isset($detail_keyset[$date_key])) {
+                    continue;
+                }
+                $detail_keyset[$date_key] = true;
+
+                $date_time_value = $row['date_time']->format('Y-m-d');
+                $logs = json_encode([[ 'dateTime' => $row['date_time']->format('Y-m-d H:i:s'), 'type' => 'bio' ]]);
+                $work_hours = 0;
+                $overtime = 0.0;
+                $undertime = 0.0;
+                $late = 0.0;
+                $detail_status = 0;
+
+                $insert_details->bind_param(
+                    'iisdssdddi',
+                    $ddtr_id,
+                    $employee_id,
+                    $date_time_value,
+                    $work_hours,
+                    $logs,
+                    $attendance_type,
+                    $overtime,
+                    $undertime,
+                    $late,
+                    $detail_status
+                );
+
+                if (!$insert_details->execute()) {
+                    throw new Exception('Failed to insert DTR detail: ' . $insert_details->error);
+                }
+                $imported_count++;
+            }
+
+            if ($imported_count === 0) {
+                throw new Exception('No valid biometric employee codes were found in the uploaded file.');
+            }
+
+            if ($device_id !== '0' && $device_id !== '') {
+                $update_device = $this->db->prepare("UPDATE DTR SET device_id = ? WHERE id = ?");
+                if ($update_device) {
+                    $update_device->bind_param('si', $device_id, $ddtr_id);
+                    $update_device->execute();
+                }
+            }
+
+            $unique_unknown_codes = array_values(array_unique($unknown_codes));
+            $skipped_count = $invalid_count + count($unique_unknown_codes);
+
+            try {
+                $audit = $this->db->prepare("INSERT INTO pos_audit_log (table_name, record_id, action, old_data, new_data, user_id) VALUES (?, ?, ?, ?, ?, ?)");
+                if ($audit) {
+                    $table_name = 'dtr';
+                    $action = 'Biometric upload';
+                    $old_data = null;
+                    $new_data = json_encode(['uploaded_by' => $user_id, 'branch_id' => $branch_id, 'date_from' => $date_from, 'date_to' => $date_to, 'imported' => $imported_count]);
+                    $audit->bind_param('sisssi', $table_name, $ddtr_id, $action, $old_data, $new_data, $user_id);
+                    $audit->execute();
+                }
+            } catch (Exception $ignored) {
+            }
+
+            $this->db->commit();
+
+            return [
+                'result' => true,
+                'message' => 'Biometric upload completed successfully.',
+                'id' => $ddtr_id,
+                'imported_count' => $imported_count,
+                'skipped_count' => $skipped_count,
+                'unknown_codes' => $unique_unknown_codes,
+            ];
+        } catch (Exception $e) {
+            $this->db->rollback();
             return ['result' => false, 'message' => $e->getMessage()];
         }
     }
@@ -1462,16 +2563,25 @@ class Action
     //  calcute tax https://chatgpt.com/c/67c55173-83e0-800f-b6a2-58fa42f159db
     function calculate_payroll()
     {
-        $id = $this->db->real_escape_string($_POST['id']);
+        try {
+        $id = $this->db->real_escape_string($_POST['id'] ?? 0);
         $type = isset($_POST['type']) ? $this->db->real_escape_string($_POST['type']) : '';
         $recalculate = isset($type) ? true : false;
-        $pay = $this->db->query("SELECT * FROM payroll where id = " . $id)->fetch_array();
-        $week = $this->db->real_escape_string($pay['type']);
-        $this->db->begin_transaction(); // Start transaction
+
+        $payResult = $this->db->query("SELECT * FROM payroll WHERE id = " . (int)$id);
+        if (!$payResult || $payResult->num_rows === 0) {
+            return ['result' => false, 'message' => 'Payroll not found (id=' . $id . ')'];
+        }
+        $pay = $payResult->fetch_array();
+
+        $this->db->begin_transaction();
         $site_ids_string = $pay['site_ids'];
         $weekly_payroll =  $pay['type'] == 5 ? 0 : 1;
         $site_ids = json_decode($site_ids_string, true);
-        $commaSeparatedSites = implode(',', $site_ids);
+        if (empty($site_ids)) {
+            return ['result' => false, 'message' => 'No branch assigned to this payroll.'];
+        }
+        $commaSeparatedSites = implode(',', array_map('intval', $site_ids));
         $settings = json_decode($pay['settings'], true);
 
         if ($recalculate) {
@@ -1485,12 +2595,12 @@ class Action
 
         try {
             // Construct the SQL query with the site IDs directly included
-            $sql = "SELECT DTR_details.*, employee.salary, employee.allowance_rate, employee.sss_fund, employee.basic_pay, employee.ot_rate,employee.isAutoDeduct, employee.loan_id, employee.loan_deduction, employee.loan, DTR.site_id 
-                FROM DTR_details 
-                INNER JOIN DTR ON DTR.id = DTR_details.ddtr_id  
-                INNER JOIN employee ON  DTR_details.employee_id = employee.id  
-                WHERE date(DTR_details.date_time) BETWEEN ? AND ?  AND DTR.status = 2  
-                AND DTR.site_id IN ($commaSeparatedSites) AND weekly_payroll=$weekly_payroll";
+            $sql = "SELECT DTR_details.*, employee.salary, employee.allowance_rate, employee.sss_fund, employee.basic_pay, employee.ot_rate, employee.isAutoDeduct, employee.loan_id, employee.loan_deduction, employee.loan, DTR.branch_id
+                FROM DTR_details
+                INNER JOIN DTR ON DTR.id = DTR_details.ddtr_id
+                INNER JOIN employee ON DTR_details.employee_id = employee.id
+                WHERE date(DTR_details.date_time) BETWEEN ? AND ? AND DTR.status = 2
+                AND DTR.branch_id IN ($commaSeparatedSites) AND employee.weekly_payroll=$weekly_payroll";
 
             $stmt = $this->db->prepare($sql);
             // Bind the date parameters only
@@ -1508,7 +2618,7 @@ class Action
                     $isAutoDeduct = $row["isAutoDeduct"];
                     $sss_fund = $row["sss_fund"];
                     $allowance_rate = $row["allowance_rate"];
-                    $site_id = $row['site_id'];
+                    $site_id = $row['branch_id'];
                     // Check if the employee_id already exists in the count array
                     if (isset($employeeCount[$employee_id])) {
                         // If it exists, increment the count
@@ -1579,12 +2689,12 @@ class Action
                 }
                 foreach ($grouped_data as $employee_id => $data) {
                     $last_attendance = $data['date_time'];
-                    $sql2 = "SELECT DTR_details.*, DTR.site_id
-                            FROM DTR_details 
-                            INNER JOIN DTR ON DTR.id = DTR_details.ddtr_id  
-                            INNER JOIN employee ON  DTR_details.employee_id = employee.id  
-                            WHERE date(DTR_details.date_time) BETWEEN ? AND ?  AND DTR.status = 2     AND DTR.site_id NOT IN ($commaSeparatedSites)
-                            AND weekly_payroll=$weekly_payroll AND employee_id = $employee_id ORDER BY date_time DESC
+                    $sql2 = "SELECT DTR_details.*, DTR.branch_id
+                            FROM DTR_details
+                            INNER JOIN DTR ON DTR.id = DTR_details.ddtr_id
+                            INNER JOIN employee ON DTR_details.employee_id = employee.id
+                            WHERE date(DTR_details.date_time) BETWEEN ? AND ? AND DTR.status = 2 AND DTR.branch_id NOT IN ($commaSeparatedSites)
+                            AND employee.weekly_payroll=$weekly_payroll AND DTR_details.employee_id = $employee_id ORDER BY DTR_details.date_time DESC
                             ";
                     $stmt2 = $this->db->prepare($sql2);
                     $stmt2->bind_param("ss", $date_from, $date_to);
@@ -1595,7 +2705,7 @@ class Action
                         foreach ($result2 as $row2) {
                             $work_hours2 = floor($row2["work_hours"]) >= 8 ? 8 : $row2["work_hours"];
                             $data__details[] = [
-                                "site_id" => $row2["site_id"],
+                                "site_id" => $row2["branch_id"],
                                 "date_time" => $row2["date_time"],
                                 "work_hours" => $work_hours2,
                                 "overtime" => $row2["overtime"],
@@ -1782,10 +2892,13 @@ class Action
             } else {
                 return ['result' => false, 'message' => 'Calculation failed: No DTR records found.'];
             }
-        } catch (mysqli_sql_exception $e) {
-            return ['result' => false, 'message' => $e->getMessage()];
+        } catch (\Throwable $e) {
+            $this->db->rollback();
+            return ['result' => false, 'message' => 'DB error: ' . $e->getMessage() . ' (line ' . $e->getLine() . ')'];
         }
-        return ['result' => false, 'message' => 'save'];
+        } catch (\Throwable $e) {
+            return ['result' => false, 'message' => 'Calculate error: ' . $e->getMessage() . ' (line ' . $e->getLine() . ')'];
+        }
     }
 
     function update_status_user()
@@ -1827,57 +2940,52 @@ class Action
 
     function save_payroll()
     {
-
-        $pid = null;
-        $site_ids = $_POST['site_ids'];
-        $decodedQueryString = urldecode($site_ids);
-        parse_str($decodedQueryString, $resultArray);
-        if (count($resultArray["site_ids"])  === 0) {
-            return ['result' => false, 'message' => 'No site selected'];
-        }
-        $jsonString = json_encode($resultArray["site_ids"]);
-
-        $decodedQueryString2 = urldecode($_POST['form_data']);
-        // Parse the query string into an associative array
-        parse_str($decodedQueryString2, $resultArray2);
-        $id = $resultArray2["id"];
-        $p2 = $resultArray2["p2"];
-        $date_from = $resultArray2["date_from"];
-        $date_to = $resultArray2["date_to"];
-        $type = $resultArray2["type"];
-        $employer_id = $resultArray2["employer_id"];
-        $category = $resultArray2["category_id"];
-        //$deferential = $resultArray2["deferential"];
-        $deferential = isset($deferential) ? 2 : 1;
-        $data = " date_from='$date_from' ";
-        $data .= ", date_to = '$date_to' ";
-        $data .= ", type = '$type' ";
-        // $data .= ", deferential = '$deferential' ";
-        $data .= ", site_ids = '$jsonString' ";
-        $data .= ", employer_id = '$employer_id' ";
-        $data .= ", category = '$category' ";
-        $data .= ", p2 = '$p2' ";
-        if (empty($id)) {
-            $i = 1;
-            while ($i == 1) {
-                $ref_no = date('Y') . '-' . mt_rand(1, 9999);
-
-                $chk = $this->db->query("SELECT * FROM payroll where ref_no = '$ref_no' ")->num_rows;
-
-                if ($chk <= 0) {
-                    $i = 0;
-                }
+        $pid       = null;
+        $id        = $_POST['id'] ?? '';
+        $p2        = $this->db->real_escape_string($_POST['p2'] ?? 'no');
+        $date_from = date("Y-m-d", strtotime($_POST['date_from'] ?? ''));
+        $date_to   = date("Y-m-d", strtotime($_POST['date_to'] ?? ''));
+        $type      = (int) ($_POST['type'] ?? 0);
+        $branch_id = (int) ($_POST['employer_id'] ?? 0);
+        if ($branch_id === 0) {
+            $branchList = [];
+            $result = $this->db->query("SELECT id FROM branches WHERE status = 1 ORDER BY branch_name ASC");
+            while ($row = $result->fetch_assoc()) {
+                $branchList[] = (int) $row['id'];
             }
-            $data .= ", ref_no='$ref_no' ";
-            $save = $this->db->query("INSERT INTO payroll set " . $data);
-            $pid = $this->db->insert_id;
-            $this->save_payroll_history($this->db->insert_id, 1);
+            $site_ids = $this->db->real_escape_string(json_encode($branchList));
         } else {
-            $save = $this->db->query("UPDATE payroll set " . $data . " where id=" . $id);
+            $site_ids = $this->db->real_escape_string(json_encode([$branch_id]));
         }
+
+        $data  = " date_from='$date_from' ";
+        $data .= ", date_to='$date_to' ";
+        $data .= ", type='$type' ";
+        $data .= ", site_ids='$site_ids' ";
+        $data .= ", category=0 ";
+        $data .= ", p2='$p2' ";
+
+        if (empty($id)) {
+            do {
+                $ref_no = date('Y') . '-' . mt_rand(1, 9999);
+                $chk = $this->db->query("SELECT id FROM payroll WHERE ref_no='$ref_no'")->num_rows;
+            } while ($chk > 0);
+
+            $data .= ", ref_no='$ref_no' ";
+            $save = $this->db->query("INSERT INTO payroll SET " . $data);
+            if ($save) {
+                $pid = $this->db->insert_id;
+                $this->save_payroll_history($pid, 1);
+            }
+        } else {
+            $id   = (int) $id;
+            $save = $this->db->query("UPDATE payroll SET " . $data . " WHERE id=$id");
+        }
+
         if ($save) {
-            return ['result' => true, 'message' => 'save', 'id' =>  $pid];
+            return ['result' => true, 'message' => 'Payroll saved.', 'id' => $pid];
         }
+        return ['result' => false, 'message' => $this->db->error];
     }
 
     function get_sites()
@@ -1903,7 +3011,7 @@ class Action
                           DTR.date_to
                     FROM users
                     INNER JOIN sites 
-                        ON users.id = sites.timekeeper_id
+                        ON sites.id = users.site_id
                     LEFT JOIN clusters 
                         ON clusters.id = sites.cluster_id
                     INNER JOIN DTR 
@@ -1927,7 +3035,7 @@ class Action
         echo '<th scope="col">Select</th>';
         echo '<th scope="col">Site</th>';
         echo '<th scope="col">Cluster</th>';
-        echo '<th scope="col">Timekeeper</th>';
+        echo '<th scope="col">Cashier</th>';
         echo '<th scope="col">Approved DTR</th>';
         echo '</tr>';
         echo '</thead>';
@@ -2905,7 +4013,7 @@ class Action
         }
     }
 
-    function import_employee()
+    function import_employeeOLD()
     {
         mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
         $allowedExt = ['xls', 'xlsx', 'csv'];
@@ -3092,5 +4200,530 @@ class Action
         }
 
         $stmtInsert->close();
+    }
+
+    function import_employee()
+    {
+        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+        $allowedExt = ['xls', 'xlsx', 'csv'];
+        $fileExt = pathinfo($_FILES['excelFile']['name'], PATHINFO_EXTENSION);
+
+        if (!in_array($fileExt, $allowedExt)) {
+            die("Invalid file type. Only Excel files are allowed.");
+        }
+
+        $file = $_FILES['excelFile']['tmp_name'];
+        $spreadsheet = IOFactory::load($file);
+        $sheet = $spreadsheet->getActiveSheet();
+        $data = $sheet->toArray();
+        if (count($data) > 1) {
+            array_shift($data); // Remove header row
+        }
+
+        $this->db->begin_transaction();
+        $stmtCheckPosition  = $this->db->prepare("SELECT id FROM position WHERE LOWER(name) = LOWER(?)");
+        $stmtInsertPosition = $this->db->prepare("INSERT INTO position (name) VALUES (?)");
+        $stmtInsert = $this->db->prepare("INSERT INTO employee
+    (employee_no, employee_code, firstname, middlename, lastname, position_id, salary, basic_pay, status, ot_rate, isAutoDeduct, weekly_payroll, clasification_id, sss_fund, allowance_rate, sss_no, ph_no, hdmf_no, tin_no, ext, bday)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+        $stmtUpdate = $this->db->prepare("UPDATE employee SET
+    position_id=?, salary=?, basic_pay=?, ot_rate=?, isAutoDeduct=?, weekly_payroll=?, clasification_id=?, sss_fund=?, allowance_rate=?, sss_no=?, ph_no=?, hdmf_no=?, bday=?, employee_no=?, employee_code=?, ext=?
+    WHERE id=?");
+
+        $stmtUpdateContrib = $this->db->prepare("UPDATE employee_contributions SET amount=? WHERE employee_id=? AND contribution_id=?");
+
+        try {
+            $insertCount = 0;
+            $updateCount = 0;
+
+            foreach ($data as $row) {
+                $employee_code = mt_rand(100000000000, 999999999999);
+                $status = 1;
+                $e_num = date('Y') . '-' . mt_rand(1, 99999);
+                $clasification_id = 1;
+
+                // Parse "LASTNAME, FIRSTNAME[ MIDDLENAME]" from a single cell
+                $raw_name = trim($row[3]);
+                if (strpos($raw_name, ',') !== false) {
+                    [$last_part, $rest] = explode(',', $raw_name, 2);
+                    $lastname   = trim($last_part);
+                    $name_parts = preg_split('/\s+/', trim($rest), 2);
+                    $firstname  = $name_parts[0] ?? '';
+                    $middlename = $name_parts[1] ?? '';
+                } else {
+                    $lastname   = $raw_name;
+                    $firstname  = trim($row[1]);
+                    $middlename = trim($row[2]);
+                }
+
+                if (empty($firstname) || empty($lastname)) {
+                    continue;
+                }
+
+                $ext = "";
+                $position_name = trim($row[4]);
+                $basic_pay = floatval(preg_replace('/[^0-9.]/', '', $row[10]));
+                $salary = 0;
+                $ot_rate = floatval(preg_replace('/[^0-9.]/', '', $row[12]));
+                $allowance_rate = floatval(preg_replace('/[^0-9.]/', '', $row[11]));
+                $sss_fund = 0;
+                $weekly_payroll = 0;
+                $isAutoDeduct = 0;
+                $sss = 0;
+                $sss_loan = 0;
+                $phic = 0;
+                $hdmf = 0;
+                $hdmf_loan = 0;
+                $bday = "";
+                $ph_no = trim($row[5]);
+                $hdmf_no = trim($row[9]);
+                $sss_no = trim($row[7]);
+                $ppe = 0;
+                $cash_bond = 0;
+                $penalty = 0;
+                $cash_advance = 0;
+                $tin_no = "";
+
+                // 🔹 CHECK IF EMPLOYEE EXISTS
+                $stmtCheckEmployee = $this->db->prepare("SELECT id FROM employee WHERE LOWER(firstname) = LOWER(?) AND LOWER(lastname) = LOWER(?) AND LOWER(middlename) = LOWER(?)");
+                $stmtCheckEmployee->bind_param("sss", $firstname, $lastname, $middlename);
+                $stmtCheckEmployee->execute();
+                $stmtCheckEmployee->store_result();
+
+                $employee_exists = false;
+                $existing_employee_id = null;
+
+                if ($stmtCheckEmployee->num_rows > 0) {
+                    $stmtCheckEmployee->bind_result($existing_employee_id);
+                    $stmtCheckEmployee->fetch();
+                    $employee_exists = true;
+                    echo "Updating existing employee: $firstname $lastname $middlename \n";
+                }
+                $stmtCheckEmployee->free_result();
+
+                // 🔹 GET OR CREATE POSITION
+                $position_id = null;
+                $stmtCheckPosition->bind_param("s", $position_name);
+                $stmtCheckPosition->execute();
+                $stmtCheckPosition->store_result();
+
+                if ($stmtCheckPosition->num_rows > 0) {
+                    $stmtCheckPosition->bind_result($position_id);
+                    $stmtCheckPosition->fetch();
+                } else {
+                    $stmtInsertPosition->bind_param("s", $position_name);
+                    $stmtInsertPosition->execute();
+                    $position_id = $this->db->insert_id;
+                }
+                $stmtCheckPosition->free_result();
+
+                if ($employee_exists) {
+                    // 🔹 UPDATE EXISTING EMPLOYEE
+                    $stmtUpdate->bind_param(
+                        "ssssssssssssssssi",
+                        $position_id,
+                        $salary,
+                        $basic_pay,
+                        $ot_rate,
+                        $isAutoDeduct,
+                        $weekly_payroll,
+                        $clasification_id,
+                        $sss_fund,
+                        $allowance_rate,
+                        $sss_no,
+                        $ph_no,
+                        $hdmf_no,
+                        $bday,
+                        $e_num,
+                        $employee_code,
+                        $ext,
+                        $existing_employee_id
+                    );
+                    $stmtUpdate->execute();
+
+                    if ($stmtUpdate->affected_rows >= 0) {
+                        $updateCount++;
+                        $employee_id = $existing_employee_id;
+
+                        // Update contributions
+                        $contributions = [
+                            ['id' => 1, 'amount' => $sss],
+                            ['id' => 2, 'amount' => $phic],
+                            ['id' => 3, 'amount' => $hdmf]
+                        ];
+
+                        foreach ($contributions as $contribution) {
+                            $stmtUpdateContrib->bind_param("sss", $contribution['amount'], $employee_id, $contribution['id']);
+                            $stmtUpdateContrib->execute();
+                        }
+                    }
+                } else {
+                    // 🔹 INSERT NEW EMPLOYEE
+                    $stmtInsert->bind_param(
+                        "sssssssssssssssssssss",
+                        $e_num,
+                        $employee_code,
+                        $firstname,
+                        $middlename,
+                        $lastname,
+                        $position_id,
+                        $salary,
+                        $basic_pay,
+                        $status,
+                        $ot_rate,
+                        $isAutoDeduct,
+                        $weekly_payroll,
+                        $clasification_id,
+                        $sss_fund,
+                        $allowance_rate,
+                        $sss_no,
+                        $ph_no,
+                        $hdmf_no,
+                        $tin_no,
+                        $ext,
+                        $bday
+                    );
+                    $stmtInsert->execute();
+
+                    if ($stmtInsert->affected_rows > 0) {
+                        $insertCount++;
+                        $employee_id = $this->db->insert_id;
+
+                        // Insert contributions
+                        $contributions = [
+                            ['id' => 1, 'amount' => $sss],
+                            ['id' => 2, 'amount' => $phic],
+                            ['id' => 3, 'amount' => $hdmf]
+                        ];
+
+                        $query = "INSERT INTO employee_contributions (employee_id, contribution_id, amount, payroll_type) VALUES (?, ?, ?, ?)";
+                        $stmt = $this->db->prepare($query);
+
+                        foreach ($contributions as $contribution) {
+                            $payroll_type = 1;
+                            $stmt->bind_param("ssss", $employee_id, $contribution['id'], $contribution['amount'], $payroll_type);
+                            $stmt->execute();
+                        }
+
+                        // Insert loans and deductions for new employees only
+                        if ($sss_loan > 0) {
+                            $loan_status = 0;
+                            $current_date = date('Y-m-d');
+                            $data = " employee_id=$employee_id ";
+                            $data .= ", loan_date='$current_date' ";
+                            $data .= ", loan_amount = $sss_loan ";
+                            $data .= ", loan_status = $loan_status ";
+                            $data .= ", loan_type = 1 ";
+                            $data .= ", loan_balance = $sss_loan ";
+                            $data .= ", damount = $sss_loan ";
+                            $this->db->query("INSERT INTO loans SET " . $data);
+                        }
+
+                        if ($hdmf_loan > 0) {
+                            $loan_status = 0;
+                            $current_date = date('Y-m-d');
+                            $data = " employee_id=$employee_id ";
+                            $data .= ", loan_date='$current_date' ";
+                            $data .= ", loan_amount = $hdmf_loan ";
+                            $data .= ", loan_status = $loan_status ";
+                            $data .= ", loan_type = 2 ";
+                            $data .= ", loan_balance = $hdmf_loan ";
+                            $data .= ", damount = $hdmf_loan ";
+                            $this->db->query("INSERT INTO loans SET " . $data);
+                        }
+
+                        if ($cash_bond > 0) {
+                            $data = " employee_id='$employee_id' ";
+                            $data .= ", deduction_id = 1 ";
+                            $data .= ", amount = $cash_bond ";
+                            $this->db->query("INSERT INTO employee_deductions SET " . $data);
+                        }
+
+                        if ($ppe > 0) {
+                            $data = " employee_id='$employee_id' ";
+                            $data .= ", deduction_id = 2 ";
+                            $data .= ", amount = $ppe ";
+                            $this->db->query("INSERT INTO employee_deductions SET " . $data);
+                        }
+
+                        if ($penalty > 0) {
+                            $data = " employee_id='$employee_id' ";
+                            $data .= ", deduction_id = 3 ";
+                            $data .= ", amount = $penalty ";
+                            $this->db->query("INSERT INTO employee_deductions SET " . $data);
+                        }
+
+                        if ($cash_advance > 0) {
+                            $data = " employee_id='$employee_id' ";
+                            $data .= ", deduction_id = 4 ";
+                            $data .= ", amount = $cash_advance ";
+                            $this->db->query("INSERT INTO employee_deductions SET " . $data);
+                        }
+                    } else {
+                        throw new Exception("Failed to insert employee: " . $stmtInsert->error);
+                    }
+                }
+            }
+
+            $this->db->commit();
+            echo "Import completed: $insertCount inserted, $updateCount updated";
+        } catch (Exception $e) {
+            $this->db->rollback();
+            echo "Error: " . $e->getMessage();
+        }
+
+        $stmtInsert->close();
+        $stmtUpdate->close();
+        $stmtCheckPosition->close();
+        $stmtInsertPosition->close();
+        $stmtUpdateContrib->close();
+    }
+
+    // POS CRUD Operations
+    function add_pos_branch() {
+        extract($_POST);
+        $branch_code = $this->db->real_escape_string($branch_code);
+        $branch_name = $this->db->real_escape_string($branch_name);
+        $city = $this->db->real_escape_string($city ?? '');
+        $phone = $this->db->real_escape_string($phone ?? '');
+        $email = $this->db->real_escape_string($email ?? '');
+        $status = intval($status ?? 1);
+
+        $check = $this->db->query("SELECT id FROM branches WHERE branch_code='$branch_code'");
+        if ($check->num_rows > 0) return "Branch code already exists";
+
+        $query = "INSERT INTO branches (branch_code, branch_name, city, phone, email, status)
+                  VALUES ('$branch_code', '$branch_name', '$city', '$phone', '$email', $status)";
+        if ($this->db->query($query)) {
+            $this->log_cashier_notification(
+                'Branch added',
+                "Branch '$branch_name' was added by admin.",
+            );
+            return 1;
+        }
+        return "Error: " . $this->db->error;
+    }
+
+    function update_pos_branch() {
+        extract($_POST);
+        $id = intval($id);
+        $branch_code = $this->db->real_escape_string($branch_code);
+        $branch_name = $this->db->real_escape_string($branch_name);
+        $city = $this->db->real_escape_string($city ?? '');
+        $phone = $this->db->real_escape_string($phone ?? '');
+        $email = $this->db->real_escape_string($email ?? '');
+        $status = intval($status ?? 1);
+
+        $query = "UPDATE branches SET branch_code='$branch_code', branch_name='$branch_name',
+                  city='$city', phone='$phone', email='$email', status=$status WHERE id=$id";
+        if ($this->db->query($query)) {
+            $this->log_cashier_notification(
+                'Branch updated',
+                "Branch '$branch_name' was updated by admin.",
+            );
+            return 1;
+        }
+        return "Error: " . $this->db->error;
+    }
+
+    function add_pos_category() {
+        extract($_POST);
+        $category_code = $this->db->real_escape_string($category_code);
+        $category_name = $this->db->real_escape_string($category_name);
+        $description = $this->db->real_escape_string($description ?? '');
+        $status = intval($status ?? 1);
+
+        $check = $this->db->query("SELECT id FROM product_categories WHERE category_code='$category_code'");
+        if ($check->num_rows > 0) return "Category code already exists";
+
+        $query = "INSERT INTO product_categories (category_code, category_name, description, status)
+                  VALUES ('$category_code', '$category_name', '$description', $status)";
+        if ($this->db->query($query)) {
+            $this->log_cashier_notification(
+                'Category added',
+                "Category '$category_name' was added by admin.",
+            );
+            return 1;
+        }
+        return "Error: " . $this->db->error;
+    }
+
+    function update_pos_category() {
+        extract($_POST);
+        $id = intval($id);
+        $category_code = $this->db->real_escape_string($category_code);
+        $category_name = $this->db->real_escape_string($category_name);
+        $description = $this->db->real_escape_string($description ?? '');
+        $status = intval($status ?? 1);
+
+        $query = "UPDATE product_categories SET category_code='$category_code', category_name='$category_name',
+                  description='$description', status=$status WHERE id=$id";
+        if ($this->db->query($query)) {
+            $this->log_cashier_notification(
+                'Category updated',
+                "Category '$category_name' was updated by admin.",
+            );
+            return 1;
+        }
+        return "Error: " . $this->db->error;
+    }
+
+    // Handle product image upload; returns filename or '' if none/failed
+    private function upload_product_image() {
+        if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK || $_FILES['image']['tmp_name'] === '') {
+            return '';
+        }
+        $allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (!in_array(mime_content_type($_FILES['image']['tmp_name']), $allowed)) {
+            return '';
+        }
+        $ext = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
+        $fname = 'prod_' . uniqid() . '_' . time() . '.' . strtolower($ext);
+        if (move_uploaded_file($_FILES['image']['tmp_name'], 'uploads/products/' . $fname)) {
+            return $fname;
+        }
+        return '';
+    }
+
+    function add_pos_product() {
+        $login_role = intval($_SESSION['login_role'] ?? 0);
+        if (!in_array($login_role, [1, 9, 10], true)) {
+            return 'You do not have permission to add products.';
+        }
+
+        $product_name = trim($_POST['product_name'] ?? '');
+        $branch_id = intval($_POST['branch_id'] ?? 0);
+        $quantity_on_hand = floatval($_POST['quantity_on_hand'] ?? 0);
+        $unit_price = floatval($_POST['unit_price'] ?? 0);
+        $description = $_POST['description'] ?? '';
+        $status = intval($_POST['status'] ?? 1);
+        $unit = trim($_POST['unit'] ?? '');
+        $reorder_level = floatval($_POST['reorder_level'] ?? 10);
+        $cost_price = floatval($_POST['cost_price'] ?? 0);
+        $category_id = intval($_POST['category_id'] ?? 0);
+        $product_code = trim($_POST['product_code'] ?? '');
+        $image = $this->db->real_escape_string($this->upload_product_image());
+
+        if (empty($product_name)) {
+            return 'Product name is required.';
+        }
+        if ($branch_id <= 0) {
+            return 'Branch is required.';
+        }
+        if ($unit_price <= 0) {
+            return 'Price is required.';
+        }
+
+        if ($category_id <= 0) {
+            $categoryRow = $this->db->query("SELECT id FROM product_categories WHERE status=1 ORDER BY id LIMIT 1");
+            if ($categoryRow && $categoryRow->num_rows > 0) {
+                $category_id = intval($categoryRow->fetch_assoc()['id']);
+            } else {
+                $defaultCategoryCode = 'UNCAT' . time();
+                $this->db->query("INSERT INTO product_categories (category_code, category_name, description, status) VALUES ('$defaultCategoryCode', 'Uncategorized', 'Default category', 1)");
+                $category_id = intval($this->db->insert_id);
+            }
+        }
+
+        if (empty($product_code)) {
+            $baseCode = preg_replace('/[^A-Z0-9]/', '', strtoupper(substr($product_name, 0, 3)));
+            if (empty($baseCode)) {
+                $baseCode = 'PRD';
+            }
+            $product_code = $baseCode . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+            while ($this->db->query("SELECT id FROM products WHERE product_code='$product_code'")->num_rows > 0) {
+                $product_code = $baseCode . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+            }
+        }
+
+        $product_name = $this->db->real_escape_string($product_name);
+        $product_code = $this->db->real_escape_string($product_code);
+        $description = $this->db->real_escape_string($description);
+        $unit = $this->db->real_escape_string($unit);
+
+        $check = $this->db->query("SELECT id FROM products WHERE product_code='$product_code'");
+        if ($check->num_rows > 0) return "Product code already exists";
+
+        $query = "INSERT INTO products (product_code, product_name, category_id, branch_id, description,
+                  quantity_on_hand, reorder_level, unit_price, cost_price, unit, image, status)
+                  VALUES ('$product_code', '$product_name', $category_id, $branch_id, '$description',
+                  $quantity_on_hand, $reorder_level, $unit_price, $cost_price, '$unit', '$image', $status)";
+        if ($this->db->query($query)) {
+            $notificationBranchId = $branch_id === 1 ? null : $branch_id;
+            $branchLabel = $branch_id === 1 ? 'Main Branch' : "Branch ID $branch_id";
+            $this->log_cashier_notification(
+                'Product added',
+                "Product '$product_name' was added by admin in $branchLabel.",
+                null,
+                $notificationBranchId,
+            );
+            return 1;
+        }
+        return "Error: " . $this->db->error;
+    }
+
+    function add_pos_product_stock() {
+        $id = intval($_POST['id'] ?? 0);
+        $quantity_to_add = floatval($_POST['quantity_to_add'] ?? 0);
+
+        if ($id <= 0 || $quantity_to_add <= 0) {
+            return 'Invalid stock quantity.';
+        }
+
+        $stmt = $this->db->prepare("UPDATE products SET quantity_on_hand = GREATEST(0, quantity_on_hand + ?) WHERE id = ?");
+        if (!$stmt) {
+            return 'Failed to prepare stock update.';
+        }
+
+        $stmt->bind_param('di', $quantity_to_add, $id);
+        if ($stmt->execute()) {
+            $stmt->close();
+            $this->log_cashier_notification(
+                'Product stock updated',
+                "Product stock was increased by $quantity_to_add.",
+            );
+            return 1;
+        }
+
+        $error = $stmt->error;
+        $stmt->close();
+        return "Error: $error";
+    }
+
+    function update_pos_product() {
+        extract($_POST);
+        $id = intval($id);
+        $product_code = $this->db->real_escape_string($product_code);
+        $product_name = $this->db->real_escape_string($product_name);
+        $category_id = intval($category_id);
+        $branch_id = intval($branch_id);
+        $description = $this->db->real_escape_string($description ?? '');
+        $quantity_on_hand = floatval($quantity_on_hand ?? 0);
+        $reorder_level = floatval($reorder_level ?? 10);
+        $unit_price = floatval($unit_price);
+        $cost_price = floatval($cost_price ?? 0);
+        $unit = $this->db->real_escape_string($unit ?? '');
+        $status = intval($status ?? 1);
+
+        // Keep existing image unless a new one is uploaded
+        $newImage = $this->upload_product_image();
+        $image = $this->db->real_escape_string($newImage !== '' ? $newImage : ($current_image ?? ''));
+        $imageSql = ", image='$image'";
+
+        $query = "UPDATE products SET product_code='$product_code', product_name='$product_name',
+                  category_id=$category_id, branch_id=$branch_id, description='$description',
+                  quantity_on_hand=$quantity_on_hand, reorder_level=$reorder_level,
+                  unit_price=$unit_price, cost_price=$cost_price, unit='$unit'$imageSql, status=$status WHERE id=$id";
+        if ($this->db->query($query)) {
+            $this->log_cashier_notification(
+                'Product updated',
+                "Product '$product_name' was updated by admin.",
+                null,
+                $branch_id,
+            );
+            return 1;
+        }
+        return "Error: " . $this->db->error;
     }
 }

@@ -1,18 +1,17 @@
 <?php
-if (!isset($_GET['id']) || !isset($_GET['device_id']) || !isset($_GET['site_id'])) {
+if (!isset($_GET['id']) || !isset($_GET['device_id'])) {
     header("HTTP/1.1 405 Unauthorized");
     echo "Data not available";
     exit;
 };
 
-$id =  base64_decode($_GET['id']);
-$device_id =  base64_decode($_GET['device_id']);
-$site_id =  base64_decode($_GET['site_id']);
-$timekeeper_name = base64_decode($_GET['timekeeper_name']);
+$id          = base64_decode($_GET['id']);
+$device_id   = base64_decode($_GET['device_id']);
+$branch_id   = base64_decode($_GET['branch_id'] ?? '');
+$timekeeper_name = base64_decode($_GET['timekeeper_name'] ?? '');
 
-$query = "SELECT DTR.*,sites.site_code, sites.site_name, employer_name FROM DTR  
-        LEFT JOIN sites ON sites.id = DTR.site_id  
-        LEFT JOIN employers  ON sites.employer_id = employers.id  
+$query = "SELECT DTR.*, branches.branch_code, branches.branch_name FROM DTR
+        LEFT JOIN branches ON branches.id = DTR.branch_id
         WHERE DTR.id = ?";
 $stmt = $conn->prepare($query);
 $stmt->bind_param("i", $id);
@@ -23,6 +22,14 @@ $dtr = $result->fetch_assoc();
 if (!$dtr) {
     header("HTTP/1.1 405 Unauthorized");
     echo "Data not available";
+    exit;
+}
+
+$login_role = intval($_SESSION['login_role'] ?? 0);
+$user_branch = intval($_SESSION['login_branch_id'] ?? 0);
+if (!in_array($login_role, [1, 10], true) && $user_branch > 0 && intval($dtr['branch_id']) !== $user_branch) {
+    header("HTTP/1.1 403 Forbidden");
+    echo "You do not have access to this upload.";
     exit;
 }
 
@@ -53,6 +60,66 @@ function getDataBySpaces($dataString)
     }
 
     return $splitData;
+}
+
+function getDtrPrintTimes($entries)
+{
+    $times = [];
+
+    foreach (array_values($entries) as $entryIndex => $entry) {
+        $logs = json_decode($entry['logs'] ?? '', true);
+        if (!is_array($logs)) {
+            continue;
+        }
+
+        // A single log may be stored as an object instead of a list.
+        if (isset($logs['dateTime']) || isset($logs['date_time'])) {
+            $logs = [$logs];
+        }
+
+        $entryType = strtolower(trim((string)($entry['attendance_type'] ?? '')));
+        foreach ($logs as $log) {
+            if (!is_array($log)) {
+                continue;
+            }
+            $dateTime = $log['dateTime'] ?? $log['date_time'] ?? '';
+            $timestamp = $dateTime !== '' ? strtotime($dateTime) : false;
+            if ($timestamp !== false) {
+                $times[] = [
+                    'timestamp' => $timestamp,
+                    'type' => $entryType,
+                    'index' => $entryIndex,
+                ];
+            }
+        }
+    }
+
+    if (!$times) {
+        return ['', ''];
+    }
+
+    usort($times, function ($a, $b) {
+        return $a['timestamp'] <=> $b['timestamp'];
+    });
+
+    $in = null;
+    $out = null;
+    foreach ($times as $time) {
+        if (in_array($time['type'], ['in', '0'], true) && $in === null) {
+            $in = $time;
+        } elseif (in_array($time['type'], ['out', '1'], true) && $out === null) {
+            $out = $time;
+        }
+    }
+
+    // If types are missing or unreliable, chronological order is authoritative.
+    $in = $in ?? $times[0];
+    $out = $out ?? (count($times) > 1 ? $times[count($times) - 1] : null);
+
+    return [
+        date('g:i A', $in['timestamp']),
+        $out ? date('g:i A', $out['timestamp']) : '',
+    ];
 }
 
 $decoded_data = base64_decode(explode(",", $dtr['file'])[1]);
@@ -148,115 +215,89 @@ while ($row = $query->fetch_assoc()) {
 
 <link rel="stylesheet" href="assets2/css/my-style.css">
 <style>
-/* ── DTR Details — Excel-style overrides ── */
 #print-section { display: none; }
 
-/* Stat boxes row */
-.dtr-stats-row { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
-.dtr-stat-box {
-    flex:1; min-width:130px;
-    border:1px solid #c6e0b4; border-radius:3px; background:#fff;
-    padding:8px 12px; display:flex; align-items:center; gap:10px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-}
-.dtr-stat-box .stat-icon {
-    width:36px; height:36px; border-radius:50%;
-    display:flex; align-items:center; justify-content:center;
-    font-size:17px; flex-shrink:0;
-}
-.dtr-stat-box .stat-val { font-size:18px; font-weight:700; line-height:1.1; font-family:'Segoe UI',Arial,sans-serif; }
-.dtr-stat-box .stat-lbl { font-size:10px; color:#666; text-transform:uppercase; letter-spacing:0.5px; }
+/* table header */
+#table-1 thead th { background-color: #219688; color: #fff; border-color: #dddddd; }
 
-/* Date group banner */
-#table-1 tbody tr.date-separator td {
-    background:#217346 !important; color:#fff !important;
-    border:1px solid #1a5c38 !important; padding:8px 14px !important;
+/* DTR header: keep the header fixed vertically without freezing columns.
+   The shared payroll table styles use a fixed 40px offset for column 2,
+   which is narrower than this table's Date column and causes overlap. */
+#dtr-table-responsive #table-1 thead th {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 20 !important;
 }
-#table-1 tbody tr.date-separator td h6 { color:#fff !important; margin:0; }
-#table-1 tbody tr.date-separator td small,
-#table-1 tbody tr.date-separator td .stat-label,
-#table-1 tbody tr.date-separator td .text-muted { color:rgba(255,255,255,0.8) !important; }
-#table-1 tbody tr.date-separator td .text-primary,
-#table-1 tbody tr.date-separator td .text-success,
-#table-1 tbody tr.date-separator td .stat-value,
-#table-1 tbody tr.date-separator td .fw-bold { color:#fff !important; }
-#table-1 tbody tr.date-separator td .date-icon { background:rgba(255,255,255,0.15) !important; border-radius:50%; }
-
-/* Employee sub-header */
-#table-1 tbody tr.employee-header td {
-    background:#e2efda !important; border:1px solid #c6e0b4 !important; padding:6px 10px !important;
+#dtr-table-responsive #table-1 thead tr:first-child th:nth-child(1),
+#dtr-table-responsive #table-1 thead tr:first-child th:nth-child(2),
+#dtr-table-responsive #table-1 tbody td:nth-child(1),
+#dtr-table-responsive #table-1 tbody td:nth-child(2) {
+    left: auto !important;
 }
-#table-1 tbody tr.employee-header td h6 { color:#1b5e20 !important; }
-#table-1 tbody tr.employee-header td .avatar-md { background:#217346 !important; }
-#table-1 tbody tr.employee-header td .text-primary { color:#2e7d32 !important; }
-#table-1 tbody tr.employee-header td .total-value { color:#1b5e20 !important; }
-
-/* Duplicate */
-#table-1 tbody tr.duplicate-entry td { background:#fff5f5 !important; border-left:3px solid #f06548 !important; }
-
-/* Grand total */
-#table-1 tbody tr.grand-total-row td {
-    background:#217346 !important; color:#fff !important;
-    font-weight:700 !important; font-size:13px !important;
-    border:1px solid #1a5c38 !important;
-    position:sticky; bottom:0; z-index:8;
-    box-shadow:0 -2px 8px rgba(0,0,0,0.14);
+#dtr-table-responsive #table-1 tbody td:nth-child(1),
+#dtr-table-responsive #table-1 tbody td:nth-child(2) {
+    position: static !important;
+    transform: none !important;
 }
 
-/* bg-soft utilities */
-.bg-soft-primary  { background:rgba(33,115,70,0.08) !important; }
-.bg-soft-secondary{ background:rgba(108,117,125,0.08) !important; }
-.bg-soft-success  { background:rgba(33,115,70,0.10) !important; }
-.bg-soft-danger   { background:rgba(240,101,72,0.10) !important; }
-.bg-soft-warning  { background:rgba(247,184,75,0.10) !important; }
-.bg-soft-info     { background:rgba(80,165,241,0.10) !important; }
-.bg-soft-light    { background:#f8f9fa !important; }
+/* date group row */
+#table-1 tbody tr.date-separator td { background: #219688; color: #fff; padding: 6px 12px; font-weight: bold; }
+#table-1 tbody tr.date-separator td * { color: #fff; }
+.date-separator { cursor: pointer; user-select: none; }
+.dtr-group-row.dtr-hidden { display: none !important; }
 
-/* Editable fields */
-.editable-field { display:flex; align-items:center; justify-content:center; gap:2px; }
-.editable-field .form-control { border:1px solid #c6e0b4; border-radius:2px; transition:all 0.2s; }
-.editable-field .form-control:focus { border-color:#217346; box-shadow:0 0 0 2px rgba(33,115,70,0.18); }
-.logs-container { max-height:120px; overflow-y:auto; }
-.log-entry { line-height:1.2; }
-.stat-item, .total-item { min-width:60px; }
-.stat-value, .total-value { font-size:1.05rem; }
-.update-success { border-color:#217346 !important; background:rgba(33,115,70,0.1) !important; animation:pulse-ok 2s; }
-@keyframes pulse-ok {
-    0%   { box-shadow:0 0 0 0 rgba(33,115,70,0.6); }
-    70%  { box-shadow:0 0 0 8px rgba(33,115,70,0); }
-    100% { box-shadow:0 0 0 0 rgba(33,115,70,0); }
-}
+/* employee sub-header */
+#table-1 tbody tr.employee-header td { background: #e6f5f3; border-top: 1px solid #cccccc; }
 
-/* Print styles */
+/* grand total */
+#table-1 tbody tr.grand-total-row td { background: #219688; color: #fff; font-weight: bold; }
+
+/* duplicate */
+#table-1 tbody tr.duplicate-entry td { background: #fff5f5; border-left: 3px solid #f06548; }
+
+/* simple chips */
+.dtr-time-chip { display: inline-block; padding: 2px 6px; font-size: 11px; border: 1px solid #cccccc; border-radius: 3px; }
+.dtr-time-chip.in  { background: #e6f5f3; color: #219688; }
+.dtr-time-chip.out { background: #fce4ec; color: #c62828; }
+.dtr-time-chip.na  { background: #f5f5f5; color: #888; }
+.dtr-log-chip { display: inline-block; padding: 1px 5px; font-size: 10px; border: 1px solid #cccccc; border-radius: 3px; margin-bottom: 1px; }
+.dtr-log-chip.bio    { background: #e6f5f3; color: #219688; }
+.dtr-log-chip.manual { background: #fff8e1; color: #c98a00; }
+
+/* stat boxes */
+.dtr-stats-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.dtr-stat-box { flex: 1; min-width: 120px; border: 1px solid #dddddd; border-top: 3px solid #219688; background: #fff; padding: 10px 14px; }
+.dtr-stat-box .stat-val { font-size: 18px; font-weight: bold; }
+.dtr-stat-box .stat-lbl { font-size: 11px; color: #666; }
+
+/* editable */
+.editable-field { display: flex; align-items: center; gap: 2px; justify-content: center; }
+.editable-field .form-control { font-size: 11px; padding: 2px 5px; height: 24px; border: 1px solid #cccccc; }
+.update-dtr-field { width: 22px; height: 22px; padding: 0; font-size: 11px; cursor: pointer; border: 1px solid #cccccc; background: #f5f5f5; color: #219688; }
+
+/* misc */
+.logs-container { max-height: 90px; overflow-y: auto; }
+.dtr-emp-init { width: 26px; height: 26px; border-radius: 50%; background: #219688; color: #fff; font-size: 10px; font-weight: bold; display: inline-flex; align-items: center; justify-content: center; }
+.dtr-emp-name { font-size: 12px; font-weight: 600; color: #333; }
+.dtr-emp-pos  { font-size: 11px; color: #666; }
+.dtr-tot-item { display: inline-flex; flex-direction: column; align-items: center; min-width: 38px; }
+.dtr-tot-item .tot-lbl { font-size: 9px; color: #888; text-transform: uppercase; }
+.dtr-tot-item .tot-val { font-size: 12px; font-weight: bold; color: #219688; }
+.dtr-tot-item.ot .tot-val { color: #c98a00; }
+.dtr-tot-item.ut .tot-val { color: #1565c0; }
+.dtr-tot-item.late .tot-val { color: #c62828; }
+.dtr-emp-totals { display: flex; gap: 8px; }
+.dtr-date-totals { display: flex; gap: 12px; font-size: 11px; }
+.dtr-chevron { font-size: 14px; }
+
+/* print */
 @media print {
-    body * { visibility:hidden; margin:0; padding:0; }
-    #print-section, #print-section * { visibility:visible; }
-    #print-section {
-        display:block !important; position:absolute; left:0; top:0;
-        width:100%; padding:20px; font-family:Arial,sans-serif; font-size:12px; background:#fff;
-    }
-    .main-content,.page-content,.container-fluid,.card,.btn,.search-box { display:none !important; }
-    .print-header { text-align:center; margin-bottom:20px; padding-bottom:15px; border-bottom:2px solid #333; }
-    .print-header h2 { font-size:18px; margin-bottom:10px; color:#333; }
-    .print-info { margin-bottom:15px; }
-    .print-info p { margin:2px 0; font-size:11px; }
-    .print-summary { display:flex; justify-content:center; gap:20px; margin:15px 0; padding:10px; background:#f5f5f5; border-radius:4px; }
-    .summary-item { text-align:center; }
-    .summary-item .label { display:block; font-size:10px; color:#666; }
-    .summary-item .value { display:block; font-size:12px; font-weight:bold; color:#333; }
-    .print-table { width:100%; border-collapse:collapse; margin:15px 0; font-size:10px; }
-    .print-table th { background:#f8f9fa; border:1px solid #ddd; padding:6px 4px; text-align:center; font-weight:bold; }
-    .print-table td { border:1px solid #ddd; padding:5px 3px; text-align:left; }
-    .print-table .text-center { text-align:center; }
-    .print-table .text-end { text-align:right; }
-    .date-separator { background:#e9ecef; page-break-before:auto; page-break-after:avoid; }
-    .date-header { padding:8px 5px; font-size:11px; }
-    .employee-row { page-break-inside:avoid; }
-    .employee-row td { padding:4px 3px; }
-    .employee-name { font-weight:500; }
-    .grand-total { background:#d1ecf1; font-weight:bold; }
-    .grand-total td { padding:8px 3px; }
-    .print-footer { margin-top:20px; padding-top:10px; border-top:1px solid #ddd; text-align:center; font-size:10px; color:#666; }
+    body * { visibility: hidden; }
+    #print-section, #print-section * { visibility: visible; }
+    #print-section { display: block !important; position: absolute; left: 0; top: 0; width: 100%; padding: 20px; font-size: 12px; }
+    .print-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+    .print-table th, .print-table td { border: 1px solid #ddd; padding: 4px; }
+    .print-table th { background: #f5f5f5; font-weight: bold; }
 }
 </style>
 <div class="main-content">
@@ -280,8 +321,7 @@ while ($row = $query->fetch_assoc()) {
                                 </div>
                                 <small class="text-muted">
                                     <i class="ri-calendar-2-line me-1"></i><?= date('M d', strtotime($dtr['date_from'])) ?> &ndash; <?= date('M d, Y', strtotime($dtr['date_to'])) ?>
-                                    &nbsp;&bull;&nbsp;<i class="ri-building-line me-1"></i><?= htmlspecialchars($dtr['site_name']) ?> (<?= htmlspecialchars($dtr['site_code']) ?>)
-                                    &nbsp;&bull;&nbsp;<i class="ri-user-2-line me-1"></i><?= htmlspecialchars($dtr['employer_name']) ?>
+                                    &nbsp;&bull;&nbsp;<i class="ri-building-line me-1"></i><?= htmlspecialchars($dtr['branch_name'] ?? '—') ?> (<?= htmlspecialchars($dtr['branch_code'] ?? '') ?>)
                                     &nbsp;&bull;&nbsp;<i class="ri-shield-user-line me-1"></i><?= htmlspecialchars($timekeeper_name) ?>
                                 </small>
                             </div>
@@ -495,9 +535,8 @@ while ($row = $query->fetch_assoc()) {
                         <h2>Daily Time Record (DTR) Details</h2>
                         <div class="print-info">
                             <p><strong>Period:</strong> <?= date('F d', strtotime($dtr['date_from'])) ?> - <?= date('F d, Y', strtotime($dtr['date_to'])) ?></p>
-                            <p><strong>Site:</strong> <?= $dtr['site_name'] ?> (<?= $dtr['site_code'] ?>)</p>
-                            <p><strong>Employer:</strong> <?= $dtr['employer_name'] ?></p>
-                            <p><strong>Timekeeper:</strong> <?= $timekeeper_name ?></p>
+                            <p><strong>Branch:</strong> <?= htmlspecialchars($dtr['branch_name'] ?? '—') ?> (<?= htmlspecialchars($dtr['branch_code'] ?? '') ?>)</p>
+                            <p><strong>Cashier:</strong> <?= $timekeeper_name ?></p>
                         </div>
                         <div class="print-summary">
                             <div class="summary-item">
@@ -570,18 +609,7 @@ while ($row = $query->fetch_assoc()) {
                                     $employeeCounter++;
                                     $entries = $employeeData['entries'];
                                     $firstEntry = reset($entries);
-                                    $lastEntry = end($entries);
-
-                                    // Get time in and time out from logs
-                                    $timeIn = '';
-                                    $timeOut = '';
-                                    if (!empty($firstEntry['logs'])) {
-                                        $logs = json_decode($firstEntry['logs'], true);
-                                        if (is_array($logs) && count($logs) > 0) {
-                                            $timeIn = date("g:i A", strtotime($logs[0]['dateTime']));
-                                            $timeOut = count($logs) > 1 ? date("g:i A", strtotime(end($logs)['dateTime'])) : '';
-                                        }
-                                    }
+                                    [$timeIn, $timeOut] = getDtrPrintTimes($entries);
                                 ?>
                                     <tr class="employee-row">
                                         <td><?= date("m/d/Y", strtotime($date)) ?></td>
@@ -614,87 +642,82 @@ while ($row = $query->fetch_assoc()) {
                         <p>Generated on: <?= date('F j, Y g:i A') ?></p>
                     </div>
                 </div>
-                <!-- Attendance List — Excel panel -->
+                <!-- Attendance List panel -->
                 <div class="xl-panel" id="dtrDiv">
                     <div class="xl-ribbon">
                         <span class="xl-ribbon-title">
-                            <i class="ri-time-line" style="color:#217346;"></i> Attendance List
+                            <i class="ri-time-line"></i> DTR Attendance
                         </span>
                         <div class="xl-ribbon-actions">
                             <div class="xl-search-wrap">
                                 <i class="ri-search-2-line"></i>
-                                <input id="myInput" type="text" placeholder="Search...">
+                                <input id="myInput" type="text" placeholder="Search employee...">
                             </div>
                             <div class="xl-ribbon-sep"></div>
-                            <button data-toggle="tooltip" title="Print" onclick="printDTRTable()" class="xl-btn"><i class="ri-printer-line"></i> Print</button>
+                            <button onclick="toggleAllGroups(true)"  class="xl-btn"><i class="ri-expand-up-down-line"></i> Expand All</button>
+                            <button onclick="toggleAllGroups(false)" class="xl-btn"><i class="ri-contract-up-down-line"></i> Collapse All</button>
+                            <div class="xl-ribbon-sep"></div>
+                            <button onclick="printDTRTable()" class="xl-btn"><i class="ri-printer-line"></i> Print</button>
                             <?php if ($dtr['status'] === 0 && $login_role !== 6): ?>
                                 <div class="xl-ribbon-sep"></div>
-                                <button data-toggle="tooltip" title="Add Attendance" onclick="addSchedule(<?= $id ?>)" class="xl-btn"><i class="ri-add-line"></i> Add Attendance</button>
+                                <button onclick="addSchedule(<?= $id ?>)" class="xl-btn"><i class="ri-add-line"></i> Add</button>
                             <?php endif; ?>
                             <?php if ($dtr['status'] === 1): ?>
                                 <div class="xl-ribbon-sep"></div>
-                                <button data-toggle="tooltip" title="Approve DTR" <?= $is_duplicate ? 'disabled' : '' ?> onclick="approveDtr(<?= $id ?>)" class="xl-btn xl-btn-save"><i class="ri-checkbox-circle-line"></i> Approve</button>
+                                <button <?= $is_duplicate ? 'disabled' : '' ?> onclick="approveDtr(<?= $id ?>)" class="xl-btn xl-btn-save"><i class="ri-checkbox-circle-line"></i> Approve</button>
                             <?php endif; ?>
                         </div>
                     </div>
                     <div class="xl-panel-body">
-                        <!-- Stat boxes -->
+                        <!-- Summary stat cards -->
                         <div class="dtr-stats-row">
                             <div class="dtr-stat-box">
-                                <div class="stat-icon" style="background:#e2efda;color:#217346;"><i class="ri-time-line"></i></div>
-                                <div class="stat-info">
-                                    <div class="stat-val" style="color:#217346;"><?= number_format($grandTotals['work_hours'], 2) ?></div>
+                                <div class="stat-icon" style="background:#e6f5f3;color:#219688;"><i class="ri-time-line"></i></div>
+                                <div>
+                                    <div class="stat-val" style="color:#219688;"><?= number_format($grandTotals['work_hours'], 2) ?></div>
                                     <div class="stat-lbl">Work Hours</div>
                                 </div>
                             </div>
                             <div class="dtr-stat-box">
                                 <div class="stat-icon" style="background:#fff8e1;color:#f7b84b;"><i class="ri-sun-line"></i></div>
-                                <div class="stat-info">
+                                <div>
                                     <div class="stat-val" style="color:#c98a00;"><?= number_format($grandTotals['overtime'], 2) ?></div>
                                     <div class="stat-lbl">Overtime</div>
                                 </div>
                             </div>
                             <div class="dtr-stat-box">
                                 <div class="stat-icon" style="background:#e3f2fd;color:#50a5f1;"><i class="ri-arrow-down-line"></i></div>
-                                <div class="stat-info">
+                                <div>
                                     <div class="stat-val" style="color:#1565c0;"><?= number_format($grandTotals['undertime'], 2) ?></div>
                                     <div class="stat-lbl">Undertime</div>
                                 </div>
                             </div>
                             <div class="dtr-stat-box">
                                 <div class="stat-icon" style="background:#fce4ec;color:#f06548;"><i class="ri-alarm-warning-line"></i></div>
-                                <div class="stat-info">
+                                <div>
                                     <div class="stat-val" style="color:#c62828;"><?= number_format($grandTotals['late'], 2) ?></div>
                                     <div class="stat-lbl">Late (min)</div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Add this modal HTML at the bottom of your page, before the scripts -->
-                        <div class="modal fade" id="employeeNotesModal" tabindex="-1" aria-labelledby="employeeNotesModalLabel" aria-hidden="true">
+                        <!-- Employee Notes Modal -->
+                        <div class="modal fade" id="employeeNotesModal" tabindex="-1" aria-hidden="true">
                             <div class="modal-dialog modal-dialog-centered">
                                 <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title" id="employeeNotesModalLabel">
-                                            <i class="ri-sticky-note-line me-2"></i>Employee Notes
-                                        </h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    <div class="modal-header" style="border-bottom:2px solid #219688;">
+                                        <h5 class="modal-title" style="color:#219688;"><i class="ri-sticky-note-line me-2"></i>Employee Notes</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                     </div>
                                     <div class="modal-body">
-                                        <div class="employee-info mb-3">
-                                            <h6 id="modalEmployeeName" class="text-primary mb-1"></h6>
-                                            <p id="modalEmployeePosition" class="text-muted small mb-0"></p>
-                                            <p id="modalEmployeeDate" class="text-muted small mb-0"></p>
-                                        </div>
-                                        <div class="notes-content">
-                                            <label class="form-label fw-semibold">Notes:</label>
-                                            <div id="modalNotesContent" class="p-3 bg-light rounded border">
-                                                <!-- Notes content will be inserted here -->
-                                            </div>
-                                        </div>
+                                        <h6 id="modalEmployeeName" class="mb-1" style="color:#219688;font-weight:600;"></h6>
+                                        <p id="modalEmployeePosition" class="text-muted small mb-0"></p>
+                                        <p id="modalEmployeeDate" class="text-muted small mb-2"></p>
+                                        <label class="form-label fw-semibold small">Notes:</label>
+                                        <div id="modalNotesContent" class="p-3 bg-light rounded border small"></div>
                                     </div>
                                     <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
                                     </div>
                                 </div>
                             </div>
@@ -707,330 +730,184 @@ while ($row = $query->fetch_assoc()) {
                                         <th class="text-center primary-header">Date</th>
                                         <th class="text-center primary-header">Employee</th>
                                         <th class="text-center primary-header">Position</th>
-                                        <th class="text-center success-header">Time In</th>
-                                        <th class="text-center danger-header">Time Out</th>
-                                        <th class="text-center success-header">Hours Worked</th>
-                                        <th class="text-center info-header">Overtime</th>
-                                        <th class="text-center info-header">Undertime</th>
-                                        <th class="text-center danger-header">Late</th>
+                                        <th class="text-center primary-header">Time In</th>
+                                        <th class="text-center primary-header">Time Out</th>
+                                        <th class="text-center primary-header">Hours</th>
+                                        <th class="text-center primary-header">OT</th>
+                                        <th class="text-center primary-header">Undertime</th>
+                                        <th class="text-center primary-header">Late</th>
                                         <th class="text-center primary-header">Logs</th>
                                         <th class="text-center primary-header">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php
-                                    $dateCounter = 0;
-                                    foreach ($groupedData as $date => $employees):
-                                        $dateCounter++;
+                                    <?php foreach ($groupedData as $date => $employees):
                                         $dateTotal = $dateTotals[$date];
+                                        $dateKey   = 'dg-' . md5($date);
                                     ?>
-                                        <!-- Date Separator -->
-                                        <tr class="date-separator bg-light">
-                                            <td colspan="11" class="p-3 border-bottom">
+                                        <!-- Date header (collapsible) -->
+                                        <tr class="date-separator" data-toggle-group="<?= $dateKey ?>">
+                                            <td colspan="11">
                                                 <div class="d-flex justify-content-between align-items-center">
                                                     <div class="d-flex align-items-center">
-                                                        <div class="date-icon bg-primary rounded-circle p-2 me-3">
-                                                            <i class="ri-calendar-2-line text-white fs-5"></i>
-                                                        </div>
-                                                        <div>
-                                                            <h6 class="mb-1 text-primary fw-bold"><?= date("l, F j, Y", strtotime($date)) ?></h6>
-                                                            <div class="d-flex gap-4">
-                                                                <small class="text-muted">
-                                                                    <i class="ri-user-line me-1"></i><?= count($employees) ?> employees
-                                                                </small>
-                                                                <small class="text-success">
-                                                                    <i class="ri-time-line me-1"></i><?= number_format($dateTotal['work_hours'], 2) ?> total hours
-                                                                </small>
-                                                            </div>
-                                                        </div>
+                                                        <i class="ri-arrow-down-s-line dtr-chevron me-2"></i>
+                                                        <span class="dtr-date-label"><?= date("l, F j, Y", strtotime($date)) ?></span>
+                                                        <span class="dtr-emp-count"><?= count($employees) ?> employees</span>
                                                     </div>
-                                                    <div class="date-stats">
-                                                        <div class="d-flex gap-3">
-                                                            <div class="stat-item text-center">
-                                                                <div class="stat-value text-warning fw-bold"><?= number_format($dateTotal['overtime'], 2) ?></div>
-                                                                <div class="stat-label text-muted small">OT Hours</div>
-                                                            </div>
-                                                            <div class="stat-item text-center">
-                                                                <div class="stat-value text-info fw-bold"><?= number_format($dateTotal['undertime'], 2) ?></div>
-                                                                <div class="stat-label text-muted small">Undertime</div>
-                                                            </div>
-                                                            <div class="stat-item text-center">
-                                                                <div class="stat-value text-danger fw-bold"><?= number_format($dateTotal['late'], 2) ?></div>
-                                                                <div class="stat-label text-muted small">Late (min)</div>
-                                                            </div>
-                                                        </div>
+                                                    <div class="dtr-date-totals">
+                                                        <span><i class="ri-time-line me-1"></i><?= number_format($dateTotal['work_hours'], 2) ?> hrs</span>
+                                                        <span style="color:#ffd166;">OT <?= number_format($dateTotal['overtime'], 2) ?></span>
+                                                        <span style="color:#ff9090;">Late <?= number_format($dateTotal['late'], 2) ?></span>
                                                     </div>
                                                 </div>
                                             </td>
                                         </tr>
 
                                         <?php
-                                        $employeeCounter = 0;
                                         foreach ($employees as $employeeId => $employeeData):
-                                            $employeeCounter++;
-                                            $employeeTotal = $employeeTotals[$employeeId];
-                                            $entries = $employeeData['entries'];
-
-                                            // Calculate totals for this employee on this date
-                                            $employeeDateWorkHours = 0;
-                                            $employeeDateOvertime = 0;
-                                            $employeeDateUndertime = 0;
-                                            $employeeDateLate = 0;
-
+                                            $entries  = $employeeData['entries'];
+                                            $displayEntries = array_values($entries);
+                                            [$employeeTimeIn, $employeeTimeOut] = getDtrPrintTimes($displayEntries);
+                                            $empWH = $empOT = $empUT = $empLate = 0;
                                             foreach ($entries as $entry) {
-                                                $employeeDateWorkHours += floatval($entry['work_hours']);
-                                                $employeeDateOvertime += floatval($entry['overtime']);
-                                                $employeeDateUndertime += floatval($entry['undertime']);
-                                                $employeeDateLate += floatval($entry['late']);
+                                                $empWH   += floatval($entry['work_hours']);
+                                                $empOT   += floatval($entry['overtime']);
+                                                $empUT   += floatval($entry['undertime']);
+                                                $empLate += floatval($entry['late']);
                                             }
+                                            $initials = strtoupper(
+                                                substr($employeeData['employee_info']['firstname'], 0, 1) .
+                                                substr($employeeData['employee_info']['lastname'],  0, 1)
+                                            );
                                         ?>
-                                            <!-- Employee Header -->
-                                            <tr class="employee-header bg-soft-light">
-                                                <td colspan="11" class="p-2">
+                                            <!-- Employee sub-header -->
+                                            <tr class="employee-header dtr-group-row" data-group="<?= $dateKey ?>">
+                                                <td colspan="11">
                                                     <div class="d-flex justify-content-between align-items-center">
-                                                        <div class="d-flex align-items-center">
-                                                            <div class="employee-avatar me-3">
-                                                                <div class="avatar-md bg-primary rounded-circle d-flex align-items-center justify-content-center">
-                                                                    <span class="text-white fw-bold fs-6">
-                                                                        <?= strtoupper(substr($employeeData['employee_info']['firstname'], 0, 1)) ?><?= strtoupper(substr($employeeData['employee_info']['lastname'], 0, 1)) ?>
-                                                                    </span>
-                                                                </div>
-                                                            </div>
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <div class="dtr-emp-init"><?= $initials ?></div>
                                                             <div>
-                                                                <h6 class="mb-1 fw-semibold">
-                                                                    <?= $employeeData['employee_info']['lastname'] ?>, <?= $employeeData['employee_info']['firstname'] ?> <?= $employeeData['employee_info']['middlename'] ?>
-                                                                </h6>
-                                                                <div class="d-flex gap-3 align-items-center">
-                                                                    <small class="text-muted">
-                                                                        <i class="ri-briefcase-line me-1"></i><?= $employeeData['employee_info']['position'] ?>
-                                                                    </small>
-                                                                    <small class="text-secondary">
-                                                                        <i class="ri-file-list-line me-1"></i><?= count($entries) ?> attendance record(s)
-                                                                    </small>
-                                                                    <?php if (!empty($employeeData['employee_info']['notes'])): ?>
-                                                                        <span class="badge bg-warning text-dark cursor-pointer"
-                                                                            onclick="showEmployeeNotes(
-                                                        '<?= htmlspecialchars($employeeData['employee_info']['lastname'] . ', ' . $employeeData['employee_info']['firstname'] . ' ' . $employeeData['employee_info']['middlename']) ?>',
-                                                        '<?= htmlspecialchars($employeeData['employee_info']['position'] ?? 'N/A') ?>',
-                                                        '<?= htmlspecialchars($date) ?>',
-                                                        `<?= htmlspecialchars($employeeData['employee_info']['notes']) ?>`
-                                                    )">
-                                                                            <i class="ri-sticky-note-line me-1"></i>Has Notes
-                                                                        </span>
-                                                                    <?php endif; ?>
-                                                                </div>
+                                                                <span class="dtr-emp-name"><?= $employeeData['employee_info']['lastname'] ?>, <?= $employeeData['employee_info']['firstname'] ?> <?= $employeeData['employee_info']['middlename'] ?></span>
+                                                                <span class="dtr-emp-pos ms-2"><?= $employeeData['employee_info']['position'] ?></span>
+                                                                <?php if (!empty($employeeData['employee_info']['notes'])): ?>
+                                                                    <span class="badge bg-warning text-dark ms-1" style="font-size:10px;cursor:pointer;"
+                                                                        onclick="showEmployeeNotes('<?= htmlspecialchars($employeeData['employee_info']['lastname'].', '.$employeeData['employee_info']['firstname'].' '.$employeeData['employee_info']['middlename']) ?>','<?= htmlspecialchars($employeeData['employee_info']['position'] ?? '') ?>','<?= htmlspecialchars($date) ?>',`<?= htmlspecialchars($employeeData['employee_info']['notes']) ?>`)">
+                                                                        <i class="ri-sticky-note-line"></i> Notes
+                                                                    </span>
+                                                                <?php endif; ?>
                                                             </div>
                                                         </div>
-                                                        <div class="employee-totals">
-                                                            <div class="d-flex gap-4">
-                                                                <div class="total-item text-center">
-                                                                    <div class="total-value text-success fw-bold"><?= number_format($employeeDateWorkHours, 2) ?></div>
-                                                                    <div class="total-label text-muted small">Hours</div>
-                                                                </div>
-                                                                <div class="total-item text-center">
-                                                                    <div class="total-value text-warning fw-bold"><?= number_format($employeeDateOvertime, 2) ?></div>
-                                                                    <div class="total-label text-muted small">Overtime</div>
-                                                                </div>
-                                                                <div class="total-item text-center">
-                                                                    <div class="total-value text-info fw-bold"><?= number_format($employeeDateUndertime, 2) ?></div>
-                                                                    <div class="total-label text-muted small">Undertime</div>
-                                                                </div>
-                                                                <div class="total-item text-center">
-                                                                    <div class="total-value text-danger fw-bold"><?= number_format($employeeDateLate, 2) ?></div>
-                                                                    <div class="total-label text-muted small">Late</div>
-                                                                </div>
-                                                            </div>
+                                                        <div class="dtr-emp-totals">
+                                                            <div class="dtr-tot-item"><span class="tot-lbl">Hrs</span><span class="tot-val"><?= number_format($empWH, 2) ?></span></div>
+                                                            <div class="dtr-tot-item ot"><span class="tot-lbl">OT</span><span class="tot-val"><?= number_format($empOT, 2) ?></span></div>
+                                                            <div class="dtr-tot-item ut"><span class="tot-lbl">UT</span><span class="tot-val"><?= number_format($empUT, 2) ?></span></div>
+                                                            <div class="dtr-tot-item late"><span class="tot-lbl">Late</span><span class="tot-val"><?= number_format($empLate, 2) ?></span></div>
+                                                        </div>
+                                                        <div>
+                                                            <a href="dtr-export.php?ddtr=<?= base64_encode($id) ?>&employee_id=<?= base64_encode($employeeId) ?>" class="btn btn-sm btn-outline-secondary">
+                                                                <i class="ri-download-line"></i> Export DTR
+                                                            </a>
                                                         </div>
                                                     </div>
                                                 </td>
                                             </tr>
 
-                                            <!-- Individual Entries -->
-                                            <?php foreach ($entries as $row):
+                                            <!-- Individual entries -->
+                                            <?php foreach ($displayEntries as $entryIndex => $row):
                                                 $logs = json_decode($row['logs']);
                                                 $logs = isset($logs) ? $logs : [];
-
-                                                $date_check = date("Y-m-d", strtotime($row['date_time']));
+                                                $date_check  = date("Y-m-d", strtotime($row['date_time']));
                                                 $employee_id = $row['employee_id'];
-
                                                 $check_duplicate = $conn->query("SELECT DTR.*, timekeeper.name AS timekeeper_name, uploaded.name AS uploaded_by
-                                    FROM DTR_details
-                                    LEFT JOIN DTR ON DTR_details.ddtr_id = DTR.id
-                                    LEFT JOIN users AS timekeeper ON DTR.timekeeper_id = timekeeper.id
-                                    LEFT JOIN users AS uploaded ON DTR.uploaded_by = uploaded.id 
-                                    WHERE date_time = '$date_check'  
-                                    AND employee_id = '$employee_id' 
-                                    AND ddtr_id != '$id'  
-                                    GROUP BY date_time");
-
-                                                $timekeeper_name = '';
-                                                $device_id2 = '';
-                                                $status = '';
-                                                $site_id2 = '';
-                                                $id_dtr = '';
-                                                $site_name = '';
-
+                                                    FROM DTR_details
+                                                    LEFT JOIN DTR ON DTR_details.ddtr_id = DTR.id
+                                                    LEFT JOIN users AS timekeeper ON DTR.timekeeper_id = timekeeper.id
+                                                    LEFT JOIN users AS uploaded ON DTR.uploaded_by = uploaded.id
+                                                    WHERE date_time = '$date_check' AND employee_id = '$employee_id' AND ddtr_id != '$id'
+                                                    GROUP BY date_time");
+                                                $timekeeper_name = $device_id2 = $status = $branch_id2 = $id_dtr = $branch_name2 = '';
                                                 if ($check_duplicate->num_rows) {
                                                     $is_duplicate = true;
                                                     while ($row_check = $check_duplicate->fetch_assoc()) {
                                                         $timekeeper_name = $row_check['timekeeper_name'];
-                                                        $device_id2 = $row_check['device_id'];
-                                                        $status = $row_check['status'];
-                                                        $site_id2 = $row_check['site_id'];
-                                                        $id_dtr = $row_check['id'];
-                                                        $site_name = $row_check['site_id'];
+                                                        $device_id2  = $row_check['device_id'];
+                                                        $status      = $row_check['status'];
+                                                        $branch_id2  = $row_check['branch_id'];
+                                                        $id_dtr      = $row_check['id'];
+                                                        $branch_name2 = $row_check['branch_id'];
                                                     }
                                                 } else {
                                                     $is_duplicate = false;
                                                 }
-
-                                                // Get time in and time out from logs
-                                                $timeIn = '';
-                                                $timeOut = '';
-                                                if (!empty($logs) && count($logs) > 0) {
-                                                    $timeIn = date("g:i A", strtotime($logs[0]->dateTime));
-                                                    $timeOut = count($logs) > 1 ? date("g:i A", strtotime(end($logs)->dateTime)) : 'N/A';
-                                                }
+                                                $timeIn = $entryIndex === 0 ? $employeeTimeIn : '';
+                                                $timeOut = $entryIndex === 0 ? $employeeTimeOut : '';
                                             ?>
-                                                <tr class="attendance-entry <?= $is_duplicate ? 'duplicate-entry' : '' ?>">
-                                                    <td class="align-middle">
-                                                        <div class="text-center">
-                                                            <div class="fw-semibold"><?= date("M j", strtotime($row['date_time'])) ?></div>
-                                                            <small class="text-muted"><?= date("D", strtotime($row['date_time'])) ?></small>
-                                                        </div>
+                                                <tr class="attendance-entry dtr-group-row <?= $is_duplicate ? 'duplicate-entry' : '' ?>" data-group="<?= $dateKey ?>">
+                                                    <td class="text-center">
+                                                        <div class="fw-semibold" style="font-size:11px;"><?= date("M j", strtotime($row['date_time'])) ?></div>
+                                                        <div class="text-muted" style="font-size:10px;"><?= date("D", strtotime($row['date_time'])) ?></div>
                                                     </td>
-                                                    <td class="align-middle">
-                                                        <div class="d-flex align-items-center">
-                                                            <div class="flex-shrink-0 me-2">
-                                                                <div class="avatar-xs bg-soft-primary rounded-circle d-flex align-items-center justify-content-center">
-                                                                    <span class="text-primary fw-bold" style="font-size: 10px;">
-                                                                        <?= strtoupper(substr($row['firstname'], 0, 1)) ?><?= strtoupper(substr($row['lastname'], 0, 1)) ?>
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                            <div class="flex-grow-1">
-                                                                <div class="fw-semibold text-truncate" style="max-width: 150px;">
-                                                                    <?= $row['lastname'] ?>, <?= $row['firstname'] ?>
-                                                                </div>
-                                                                <small class="text-muted"><?= $row['employee_no'] ?></small>
-                                                            </div>
-                                                        </div>
+                                                    <td>
+                                                        <div class="fw-semibold" style="font-size:11px;"><?= $row['lastname'] ?>, <?= $row['firstname'] ?></div>
+                                                        <div class="text-muted" style="font-size:10px;"><?= $row['employee_no'] ?></div>
                                                     </td>
-                                                    <td class="align-middle">
-                                                        <span class="badge bg-soft-secondary text-dark"><?= $row['position'] ?></span>
-                                                    </td>
-                                                    <td class="align-middle text-center">
-                                                        <span class="badge bg-soft-success text-success"><?= $timeIn ?></span>
-                                                    </td>
-                                                    <td class="align-middle text-center">
-                                                        <span class="badge bg-soft-danger text-danger"><?= $timeOut ?></span>
-                                                    </td>
-                                                    <!-- In your PHP file -->
-                                                    <!-- Hours Worked -->
-                                                    <td width="120" class="text-center">
-                                                        <?php if ($login_role !== 6) { ?>
+                                                    <td><span class="dtr-pos-chip"><?= $row['position'] ?></span></td>
+                                                    <td class="text-center"><span class="dtr-time-chip in"><?= $timeIn ?: '—' ?></span></td>
+                                                    <td class="text-center"><span class="dtr-time-chip <?= ($timeOut === 'N/A' || !$timeOut) ? 'na' : 'out' ?>"><?= $timeOut ?: '—' ?></span></td>
+                                                    <td class="text-center">
+                                                        <?php if ($login_role !== 6): ?>
                                                             <div class="editable-field">
-                                                                <input type="text" value="<?= $row['work_hours'] ?>"
-                                                                    class="form-control form-control-sm text-center"
-                                                                    style="width: 80px;">
-                                                                <button class="btn btn-sm btn-outline-success ms-1 update-dtr-field"
-                                                                    data-id="<?= $row['id'] ?>"
-                                                                    data-field="work_hours">
-                                                                    <i class="ri-save-line"></i>
-                                                                </button>
+                                                                <input type="text" value="<?= $row['work_hours'] ?>" class="form-control form-control-sm text-center" style="width:68px;">
+                                                                <button class="update-dtr-field" data-id="<?= $row['id'] ?>" data-field="work_hours"><i class="ri-save-line"></i></button>
                                                             </div>
-                                                        <?php } else { ?>
-                                                            <span class="fw-bold text-primary"><?= $row['work_hours'] ?></span>
-                                                        <?php } ?>
+                                                        <?php else: ?><span><?= $row['work_hours'] ?></span><?php endif; ?>
                                                     </td>
-
-                                                    <!-- Overtime -->
-                                                    <td width="120" class="text-center">
-                                                        <?php if ($login_role !== 6) { ?>
+                                                    <td class="text-center">
+                                                        <?php if ($login_role !== 6): ?>
                                                             <div class="editable-field">
-                                                                <input type="text" value="<?= $row['overtime'] ?>"
-                                                                    class="form-control form-control-sm text-center"
-                                                                    style="width: 80px;">
-                                                                <button class="btn btn-sm btn-outline-warning ms-1 update-dtr-field"
-                                                                    data-id="<?= $row['id'] ?>"
-                                                                    data-field="overtime">
-                                                                    <i class="ri-save-line"></i>
-                                                                </button>
+                                                                <input type="text" value="<?= $row['overtime'] ?>" class="form-control form-control-sm text-center" style="width:68px;">
+                                                                <button class="update-dtr-field" data-id="<?= $row['id'] ?>" data-field="overtime"><i class="ri-save-line"></i></button>
                                                             </div>
-                                                        <?php } else { ?>
-                                                            <span class="fw-bold text-warning"><?= $row['overtime'] ?></span>
-                                                        <?php } ?>
+                                                        <?php else: ?><span><?= $row['overtime'] ?></span><?php endif; ?>
                                                     </td>
-
-                                                    <!-- Undertime -->
-                                                    <td width="120" class="text-center">
-                                                        <?php if ($login_role !== 6) { ?>
+                                                    <td class="text-center">
+                                                        <?php if ($login_role !== 6): ?>
                                                             <div class="editable-field">
-                                                                <input type="text" value="<?= $row['undertime'] ?>"
-                                                                    class="form-control form-control-sm text-center"
-                                                                    style="width: 80px;">
-                                                                <button class="btn btn-sm btn-outline-info ms-1 update-dtr-field"
-                                                                    data-id="<?= $row['id'] ?>"
-                                                                    data-field="undertime">
-                                                                    <i class="ri-save-line"></i>
-                                                                </button>
+                                                                <input type="text" value="<?= $row['undertime'] ?>" class="form-control form-control-sm text-center" style="width:68px;">
+                                                                <button class="update-dtr-field" data-id="<?= $row['id'] ?>" data-field="undertime"><i class="ri-save-line"></i></button>
                                                             </div>
-                                                        <?php } else { ?>
-                                                            <span class="fw-bold text-info"><?= $row['undertime'] ?></span>
-                                                        <?php } ?>
+                                                        <?php else: ?><span><?= $row['undertime'] ?></span><?php endif; ?>
                                                     </td>
-
-                                                    <!-- Late -->
-                                                    <td width="120" class="text-center">
-                                                        <?php if ($login_role !== 6) { ?>
+                                                    <td class="text-center">
+                                                        <?php if ($login_role !== 6): ?>
                                                             <div class="editable-field">
-                                                                <input type="text" value="<?= $row['late'] ?>"
-                                                                    class="form-control form-control-sm text-center"
-                                                                    style="width: 80px;">
-                                                                <button class="btn btn-sm btn-outline-danger ms-1 update-dtr-field"
-                                                                    data-id="<?= $row['id'] ?>"
-                                                                    data-field="late">
-                                                                    <i class="ri-save-line"></i>
-                                                                </button>
+                                                                <input type="text" value="<?= $row['late'] ?>" class="form-control form-control-sm text-center" style="width:68px;">
+                                                                <button class="update-dtr-field" data-id="<?= $row['id'] ?>" data-field="late"><i class="ri-save-line"></i></button>
                                                             </div>
-                                                        <?php } else { ?>
-                                                            <span class="fw-bold text-danger"><?= $row['late'] ?></span>
-                                                        <?php } ?>
+                                                        <?php else: ?><span><?= $row['late'] ?></span><?php endif; ?>
                                                     </td>
-                                                    <td class="align-middle">
+                                                    <td>
                                                         <div class="logs-container">
                                                             <?php foreach ($logs as $log): ?>
-                                                                <div class="log-entry mb-1">
+                                                                <div class="log-entry">
                                                                     <?php if ($log->type === 'bio'): ?>
-                                                                        <span class="badge bg-success bg-opacity-10 text-success border border-success">
-                                                                            <i class="ri-fingerprint-line me-1"></i><?= date("g:i A", strtotime($log->dateTime)) ?>
-                                                                        </span>
+                                                                        <span class="dtr-log-chip bio"><i class="ri-fingerprint-line"></i><?= date("g:i A", strtotime($log->dateTime)) ?></span>
                                                                     <?php else: ?>
-                                                                        <span class="badge bg-warning bg-opacity-10 text-warning border border-warning">
-                                                                            <i class="ri-edit-line me-1"></i><?= date("g:i A", strtotime($log->dateTime)) ?>
-                                                                        </span>
+                                                                        <span class="dtr-log-chip manual"><i class="ri-edit-line"></i><?= date("g:i A", strtotime($log->dateTime)) ?></span>
                                                                     <?php endif; ?>
                                                                 </div>
                                                             <?php endforeach; ?>
                                                         </div>
                                                     </td>
-                                                    <td class="align-middle text-center">
+                                                    <td class="text-center">
                                                         <div class="btn-group btn-group-sm">
                                                             <?php if ($login_role !== 6): ?>
-                                                                <button data-toggle="tooltip" title="Delete Attendance"
-                                                                    onclick="deleteDTRLogs(<?= $row['id'] ?>)"
-                                                                    class="btn btn-outline-danger">
-                                                                    <i class="ri-delete-bin-line"></i>
-                                                                </button>
+                                                                <button title="Delete" onclick="deleteDTRLogs(<?= $row['id'] ?>)" class="btn btn-outline-danger"><i class="ri-delete-bin-line"></i></button>
                                                             <?php endif; ?>
-
                                                             <?php if ($is_duplicate): ?>
-                                                                <a data-toggle="tooltip" title="View Duplicate DTR"
-                                                                    target="_blank"
-                                                                    href="index.php?page=dtr-details&id=<?= base64_encode($id_dtr) ?>&timekeeper_name=<?= base64_encode($timekeeper_name) ?>&device_id=<?= base64_encode($device_id2) ?>&site_id=<?= base64_encode($site_id2) ?>&status=<?= base64_encode($status) ?>"
-                                                                    class="btn btn-outline-warning">
-                                                                    <i class="ri-alert-line"></i>
-                                                                </a>
+                                                                <a target="_blank" title="Duplicate"
+                                                                    href="index.php?page=dtr-details&id=<?= base64_encode($id_dtr) ?>&timekeeper_name=<?= base64_encode($timekeeper_name) ?>&device_id=<?= base64_encode($device_id2) ?>&branch_id=<?= base64_encode($branch_id2) ?>&status=<?= base64_encode($status) ?>"
+                                                                    class="btn btn-outline-warning"><i class="ri-alert-line"></i></a>
                                                             <?php endif; ?>
                                                         </div>
                                                     </td>
@@ -1040,12 +917,12 @@ while ($row = $query->fetch_assoc()) {
                                     <?php endforeach; ?>
 
                                     <!-- Grand Total Row -->
-                                    <tr class="grand-total-row bg-primary text-white">
-                                        <td colspan="5" class="text-end fw-bold fs-6">GRAND TOTAL</td>
-                                        <td class="text-center fw-bold fs-6"><?= number_format($grandTotals['work_hours'], 2) ?></td>
-                                        <td class="text-center fw-bold fs-6"><?= number_format($grandTotals['overtime'], 2) ?></td>
-                                        <td class="text-center fw-bold fs-6"><?= number_format($grandTotals['undertime'], 2) ?></td>
-                                        <td class="text-center fw-bold fs-6"><?= number_format($grandTotals['late'], 2) ?></td>
+                                    <tr class="grand-total-row">
+                                        <td colspan="5" class="text-end">GRAND TOTAL</td>
+                                        <td class="text-center"><?= number_format($grandTotals['work_hours'], 2) ?></td>
+                                        <td class="text-center"><?= number_format($grandTotals['overtime'], 2) ?></td>
+                                        <td class="text-center"><?= number_format($grandTotals['undertime'], 2) ?></td>
+                                        <td class="text-center"><?= number_format($grandTotals['late'], 2) ?></td>
                                         <td colspan="2"></td>
                                     </tr>
                                 </tbody>
@@ -1064,6 +941,7 @@ while ($row = $query->fetch_assoc()) {
 <?php include 'component/add_attendance.php'; ?>
 <script src="assets/js/dtr-details.js"></script>
 <script>
+    // Fit table height to viewport
     function fitDtrTable() {
         const c = document.getElementById('dtr-table-responsive');
         if (!c) return;
@@ -1073,92 +951,59 @@ while ($row = $query->fetch_assoc()) {
     }
     document.addEventListener('DOMContentLoaded', fitDtrTable);
     window.addEventListener('resize', fitDtrTable);
-</script>
 
-
-<script>
-    // Enhanced search functionality
-    document.addEventListener('DOMContentLoaded', function() {
-        const searchInput = document.getElementById('myInput');
-        if (searchInput) {
-            searchInput.addEventListener('keyup', function() {
-                const filter = this.value.toLowerCase().trim();
-                const rows = document.querySelectorAll('#table-1 tbody tr');
-                let hasVisibleResults = false;
-
-                rows.forEach(row => {
-                    // Skip separator and total rows
-                    if (row.classList.contains('date-separator') ||
-                        row.classList.contains('employee-header') ||
-                        row.classList.contains('grand-total-row')) {
-                        return;
-                    }
-
-                    const text = row.textContent.toLowerCase();
-                    if (filter === '' || text.includes(filter)) {
-                        row.style.display = '';
-                        hasVisibleResults = true;
-                    } else {
-                        row.style.display = 'none';
-                    }
-                });
-
-                // Show/hide date separators and employee headers based on visible content
-                updateGroupVisibility();
-                showNoResultsMessage(!hasVisibleResults && filter !== '');
-            });
-        }
-    });
-
-    function updateGroupVisibility() {
-        const dateSeparators = document.querySelectorAll('.date-separator');
-
-        dateSeparators.forEach(separator => {
-            const nextRows = getNextRowsUntil(separator, '.date-separator');
-            const hasVisibleRows = Array.from(nextRows).some(row =>
-                !row.classList.contains('employee-header') &&
-                row.style.display !== 'none'
-            );
-
-            separator.style.display = hasVisibleRows ? '' : 'none';
+    // ── Collapsible date groups ──
+    function setGroupVisible(key, visible) {
+        document.querySelectorAll('.dtr-group-row[data-group="' + key + '"]').forEach(function (row) {
+            row.style.display = visible ? '' : 'none';
         });
     }
 
-    function getNextRowsUntil(element, selector) {
-        const rows = [];
-        let next = element.nextElementSibling;
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.date-separator').forEach(function (sep) {
+            sep.addEventListener('click', function () {
+                var key = sep.getAttribute('data-toggle-group');
+                var isCollapsed = sep.classList.toggle('collapsed');
+                setGroupVisible(key, !isCollapsed);
+            });
+        });
+    });
 
-        while (next && !next.matches(selector)) {
-            rows.push(next);
-            next = next.nextElementSibling;
-        }
-
-        return rows;
-    }
-
-    function showNoResultsMessage(show) {
-        let noResultsRow = document.getElementById('no-results-message');
-
-        if (show && !noResultsRow) {
-            noResultsRow = document.createElement('tr');
-            noResultsRow.id = 'no-results-message';
-            noResultsRow.innerHTML = `
-            <td colspan="11" class="text-center py-5 text-muted">
-                <div class="empty-state">
-                    <i class="ri-search-line display-4 text-muted mb-3"></i>
-                    <h5>No results found</h5>
-                    <p class="text-muted">Try adjusting your search terms</p>
-                </div>
-            </td>
-        `;
-            document.querySelector('#table-1 tbody').appendChild(noResultsRow);
-        } else if (!show && noResultsRow) {
-            noResultsRow.remove();
-        }
+    function toggleAllGroups(expand) {
+        document.querySelectorAll('.date-separator').forEach(function (sep) {
+            var key = sep.getAttribute('data-toggle-group');
+            if (expand) { sep.classList.remove('collapsed'); } else { sep.classList.add('collapsed'); }
+            setGroupVisible(key, expand);
+        });
     }
 </script>
+
+
 <script>
-    // Add this JavaScript function for printing
+    // ── Search ──
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('myInput');
+        if (!searchInput) return;
+        searchInput.addEventListener('keyup', function () {
+            const filter = this.value.toLowerCase().trim();
+            document.querySelectorAll('#table-1 tbody tr.attendance-entry').forEach(function (row) {
+                if (row.classList.contains('dtr-hidden')) return;
+                row.style.display = (filter === '' || row.textContent.toLowerCase().includes(filter)) ? '' : 'none';
+            });
+            // Show/hide emp headers and date rows based on visible entries
+            document.querySelectorAll('.date-separator').forEach(function (sep) {
+                var key = sep.getAttribute('data-toggle-group');
+                var hasVisible = Array.from(document.querySelectorAll('.attendance-entry[data-group="' + key + '"]'))
+                    .some(function (r) { return r.style.display !== 'none'; });
+                sep.style.display = hasVisible ? '' : 'none';
+                document.querySelectorAll('.employee-header[data-group="' + key + '"]').forEach(function (h) {
+                    h.style.display = hasVisible ? '' : 'none';
+                });
+            });
+        });
+    });
+</script>
+<script>
     function printDTRTable() {
         // Create a new window for printing
         const printWindow = window.open('', '_blank');
@@ -1169,7 +1014,7 @@ while ($row = $query->fetch_assoc()) {
         <!DOCTYPE html>
         <html>
         <head>
-            <title>DTR Details - <?= $dtr['site_name'] ?></title>
+            <title>DTR Details - <?= htmlspecialchars($dtr['branch_name'] ?? '') ?></title>
             <style>
                 body {
                     font-family: Arial, sans-serif;

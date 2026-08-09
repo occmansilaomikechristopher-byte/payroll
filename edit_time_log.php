@@ -1,7 +1,7 @@
 <?php include ("db_connect.php"); ?>
 <?php
 $date = explode('_',$id);
-$lt_arr = array(1 => " Time-in AM",2=>"Time-out AM",3 => " Time-in PM",4=>"Time-out PM");
+$lt_arr = array(1 => "Time-in",2=>"Time-out",3 => "Time-in",4=>"Time-out");
 $dt = date("Y-m-d",strtotime($date[1]));
 $emp = $conn->query("SELECT concat(lastname,', ',firstname,' ',middlename) as enamem,employee_no from employee where id =".$date[0])->fetch_array()['ename'];
 $qry = $conn->db->query("SELECT * FROM attendance where employee_id = '".$date[0]."' and date(datetime_log) ='$dt' order by UNIX_TIMESTAMP(datetime_log) asc ");

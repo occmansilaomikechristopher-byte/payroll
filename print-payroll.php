@@ -31,71 +31,113 @@ $site_details = $result_site->fetch_assoc();
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=Edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <meta name="description" content="JEJORS Payroll">
-    <meta name="author" content="design by: Niel Daculan">
+    <meta name="description" content=" Payroll">
+    <meta name="author" content="design by:">
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <!-- VENDOR CSS -->
     <!-- <link rel="stylesheet" href="assets/vendor/bootstrap/css/bootstrap.min.css"> -->
     <style>
         body {
-            visibility: hidden;
+            visibility: visible;
         }
 
         @media print {
 
-            /* General Styles */
-            body {
-                font-family: Arial, sans-serif;
-                color: #000;
-                background: #fff;
-                visibility: visible;
+            @page {
+                size: A4 landscape;
+                margin: 5mm;
             }
 
-            /* Hide unnecessary elements */
+            html,
+            body {
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                color: #000;
+                background: #fff;
+                font-family: Arial, sans-serif;
+                font-size: 8px;
+                visibility: visible;
+                overflow: visible;
+                -webkit-text-size-adjust: none;
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+
+            #print-area,
+            .container-fluid {
+                width: 100%;
+                max-width: 100%;
+                margin: 0;
+                padding: 0;
+                overflow: visible;
+            }
+
             .no-print,
             .no-print * {
                 display: none !important;
             }
 
-            /* Table Styles */
             table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-bottom: 1em;
-                font-size: 10px;
+                width: 100% !important;
+                max-width: 100% !important;
+                table-layout: fixed !important;
+                border-collapse: collapse !important;
+                margin: 0 0 0.35rem 0 !important;
+                font-size: 7px !important;
+                page-break-inside: auto !important;
             }
 
             th,
             td {
-                border: 1px solid #000;
-                padding: 3px;
-                text-align: center;
+                border: 1px solid #000 !important;
+                padding: 3px 4px !important;
+                text-align: center !important;
+                min-width: 0 !important;
+                max-width: 100% !important;
+                white-space: normal !important;
+                overflow-wrap: anywhere !important;
+                word-break: break-word !important;
+                vertical-align: middle !important;
+            }
+
+            #table-1 th,
+            #table-1 td {
+                width: auto !important;
+            }
+
+            #table-1 .flip-text {
+                writing-mode: vertical-rl;
+                transform: rotate(180deg);
+                white-space: normal;
+                line-height: 1.1;
+                font-size: 7px;
+            }
+
+            #table-1 .name,
+            #table-1 .details {
+                min-width: 0 !important;
             }
 
             th {
-                background-color: #f2f2f2;
-                font-weight: bold;
+                background-color: #f2f2f2 !important;
+                font-weight: bold !important;
             }
 
-
-
-            /* Page Breaks */
-            tr {
-                page-break-inside: avoid;
-                page-break-after: auto;
+            tr,
+            tbody tr,
+            thead tr,
+            tfoot tr {
+                page-break-inside: avoid !important;
+                page-break-after: auto !important;
             }
 
             thead {
-                display: table-header-group;
+                display: table-header-group !important;
             }
 
             tfoot {
-                display: table-footer-group;
-            }
-
-            /* Prevent breaking table rows across pages */
-            tbody tr {
-                page-break-inside: avoid;
+                display: table-footer-group !important;
             }
         }
 
@@ -141,12 +183,14 @@ $site_details = $result_site->fetch_assoc();
 
 
     <?php
-    $query2 = "SELECT payroll.*, employer_name, employee_address FROM payroll INNER JOIN employers ON payroll.employer_id = employers.id WHERE payroll.id = ?";
+    $query2 = "SELECT payroll.* FROM payroll WHERE payroll.id = ?";
     $stmt = $conn->prepare($query2);
     $stmt->bind_param("i", $id);
     $stmt->execute();
     $result = $stmt->get_result();
     $payroll = $result->fetch_assoc();
+    $payroll['employer_name'] = $payroll['employer_name'] ?? '';
+    $payroll['employer_address'] = $payroll['employer_address'] ?? '';
     $site_ids = json_decode($payroll['site_ids'], true);
     $site_ids = isset($site_ids) ? $site_ids : [];
 
@@ -192,11 +236,11 @@ LEFT JOIN sites f ON f.id = a.site_id
             <?php if ($site_id === '') { ?>
                 <div class="top">
                     <div class="logo-area">
-                        <img style="width: 60px;" src="assets2/images/logo.jpeg" alt="Logo">
+                        <img style="width: 60px;" src="/payroll/assets/images/gv-logo.png" alt="Logo">
                     </div>
                     <div>
-                        <div>JEJORS CONSTRUCTION CORPORATION</div>
-                        <div>TIU SONS, BUILDING BARANGAY 33, GUILLERMO COGON CAGAYAN DE ORO CITY</h4>
+                        <div>JV Glass</div>
+                        <div>Opol Misamis Oriental</h4>
                         </div>
                         <div class="text-center">PAYROLL PERIOD:
                             <strong>
@@ -224,7 +268,7 @@ LEFT JOIN sites f ON f.id = a.site_id
                 </div>
                 <div class="company-wrapper">
                     <div class="name">Address: </div>
-                    <div class="details"><?= $payroll['employee_address'] ?></div>
+                    <div class="details"><?= htmlspecialchars($payroll['employer_address']) ?></div>
                 </div>
                 <div class="company-wrapper">
                     <div class="name">Name of Project Site: </div>
@@ -285,7 +329,7 @@ LEFT JOIN sites f ON f.id = a.site_id
                         <?php } ?>
                         <th rowspan="2" class="text-center success-header">Net Pay</th>
                         <th rowspan="2" class="text-center  primary-header" style="width: 130px;">Signature</th>
-                        <th rowspan="2" class="text-center  primary-header">No.</th>
+                        <th rowspan="2" class="text-center  primary-header">No</th>
                     </tr>
                     <tr>
                         <th class="text-center  info-header">No. dys</th>
@@ -351,7 +395,6 @@ LEFT JOIN sites f ON f.id = a.site_id
                                 <th class="text-center success-header"><?= $name_refunds ?></th>
                         <?php }
                         } ?>
-
                     </tr>
                 </thead>
                 <tbody>
@@ -574,7 +617,6 @@ LEFT JOIN sites f ON f.id = a.site_id
                         <th colspan="<?= count($refunds_settings) ?>"></th>
                         <th class="text-right"><?= number_format($t_net, 2) ?></th>
                         <th></th>
-                        <th></th>
                     </tr>
                 </tfoot>
             </table>
@@ -586,11 +628,25 @@ LEFT JOIN sites f ON f.id = a.site_id
 <script src="xlsx.full.min.js"></script> -->
 
 <script>
+    // Automatically navigate back to dashboard after print dialog closes
     window.print();
-    window.onafterprint = function() {
-        window.close();
-        history.back();
-    };
+    
+    // Detect when print dialog is closed (either by printing or canceling)
+    // Different browsers handle this differently, so we use multiple methods
+    
+    // Method 1: Listen for afterprint event (works in modern browsers)
+    window.addEventListener('afterprint', function() {
+        window.location.href = '/payroll/index.php';
+    });
+    
+    // Method 2: Fallback for browsers that don't support afterprint
+    // Wait a short delay to see if the dialog is still open, then redirect
+    setTimeout(function() {
+        // Check if the window is still focused (user closed print dialog)
+        if (!window.isPrinting) {
+            window.location.href = '/payroll/index.php';
+        }
+    }, 2000);
 
     // function exportTableToExcel(tableID, filename = "PAYROLL.xlsx") {
     //     let table = document.getElementById(tableID);

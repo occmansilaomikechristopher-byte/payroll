@@ -22,12 +22,12 @@ $site_details = $result_site->fetch_assoc();
 <html lang="en">
 
 <head>
-    <title>JEJORS Payroll</title>
+    <title> Payroll</title>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=Edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <meta name="description" content="JEJORS Payroll">
-    <meta name="author" content="design by: Niel Daculan">
+    <meta name="description" content=" Payroll">
+    <meta name="author" content="design by:">
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <!-- VENDOR CSS -->
     <!-- <link rel="stylesheet" href="assets/vendor/bootstrap/css/bootstrap.min.css"> -->
@@ -194,11 +194,11 @@ $site_details = $result_site->fetch_assoc();
             <?php if ($type === 'all') { ?>
                 <div class="top">
                     <div class="logo-area">
-                        <img style="width: 60px;" src="assets2/images/logo.jpeg" alt="Logo">
-                    </div>
+                            <img style="width: 60px;" src="/payroll/assets/images/gv-logo.png" alt="Logo">
+                        </div>
                     <div>
-                        <div>JEJORS CONSTRUCTION CORPORATION</div>
-                        <div>TIU SONS, BUILDING BARANGAY 33, GUILLERMO COGON CAGAYAN DE ORO CITY</h4>
+                        <div>JV Glass</div>
+                        <div>Opol Misamis Oriental</h4>
                         </div>
                         <div class="text-center">PAYROLL PERIOD:
                             <strong>
@@ -483,10 +483,7 @@ $site_details = $result_site->fetch_assoc();
 </body>
 <script>
     window.print();
-    window.onafterprint = function() {
-        window.close();
-        history.back();
-    };
+    // Do not automatically close or navigate away after printing.
 </script>
 
 </html>
