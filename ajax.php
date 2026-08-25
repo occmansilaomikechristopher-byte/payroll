@@ -1,11 +1,49 @@
 <?php
+// API response/security headers. Configure APP_ALLOWED_ORIGIN on production
+// (for example: https://app.example.com). Native mobile requests have no Origin.
+$requestOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$allowedOrigin = getenv('APP_ALLOWED_ORIGIN') ?: '';
+if ($requestOrigin !== '' && $allowedOrigin !== '' && hash_equals($allowedOrigin, $requestOrigin)) {
+	header('Access-Control-Allow-Origin: ' . $requestOrigin);
+	header('Vary: Origin');
+}
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Authorization, Content-Type, X-Requested-With');
+header('Access-Control-Max-Age: 86400');
+header('Content-Type: application/json; charset=utf-8');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+	http_response_code(204);
+	exit;
+}
+
+// Production APIs must use HTTPS. Keep local XAMPP HTTP available for development.
+$host = strtolower($_SERVER['HTTP_HOST'] ?? '');
+$isLocalHost = $host === 'localhost' || str_starts_with($host, '127.0.0.1') ||
+	str_starts_with($host, '192.168.') || str_starts_with($host, '10.') ||
+	str_starts_with($host, '172.16.') || str_starts_with($host, '172.17.') ||
+	str_starts_with($host, '172.18.') || str_starts_with($host, '172.19.') ||
+	str_starts_with($host, '172.2') || str_starts_with($host, '172.30.') ||
+	str_starts_with($host, '172.31.');
+$isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+	($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+if (!$isLocalHost && !$isHttps) {
+	http_response_code(426);
+	echo json_encode(['success' => false, 'message' => 'HTTPS is required.']);
+	exit;
+}
+
+// Never expose database/runtime errors in an API response.
+ini_set('display_errors', '0');
+mysqli_report(MYSQLI_REPORT_OFF);
+
 $staticToken = 'api_token9343876536753';
 $encodedToken = base64_encode($staticToken);
 define('API_TOKEN', $encodedToken );
 ob_start();
 if (!isset($_GET['action'])) {
-	header("HTTP/1.0 404 Not Found");
-	echo "<h1>404 Error: Page Not Found</h1>";
+	http_response_code(404);
+	echo json_encode(['success' => false, 'message' => 'API action is required.']);
 	exit();
 }
 
@@ -97,6 +135,24 @@ if ($action == "mobile-pos-sales") {
 
 if ($action == "mobile-pos-sale-details") {
 	$save = $crud->mobile_pos_sale_details();
+	echo json_encode($save);
+	return;
+}
+
+if ($action == "save_pos_quotation") {
+	$save = $crud->mobile_pos_save_quotation();
+	echo json_encode($save);
+	return;
+}
+
+if ($action == "get_pos_quotations") {
+	$save = $crud->mobile_pos_quotations();
+	echo json_encode($save);
+	return;
+}
+
+if ($action == "get_pos_quotation_details") {
+	$save = $crud->mobile_pos_quotation_details();
 	echo json_encode($save);
 	return;
 }

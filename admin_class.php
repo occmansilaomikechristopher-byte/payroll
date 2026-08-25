@@ -24,6 +24,7 @@ class Action
 
         $this->db = $conn;
         $this->ensureNotificationTable();
+        $this->ensureQuotationTables();
     }
 
     function __destruct()
@@ -54,6 +55,33 @@ class Action
         if ($result && $result->num_rows === 0) {
             $this->db->query("ALTER TABLE notifications ADD COLUMN branch_id INT NULL AFTER target_user_id");
         }
+    }
+
+    private function ensureQuotationTables()
+    {
+        $this->db->query("CREATE TABLE IF NOT EXISTS pos_quotations (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            quotation_no VARCHAR(50) NOT NULL UNIQUE,
+            customer_name VARCHAR(255) NOT NULL DEFAULT '',
+            subtotal DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            discount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            total DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            status VARCHAR(30) NOT NULL DEFAULT 'Pending',
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $this->db->query("CREATE TABLE IF NOT EXISTS pos_quotation_items (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            quotation_id INT UNSIGNED NOT NULL,
+            product_id INT NOT NULL DEFAULT 0,
+            product_name VARCHAR(255) NOT NULL,
+            description TEXT,
+            price DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            qty DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            line_total DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_quotation_id (quotation_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
 
     function log_cashier_notification($title, $message, $user_id = null, $branch_id = null)
@@ -475,11 +503,10 @@ class Action
                     throw new Exception("Failed to insert employee.");
                 }
 
-                // Insert contributions for SSS, PHIC, HDMF
+                // Insert only the configured employee contributions: SSS and PAG-IBIG.
                 $contributions = [
                     ['id' => 1, 'amount' => $sss],
-                    ['id' => 2, 'amount' => $phic],
-                    ['id' => 3, 'amount' => $hdmf]
+                    ['id' => 2, 'amount' => $phic]
                 ];
 
                 $query = "INSERT INTO employee_contributions (employee_id, contribution_id, amount, payroll_type) VALUES (?, ?, ?, ?)";
@@ -1310,6 +1337,97 @@ class Action
             return ['result' => true, 'sale' => $sale, 'items' => $items];
         } catch (Exception $e) {
             return ['result' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    // ── Mobile POS: quotations ──
+    function mobile_pos_quotations()
+    {
+        try {
+            $res = $this->db->query("SELECT id, quotation_no, customer_name, subtotal, discount, total, status, created_at
+                                     FROM pos_quotations ORDER BY created_at DESC LIMIT 200");
+            $quotations = [];
+            while ($row = $res->fetch_assoc()) $quotations[] = $row;
+            return ['result' => true, 'quotations' => $quotations];
+        } catch (Exception $e) {
+            return ['result' => false, 'message' => 'Error: ' . $e->getMessage()];
+        }
+    }
+
+    function mobile_pos_save_quotation()
+    {
+        try {
+            mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+            $input = json_decode(file_get_contents('php://input'), true);
+            if (!$input || empty($input['items'])) return ['result' => false, 'message' => 'No items in quotation.'];
+
+            $customer_name = trim($input['customer_name'] ?? '');
+            $discount = max(0, floatval($input['discount'] ?? 0));
+            $items = $input['items'];
+            $subtotal = 0;
+            foreach ($items as $item) {
+                $subtotal += max(0, floatval($item['price'] ?? 0)) * max(0, floatval($item['qty'] ?? 0));
+            }
+            if ($subtotal <= 0) return ['result' => false, 'message' => 'Quotation total must be greater than zero.'];
+            $discount = min($discount, $subtotal);
+            $total = $subtotal - $discount;
+            $quotation_no = 'QUO-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
+
+            $this->db->begin_transaction();
+            $stmt = $this->db->prepare("INSERT INTO pos_quotations
+                (quotation_no, customer_name, subtotal, discount, total, status)
+                VALUES (?, ?, ?, ?, ?, 'Pending')");
+            $stmt->bind_param('ssddd', $quotation_no, $customer_name, $subtotal, $discount, $total);
+            $stmt->execute();
+            $quotation_id = $this->db->insert_id;
+            $stmt->close();
+
+            $itemStmt = $this->db->prepare("INSERT INTO pos_quotation_items
+                (quotation_id, product_id, product_name, description, price, qty, line_total)
+                VALUES (?, ?, ?, ?, ?, ?, ?)");
+            foreach ($items as $item) {
+                $product_id = intval($item['product_id'] ?? 0);
+                $product_name = trim($item['product_name'] ?? '');
+                $description = trim($item['description'] ?? '');
+                $price = max(0, floatval($item['price'] ?? 0));
+                $qty = max(0, floatval($item['qty'] ?? 0));
+                $line_total = $price * $qty;
+                $itemStmt->bind_param('iissddd', $quotation_id, $product_id, $product_name, $description, $price, $qty, $line_total);
+                $itemStmt->execute();
+            }
+            $itemStmt->close();
+            $this->db->commit();
+            return ['result' => true, 'message' => 'Quotation saved successfully.', 'quotation_no' => $quotation_no];
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return ['result' => false, 'message' => 'Error: ' . $e->getMessage()];
+        }
+    }
+
+    function mobile_pos_quotation_details()
+    {
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $quotation_id = intval($input['quotation_id'] ?? 0);
+            if ($quotation_id <= 0) return ['result' => false, 'message' => 'Invalid quotation.'];
+
+            $stmt = $this->db->prepare('SELECT * FROM pos_quotations WHERE id = ?');
+            $stmt->bind_param('i', $quotation_id);
+            $stmt->execute();
+            $quotation = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if (!$quotation) return ['result' => false, 'message' => 'Quotation not found.'];
+
+            $stmt = $this->db->prepare('SELECT product_id, product_name, description, price, qty, line_total FROM pos_quotation_items WHERE quotation_id = ? ORDER BY id ASC');
+            $stmt->bind_param('i', $quotation_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $items = [];
+            while ($row = $result->fetch_assoc()) $items[] = $row;
+            $stmt->close();
+            return ['result' => true, 'quotation' => $quotation, 'items' => $items];
+        } catch (Exception $e) {
+            return ['result' => false, 'message' => 'Error: ' . $e->getMessage()];
         }
     }
 
@@ -4118,11 +4236,10 @@ class Action
                 $stmtInsert->execute();
                 if ($stmtInsert->affected_rows > 0) {
                     $employee_id =  $this->db->insert_id;
-                    // Insert contributions for SSS, PHIC, HDMF
+                    // Insert only the configured employee contributions: SSS and PAG-IBIG.
                     $contributions = [
                         ['id' => 1, 'amount' => $sss],
-                        ['id' => 2, 'amount' => $phic],
-                        ['id' => 3, 'amount' => $hdmf]
+                        ['id' => 2, 'amount' => $phic]
                     ];
                     $query = "INSERT INTO employee_contributions (employee_id, contribution_id, amount, payroll_type) VALUES (?, ?, ?, ?)";
                     $stmt = $this->db->prepare($query);
@@ -4358,8 +4475,7 @@ class Action
                         // Update contributions
                         $contributions = [
                             ['id' => 1, 'amount' => $sss],
-                            ['id' => 2, 'amount' => $phic],
-                            ['id' => 3, 'amount' => $hdmf]
+                            ['id' => 2, 'amount' => $phic]
                         ];
 
                         foreach ($contributions as $contribution) {
@@ -4402,8 +4518,7 @@ class Action
                         // Insert contributions
                         $contributions = [
                             ['id' => 1, 'amount' => $sss],
-                            ['id' => 2, 'amount' => $phic],
-                            ['id' => 3, 'amount' => $hdmf]
+                            ['id' => 2, 'amount' => $phic]
                         ];
 
                         $query = "INSERT INTO employee_contributions (employee_id, contribution_id, amount, payroll_type) VALUES (?, ?, ?, ?)";
