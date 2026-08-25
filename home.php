@@ -17,13 +17,11 @@ function db_count($conn, $sql) {
 $total_employees   = db_count($conn, "SELECT COUNT(*) AS c FROM employee WHERE status=1");
 $total_inactive    = db_count($conn, "SELECT COUNT(*) AS c FROM employee WHERE status=0");
 $total_sites       = db_count($conn, "SELECT COUNT(*) AS c FROM branches WHERE status=1");
-$total_clusters    = 0;
 $total_positions   = db_count($conn, "SELECT COUNT(*) AS c FROM position");
 $total_users       = db_count($conn, "SELECT COUNT(*) AS c FROM users WHERE role!=1 AND status=1");
 $total_payrolls    = db_count($conn, "SELECT COUNT(*) AS c FROM payroll");
 $pending_dtr       = db_count($conn, "SELECT COUNT(*) AS c FROM DTR WHERE status=1");
 $approved_dtr      = db_count($conn, "SELECT COUNT(*) AS c FROM DTR WHERE status=2");
-$visitors_today    = db_count($conn, "SELECT COUNT(*) AS c FROM visitors_logs WHERE DATE(date_visited)=CURDATE()");
 
 // ── Payroll status breakdown ────────────────────────────────────
 $pay_new        = db_count($conn, "SELECT COUNT(*) AS c FROM payroll WHERE status=0");
@@ -83,14 +81,82 @@ $recent_dtr = $conn->query("
 ");
 ?>
 <style>
-    .dash-stat { border-top:3px solid #009688; border-radius:6px; background:#fff; padding:16px 18px; display:flex; align-items:center; gap:14px; box-shadow:0 1px 4px rgba(57,75,124,.07); transition:box-shadow .2s; }
-    .dash-stat:hover { box-shadow:0 4px 16px rgba(57,75,124,.13); }
-    .dash-stat .ds-icon { width:46px; height:46px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
-    .dash-stat .ds-val { font-size:24px; font-weight:800; color:#009688; line-height:1; }
-    .dash-stat .ds-lbl { font-size:11px; color:#888; text-transform:uppercase; letter-spacing:.4px; margin-top:3px; }
-    .dash-stat .ds-sub { font-size:11px; color:#aaa; margin-top:2px; }
-    .dash-section-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#009688; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
-    .pay-status-dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:5px; }
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 18px;
+        margin-bottom: 24px;
+        align-items: stretch;
+    }
+    .stat-card {
+        background: #ffffff;
+        border: 1px solid #e8eff4;
+        border-radius: 18px;
+        padding: 24px;
+        min-height: 170px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+        transition: transform .2s ease, box-shadow .2s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.09);
+    }
+    .stat-card__top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+    }
+    .stat-card__icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
+        display: grid;
+        place-items: center;
+        font-size: 24px;
+        flex-shrink: 0;
+    }
+    .stat-card__content {
+        display: grid;
+        gap: 8px;
+        min-width: 0;
+    }
+    .stat-card__value {
+        font-size: 2rem;
+        font-weight: 800;
+        letter-spacing: -.03em;
+        margin: 0;
+        color: #0f766e;
+        line-height: 1;
+    }
+    .stat-card__label {
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .16em;
+        color: #64748b;
+        margin: 0;
+    }
+    .stat-card__meta {
+        font-size: 0.84rem;
+        color: #94a3b8;
+        margin: 0;
+    }
+    .stat-card--green { border-top: 4px solid #0f766e; }
+    .stat-card--purple { border-top: 4px solid #6d28d9; }
+    .stat-card--gold { border-top: 4px solid #f59e0b; }
+    .stat-card--teal { border-top: 4px solid #0ea5e9; }
+    .stat-card--red { border-top: 4px solid #dc2626; }
+    .stat-card--blue { border-top: 4px solid #2563eb; }
+    .stat-card__icon--green { background: #ecfdf5; color: #0f766e; }
+    .stat-card__icon--purple { background: #f5f3ff; color: #6d28d9; }
+    .stat-card__icon--gold { background: #ffedd5; color: #b45309; }
+    .stat-card__icon--teal { background: #eff6ff; color: #0ea5e9; }
+    .stat-card__icon--red { background: #fee2e2; color: #dc2626; }
+    .stat-card__icon--blue { background: #e0f2fe; color: #2563eb; }
     #data-table thead th,
     #dtr-recent-table thead th { background-color:#009688 !important; border-color:#2d3d66 !important; color:#fff !important; }
 </style>
@@ -115,66 +181,56 @@ $recent_dtr = $conn->query("
             </div>
 
             <!-- ── ROW 1: Stat cards ── -->
-            <div class="row g-3 mb-3">
-                <div class="col-xl-2 col-md-4 col-sm-6">
-                    <div class="dash-stat">
-                        <div class="ds-icon" style="background:#eef0f8;"><i class="ri-group-line" style="color:#009688;"></i></div>
-                        <div>
-                            <div class="ds-val"><?= $total_employees ?></div>
-                            <div class="ds-lbl">Employees</div>
-                            <div class="ds-sub"><?= $total_inactive ?> inactive</div>
+            <div class="dashboard-grid">
+                <div class="stat-card stat-card--green">
+                    <div class="stat-card__top">
+                        <div class="stat-card__content">
+                            <p class="stat-card__value"><?= $total_employees ?></p>
+                            <p class="stat-card__label">Employees</p>
                         </div>
+                        <div class="stat-card__icon stat-card__icon--green"><i class="ri-group-line"></i></div>
                     </div>
+                    <p class="stat-card__meta"><?= $total_inactive ?> inactive</p>
                 </div>
-                <div class="col-xl-2 col-md-4 col-sm-6">
-                    <div class="dash-stat" style="border-top-color:#28a745;">
-                        <div class="ds-icon" style="background:#e8f8ee;"><i class="ri-map-pin-2-line" style="color:#28a745;"></i></div>
-                        <div>
-                            <div class="ds-val" style="color:#28a745;"><?= $total_sites ?></div>
-                            <div class="ds-lbl">Active Sites</div>
-                            <div class="ds-sub"><?= $total_clusters ?> clusters</div>
+                <div class="stat-card stat-card--blue">
+                    <div class="stat-card__top">
+                        <div class="stat-card__content">
+                            <p class="stat-card__value"><?= $total_sites ?></p>
+                            <p class="stat-card__label">Active Sites</p>
                         </div>
+                        <div class="stat-card__icon stat-card__icon--blue"><i class="ri-map-pin-2-line"></i></div>
                     </div>
+                    <p class="stat-card__meta">Available sites</p>
                 </div>
-                <div class="col-xl-2 col-md-4 col-sm-6">
-                    <div class="dash-stat" style="border-top-color:#6f42c1;">
-                        <div class="ds-icon" style="background:#f2eefb;"><i class="ri-money-dollar-circle-line" style="color:#6f42c1;"></i></div>
-                        <div>
-                            <div class="ds-val" style="color:#6f42c1;"><?= $total_payrolls ?></div>
-                            <div class="ds-lbl">Payrolls</div>
-                            <div class="ds-sub"><?= $pay_locked ?> locked</div>
+                <div class="stat-card stat-card--purple">
+                    <div class="stat-card__top">
+                        <div class="stat-card__content">
+                            <p class="stat-card__value"><?= $total_payrolls ?></p>
+                            <p class="stat-card__label">Payrolls</p>
                         </div>
+                        <div class="stat-card__icon stat-card__icon--purple"><i class="ri-money-dollar-circle-line"></i></div>
                     </div>
+                    <p class="stat-card__meta"><?= $pay_locked ?> locked</p>
                 </div>
-                <div class="col-xl-2 col-md-4 col-sm-6">
-                    <div class="dash-stat" style="border-top-color:#fd7e14;">
-                        <div class="ds-icon" style="background:#fff4ec;"><i class="ri-time-line" style="color:#fd7e14;"></i></div>
-                        <div>
-                            <div class="ds-val" style="color:#fd7e14;"><?= $pending_dtr ?></div>
-                            <div class="ds-lbl">Pending DTR</div>
-                            <div class="ds-sub"><?= $approved_dtr ?> approved</div>
+                <div class="stat-card stat-card--gold">
+                    <div class="stat-card__top">
+                        <div class="stat-card__content">
+                            <p class="stat-card__value"><?= $pending_dtr ?></p>
+                            <p class="stat-card__label">Pending DTR</p>
                         </div>
+                        <div class="stat-card__icon stat-card__icon--gold"><i class="ri-time-line"></i></div>
                     </div>
+                    <p class="stat-card__meta"><?= $approved_dtr ?> approved</p>
                 </div>
-                <div class="col-xl-2 col-md-4 col-sm-6">
-                    <div class="dash-stat" style="border-top-color:#17a2b8;">
-                        <div class="ds-icon" style="background:#e8f7fa;"><i class="ri-shield-user-line" style="color:#17a2b8;"></i></div>
-                        <div>
-                            <div class="ds-val" style="color:#17a2b8;"><?= $total_users ?></div>
-                            <div class="ds-lbl">Active Users</div>
-                            <div class="ds-sub"><?= $total_positions ?> positions</div>
+                <div class="stat-card stat-card--teal">
+                    <div class="stat-card__top">
+                        <div class="stat-card__content">
+                            <p class="stat-card__value"><?= $total_users ?></p>
+                            <p class="stat-card__label">Active Users</p>
                         </div>
+                        <div class="stat-card__icon stat-card__icon--teal"><i class="ri-shield-user-line"></i></div>
                     </div>
-                </div>
-                <div class="col-xl-2 col-md-4 col-sm-6">
-                    <div class="dash-stat" style="border-top-color:#dc3545;">
-                        <div class="ds-icon" style="background:#fdf0f1;"><i class="ri-user-search-line" style="color:#dc3545;"></i></div>
-                        <div>
-                            <div class="ds-val" style="color:#dc3545;"><?= $visitors_today ?></div>
-                            <div class="ds-lbl">Visitors Today</div>
-                            <div class="ds-sub">logged in</div>
-                        </div>
-                    </div>
+                    <p class="stat-card__meta"><?= $total_positions ?> positions</p>
                 </div>
             </div>
 
@@ -183,46 +239,3 @@ $recent_dtr = $conn->query("
     </div>
 </div>
 
-<script src="assets/libs/apexcharts/apexcharts.min.js"></script>
-<script>
-(function () {
-    var primary = '#009688';
-
-    // ── Monthly Payroll Bar Chart ───────────────────────────────
-    new ApexCharts(document.getElementById('chart-payroll-monthly'), {
-        chart: { type: 'bar', height: 240, toolbar: { show: false }, fontFamily: 'inherit' },
-        colors: [primary],
-        series: [{ name: 'Payrolls', data: <?= json_encode($monthly_data) ?> }],
-        xaxis: { categories: <?= json_encode($monthly_labels) ?>, labels: { style: { fontSize: '11px' } } },
-        yaxis: { labels: { style: { fontSize: '11px' } }, min: 0, tickAmount: 4, forceNiceScale: true },
-        plotOptions: { bar: { borderRadius: 4, columnWidth: '45%' } },
-        dataLabels: { enabled: true, style: { fontSize: '11px', colors: ['#fff'] } },
-        grid: { borderColor: '#f0f0f0', strokeDashArray: 4 },
-        tooltip: { y: { formatter: function(v){ return v + ' payroll(s)'; } } },
-    }).render();
-
-    // ── Payroll Status Donut ────────────────────────────────────
-    new ApexCharts(document.getElementById('chart-payroll-status'), {
-        chart: { type: 'donut', height: 160, toolbar: { show: false }, fontFamily: 'inherit' },
-        colors: [primary, '#28a745', '#dc3545'],
-        series: [<?= $pay_new ?>, <?= $pay_calculated ?>, <?= $pay_locked ?>],
-        labels: ['New', 'Calculated', 'Locked'],
-        legend: { show: false },
-        dataLabels: { enabled: true, style: { fontSize: '11px' } },
-        plotOptions: { pie: { donut: { size: '60%' } } },
-        tooltip: { y: { formatter: function(v){ return v + ' payroll(s)'; } } },
-    }).render();
-
-    // ── Employee Type Donut ─────────────────────────────────────
-    new ApexCharts(document.getElementById('chart-emp-type'), {
-        chart: { type: 'donut', height: 130, toolbar: { show: false }, fontFamily: 'inherit' },
-        colors: [primary, '#17a2b8'],
-        series: [<?= $emp_monthly ?>, <?= $emp_weekly ?>],
-        labels: ['Monthly', 'Weekly'],
-        legend: { show: false },
-        dataLabels: { enabled: true, style: { fontSize: '11px' } },
-        plotOptions: { pie: { donut: { size: '55%' } } },
-        tooltip: { y: { formatter: function(v){ return v + ' employee(s)'; } } },
-    }).render();
-})();
-</script>

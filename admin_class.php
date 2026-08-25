@@ -123,20 +123,6 @@ class Action
         ];
     }
 
-    function save_cluster()
-    {
-        extract($_POST);
-        $data = " cluster='$cluster' ";
-        if (empty($id)) {
-            $this->db->query("INSERT INTO clusters set " . $data);
-            return 1;
-        } else {
-            $this->db->query("UPDATE clusters set " . $data . " where id=" . $id);
-            return 2;
-        }
-    }
-
-
     function login()
     {
         $password = $this->db->real_escape_string($_POST['password']);
@@ -266,7 +252,7 @@ class Action
         $employee = $this->db->query("SELECT * FROM employee WHERE status = 1 ");
         $calc_days = abs(strtotime($pay['date_to'] . " 23:59:59")) - strtotime($pay['date_from'] . " 00:00:00 -1 day");
         $calc_days = floor($calc_days / (60 * 60 * 24));
-        ($att = $this->db->query("SELECT * FROM attendance where date(datetime_log) between '" . $pay['date_from'] . "' and '" . $pay['date_to'] . "' order by UNIX_TIMESTAMP(datetime_log) asc  ")) or die(mysqli_error());
+            ($att = $this->db->query("SELECT * FROM attendance where date(datetime_log) between '" . $pay['date_from'] . "' and '" . $pay['date_to'] . "' order by UNIX_TIMESTAMP(datetime_log) asc  ")) or die($this->db->error);
         while ($row = $att->fetch_array()) {
             $date = date("Y-m-d", strtotime($row['datetime_log']));
             if ($row['log_type'] == 1) {
@@ -446,6 +432,9 @@ class Action
         $status = isset($_POST['status']) ? 1 : 0;
         $isAutoDeduct = isset($_POST['isAutoDeduct']) ? 1 : 0;
         $weekly_payroll = isset($_POST['weekly_payroll']) ? 1 : 0;
+        $age = $_POST['age'] ?? '';
+        $address = $_POST['address'] ?? '';
+        $contact_number = $_POST['contact_number'] ?? '';
 
         // Calculate deductions
         $sss = ($weekly_payroll === 1) ? $this->getSSSWeeklyDeduction($basic_pay) : $this->getSSSMonthlyDeduction($basic_pay);
@@ -473,10 +462,11 @@ class Action
 
                 // Insert new employee
                 $query = "INSERT INTO employee 
-                (employee_no, employee_code, firstname, middlename, lastname, position_id, salary, basic_pay, status, ot_rate, isAutoDeduct, weekly_payroll, clasification_id, sss_fund, allowance_rate, bday, ext) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? , ?)";
+                (employee_no, employee_code, firstname, middlename, lastname, position_id, salary, basic_pay, status, ot_rate, isAutoDeduct, weekly_payroll, clasification_id, sss_fund, allowance_rate, bday, ext, age, address, contact_number) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 $stmt = $this->db->prepare($query);
-                $stmt->bind_param("sssssssssssssssss", $e_num, $employee_code, $firstname, $middlename, $lastname, $position_id, $salary, $basic_pay, $status, $ot_rate, $isAutoDeduct, $weekly_payroll, $clasification_id, $sss_fund, $allowance_rate, $bday, $ext);
+                $types = str_repeat('s', 20);
+                $stmt->bind_param($types, $e_num, $employee_code, $firstname, $middlename, $lastname, $position_id, $salary, $basic_pay, $status, $ot_rate, $isAutoDeduct, $weekly_payroll, $clasification_id, $sss_fund, $allowance_rate, $bday, $ext, $age, $address, $contact_number);
                 $stmt->execute();
 
                 if ($stmt->affected_rows > 0) {
@@ -510,10 +500,11 @@ class Action
             } else {
                 // Update existing employee
                 $query = "UPDATE employee SET 
-                employee_code=?, firstname=?, middlename=?, lastname=?, position_id=?, salary=?, basic_pay=?, status=?, ot_rate=?, isAutoDeduct=?, weekly_payroll=?, clasification_id=? , sss_fund=?, allowance_rate = ? , bday = ?, ext = ?
+                employee_code=?, firstname=?, middlename=?, lastname=?, position_id=?, salary=?, basic_pay=?, status=?, ot_rate=?, isAutoDeduct=?, weekly_payroll=?, clasification_id=?, sss_fund=?, allowance_rate=?, bday=?, ext=?, age=?, address=?, contact_number=?
                 WHERE id=?";
                 $stmt = $this->db->prepare($query);
-                $stmt->bind_param("sssssssssssssssss", $employee_code, $firstname, $middlename, $lastname, $position_id, $salary, $basic_pay, $status, $ot_rate, $isAutoDeduct, $weekly_payroll, $clasification_id, $sss_fund, $allowance_rate, $bday, $ext, $id);
+                $types = str_repeat('s', 20);
+                $stmt->bind_param($types, $employee_code, $firstname, $middlename, $lastname, $position_id, $salary, $basic_pay, $status, $ot_rate, $isAutoDeduct, $weekly_payroll, $clasification_id, $sss_fund, $allowance_rate, $bday, $ext, $age, $address, $contact_number, $id);
                 $stmt->execute();
 
                 $this->db->commit();
@@ -945,7 +936,6 @@ class Action
             $site_name     = isset($_POST['site_name']) ? trim($_POST['site_name']) : '';
             $site_address  = isset($_POST['site_address']) ? trim($_POST['site_address']) : '';
             $employer_id   = isset($_POST['employer_id']) ? $_POST['employer_id'] : '';
-            $cluster_id    = isset($_POST['cluster_id']) ? $_POST['cluster_id'] : '';
             $site_code     = isset($_POST['site_code']) ? trim($_POST['site_code']) : '';
             $timekeeper_id = isset($_POST['timekeeper_id']) ? $_POST['timekeeper_id'] : '';
             $pic           = isset($_POST['pic']) ? trim($_POST['pic']) : '';
@@ -956,7 +946,6 @@ class Action
             $site_name     = mysqli_real_escape_string($this->db, $site_name);
             $site_address  = mysqli_real_escape_string($this->db, $site_address);
             $employer_id   = mysqli_real_escape_string($this->db, $employer_id);
-            $cluster_id    = mysqli_real_escape_string($this->db, $cluster_id);
             $site_code     = mysqli_real_escape_string($this->db, $site_code);
             $timekeeper_id = mysqli_real_escape_string($this->db, $timekeeper_id);
             $pic           = mysqli_real_escape_string($this->db, $pic);
@@ -975,7 +964,6 @@ class Action
                 site_name = '$site_name',
                 site_address = '$site_address',
                 employer_id = '$employer_id',
-                cluster_id = '$cluster_id',
                 site_code = '$site_code',
                 status = '$status',
                 timekeeper_id = '$timekeeper_id'
@@ -1596,19 +1584,20 @@ class Action
             $input = json_decode(file_get_contents('php://input'), true) ?: [];
             $item_name = trim($input['item_name'] ?? '');
             $quantity = floatval($input['quantity'] ?? 0);
+            $amount_paid = floatval($input['amount_paid'] ?? 0);
             $branch_id = intval($input['branch_id'] ?? 0);
             $description = trim($input['description'] ?? '');
 
-            if ($item_name === '' || $quantity <= 0) {
+            if ($item_name === '' || $quantity <= 0 || $amount_paid < 0) {
                 return ['result' => false, 'message' => 'Invalid requisition data.'];
             }
 
             $requisition_code = 'REQ-' . date('YmdHis') . '-' . rand(100, 999);
-            $stmt = $this->db->prepare("INSERT INTO owner_requisitions (requisition_code, item_name, quantity, branch_id, description, status) VALUES (?, ?, ?, ?, ?, 'Pending')");
+            $stmt = $this->db->prepare("INSERT INTO owner_requisitions (requisition_code, item_name, quantity, amount_paid, branch_id, description, status) VALUES (?, ?, ?, ?, ?, ?, 'Pending')");
             if (!$stmt) {
                 return ['result' => false, 'message' => 'Failed to prepare requisition insert.'];
             }
-            $stmt->bind_param('ssdss', $requisition_code, $item_name, $quantity, $branch_id, $description);
+            $stmt->bind_param('ssddis', $requisition_code, $item_name, $quantity, $amount_paid, $branch_id, $description);
             if (!$stmt->execute()) {
                 $error = $stmt->error;
                 $stmt->close();
@@ -1618,6 +1607,35 @@ class Action
             $requisition_id = $this->db->insert_id;
             $stmt->close();
             return ['result' => true, 'message' => 'Requisition saved successfully.', 'requisition_id' => $requisition_id];
+        } catch (Exception $e) {
+            return ['result' => false, 'message' => 'Error: ' . $e->getMessage()];
+        }
+    }
+
+    function mobile_pos_update_owner_requisition_payment()
+    {
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $requisition_id = intval($input['requisition_id'] ?? 0);
+            $amount_paid = floatval($input['amount_paid'] ?? 0);
+
+            if ($requisition_id <= 0 || $amount_paid < 0) {
+                return ['result' => false, 'message' => 'Invalid payment data.'];
+            }
+
+            $stmt = $this->db->prepare('UPDATE owner_requisitions SET amount_paid = ? WHERE id = ?');
+            if (!$stmt) {
+                return ['result' => false, 'message' => 'Failed to prepare payment update.'];
+            }
+            $stmt->bind_param('di', $amount_paid, $requisition_id);
+            if (!$stmt->execute()) {
+                $error = $stmt->error;
+                $stmt->close();
+                return ['result' => false, 'message' => 'Error: ' . $error];
+            }
+
+            $stmt->close();
+            return ['result' => true, 'message' => 'Payment saved successfully.'];
         } catch (Exception $e) {
             return ['result' => false, 'message' => 'Error: ' . $e->getMessage()];
         }
@@ -1837,9 +1855,8 @@ class Action
             // ✅ Timekeeper (and others) — return ACTIVE sites assigned to this user
             $timekeeper_id = $user['id'];
             $qry_sites = $this->db->query("
-            SELECT sites.*, clusters.cluster
+            SELECT sites.*
             FROM sites
-            LEFT JOIN clusters ON sites.cluster_id = clusters.id
             WHERE sites.timekeeper_id = '$timekeeper_id' AND sites.status = 1
         ");
 
@@ -2629,30 +2646,23 @@ class Action
                     }
 
                     // Cap hours at 8 (1 day)
-                    // Cap hours at 8 (1 day)
                     $work_hours = floor($row["work_hours"]) >= 8 ? 8 : $row["work_hours"];
 
                     // Convert to days using your special rules
                     if ($work_hours == 8) {
                         $days = 1;
-                    } else if ($work_hours == 4.5625) {
+                    } elseif ($work_hours == 4.5625) {
                         $days = 0.5625;
                     } else {
                         $days = $work_hours / 8;
                     }
 
-
-
-                    // Convert to days using your special rules
-
-                    $under_time = 0; // 8 - $work_hours
-                    $grouped_data[$employee_id]["under_time"] += $under_time;
-
+                    $under_time = max(0, 8 - $work_hours);
                     $per_day = $row['salary'];
                     $basic_pay = $row['basic_pay'];
                     $per_hour = $per_day / 8;
-                    $minutesPerDay = 24 * 60;
-                    $per_minute =  round($per_day / $minutesPerDay, 2);
+                    $minutesPerDay = 8 * 60;
+                    $per_minute = round($per_day / $minutesPerDay, 2);
                     $salary = $work_hours * $per_hour;
                     // var_dump($employee_id .' ====' . $per_day);
                     // If the id is not already a key in the array, initialize the work_hours and pay
@@ -2668,19 +2678,20 @@ class Action
                         ];
                         $ipresent++;
                     }
+                    $grouped_data[$employee_id]["under_time"] += $under_time;
 
                     // Add the work hours and pay to the total for the current employee
                     $grouped_data[$employee_id]["total_hours"] += $work_hours;
-                    $grouped_data[$employee_id]["salary"] = $salary;
+                    $grouped_data[$employee_id]["salary"] += $salary;
                     $grouped_data[$employee_id]["basic_pay"] = $row['basic_pay'];
                     $grouped_data[$employee_id]["ot_rate"] = $row['ot_rate'];
                     $grouped_data[$employee_id]["sss_fund"] = $row["sss_fund"];
                     $grouped_data[$employee_id]["per_minute"] = $per_minute;
                     $grouped_data[$employee_id]["per_day"] = $per_day;
                     $grouped_data[$employee_id]["present"] += $days;
-                    $grouped_data[$employee_id]["overtime"] +=  $row['overtime'];
-                    $grouped_data[$employee_id]["late_in_minutes"]  += $row['late'];
-                    $grouped_data[$employee_id]["undertime"]  +=  $row['undertime'];
+                    $grouped_data[$employee_id]["overtime"] += $row['overtime'];
+                    $grouped_data[$employee_id]["late_in_minutes"] += $row['late'];
+                    $grouped_data[$employee_id]["undertime"] += $row['undertime'];
                     $grouped_data[$employee_id]["isAutoDeduct"]  =  $isAutoDeduct;
                     $grouped_data[$employee_id]["site_id"]  = $site_id;
                     $grouped_data[$employee_id]["sss_fund"]  = $sss_fund;
@@ -2992,28 +3003,20 @@ class Action
     {
         // Assuming you have a valid DB connection in $this->db
         $employer_id = $_POST['employer_id'];
-        $category_id = $_POST['category_id'];
         $date_from = date("Y-m-d", strtotime($_POST['date_from']));
         $date_to = date("Y-m-d", strtotime($_POST['date_to']));
 
         $filter_query = "";
         $disabled = false;
-        if ($category_id != 0) {
-            $disabled = true;
-            $filter_query = "AND sites.cluster_id  = $category_id ";
-        }
         $sites = $this->db->query("
             SELECT 
                         sites.*, 
                         users.name, 
-                        clusters.cluster,
                          DTR.date_from,
                           DTR.date_to
                     FROM users
                     INNER JOIN sites 
                         ON sites.id = users.site_id
-                    LEFT JOIN clusters 
-                        ON clusters.id = sites.cluster_id
                     INNER JOIN DTR 
                         ON DTR.site_id = sites.id
                     WHERE users.role = 5
@@ -3034,7 +3037,6 @@ class Action
         echo '<tr>';
         echo '<th scope="col">Select</th>';
         echo '<th scope="col">Site</th>';
-        echo '<th scope="col">Cluster</th>';
         echo '<th scope="col">Cashier</th>';
         echo '<th scope="col">Approved DTR</th>';
         echo '</tr>';
@@ -3046,7 +3048,6 @@ class Action
             echo '<tr>';
             echo '<td class="text-center"><input type="checkbox" name="site_ids[]" value="' . $row['id'] . '"' . ($disabled ? ' onclick="return false;" checked ' : '') . '></td>';
             echo '<td><b><span class="text-primary">(' . htmlspecialchars($row['site_code']) . ')</span>' . htmlspecialchars($row['site_name']) . '</b><p>' . htmlspecialchars($row['site_address']) . '</p></td>';
-            echo '<td>' . htmlspecialchars($row['cluster']) . '</td>';
             echo '<td>' . htmlspecialchars($row['name']) . '</td>';
             echo '<td>'
                 . date("F d, Y", strtotime($row['date_from']))
@@ -3160,7 +3161,9 @@ class Action
                 if ($stmt3 === false) {
                     throw new Exception('Failed to prepare the statement: ' . $this->db->error);
                 }
-                $stmt3->bind_param("si", json_encode($updated_logs), $details['id']);
+                $updated_logs_json = json_encode($updated_logs);
+                $details_id = (int) $details['id'];
+                $stmt3->bind_param("si", $updated_logs_json, $details_id);
                 try {
                     $stmt3->execute();
                 } catch (Exception $e) {
@@ -3298,6 +3301,7 @@ class Action
     function update_payroll_item()
     {
         $this->db->begin_transaction();
+        $payroll_r = [];
         $id = $_POST['id'];
         $value = $_POST['value'];
         $field = $_POST['type'];
@@ -3466,6 +3470,7 @@ class Action
     function save_new_payroll_item($id, $value, $field, $dd_id)
     {
         $this->db->begin_transaction();
+        $payroll_r = [];
         $query = "SELECT loan_history.*, payroll.ref_no, payroll.date_from, payroll.date_to, payroll_items.employee_id FROM loan_history 
         INNER JOIN payroll ON  loan_history.payroll_id = payroll.id 
         INNER JOIN payroll_items ON  payroll_items.payroll_id = payroll.id
@@ -3652,22 +3657,35 @@ class Action
 
     function save_employee_loan()
     {
-        extract($_POST);
+        $id = (int) ($_POST['id'] ?? 0);
+        $employee_id = (int) ($_POST['employee_id'] ?? 0);
+        $loan_type = (int) ($_POST['loan_type'] ?? 0);
+        $loan_date = trim((string) ($_POST['loan_date'] ?? ''));
+        $loan_amount = (float) ($_POST['loan_amount'] ?? 0);
+        $loan_balance = (float) ($_POST['loan_balance'] ?? 0);
+        $damount = (float) ($_POST['damount'] ?? 0);
         $loan_status = isset($_POST['loan_status']) ? 1 : 0;
-        $data = " employee_id=$employee_id ";
-        $data .= ", loan_date='$loan_date' ";
-        $data .= ", loan_amount = $loan_amount ";
-        $data .= ", loan_status = $loan_status ";
-        $data .= ", loan_type = $loan_type ";
-        $data .= ", loan_balance = $loan_balance ";
-        $data .= ", damount = $damount ";
-        if (empty($id)) {
-            $save = $this->db->query("INSERT INTO loans SET " . $data);
-            return 1;
-        } else {
-            $this->db->query("UPDATE loans set " . $data . " where loan_id=" . $id);
-            return 2;
+
+        if ($employee_id <= 0 || $loan_type <= 0 || $loan_date === '' || $loan_amount < 0 || $loan_balance < 0 || $damount < 0) {
+            return 0;
         }
+
+        if ($id <= 0) {
+            $stmt = $this->db->prepare("INSERT INTO loans (employee_id, loan_date, loan_amount, loan_status, loan_type, loan_balance, damount) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            if (!$stmt) return 0;
+            $stmt->bind_param('isdiddd', $employee_id, $loan_date, $loan_amount, $loan_status, $loan_type, $loan_balance, $damount);
+        } else {
+            $stmt = $this->db->prepare("UPDATE loans SET employee_id=?, loan_date=?, loan_amount=?, loan_status=?, loan_type=?, loan_balance=?, damount=? WHERE loan_id=?");
+            if (!$stmt) return 0;
+            $stmt->bind_param('isdidddi', $employee_id, $loan_date, $loan_amount, $loan_status, $loan_type, $loan_balance, $damount, $id);
+        }
+
+        if (!$stmt->execute()) {
+            $stmt->close();
+            return 0;
+        }
+        $stmt->close();
+        return $id > 0 ? 2 : 1;
     }
 
     function active_employee_loan()
@@ -3697,6 +3715,9 @@ class Action
             if ($result->num_rows > 0) {
                 foreach ($result as $row) {
                     $loans = json_decode($row['loans'], true);
+                    if (!is_array($loans)) {
+                        $loans = [];
+                    }
                     $employee_id = $row['employee_id'];
 
                     foreach ($loans as $loan_d) {
@@ -3710,11 +3731,11 @@ class Action
                             $loan_id = $loan_list['loan_id'];
                             $amount = $loan_d['amount'];
                             $current_bal = $loan_list['loan_balance'];
-                            $new_bal = $current_bal - $amount;
-                            $payroll_id = $id;
                             if ($current_bal < $amount) {
                                 $amount = $current_bal;
                             }
+                            $new_bal = max(0, $current_bal - $amount);
+                            $payroll_id = $id;
 
                             // Update loan status if fully paid
                             if ($new_bal <= 0) {
@@ -3731,12 +3752,6 @@ class Action
                                     die("Execution failed: " . $loan_status_stmt->error);
                                 }
 
-                                if ($loan_status_stmt->affected_rows > 0) {
-                                    echo "Loan status updated successfully.";
-                                } else {
-                                    echo "No rows were updated. Loan ID might not exist.";
-                                }
-
                                 $loan_status_stmt->close();
                             } else {
                                 $loan_status_query = "UPDATE loans SET loan_balance = ? WHERE loan_id = ?";
@@ -3748,12 +3763,6 @@ class Action
 
                                 $loan_status_stmt->bind_param("di", $new_bal, $loan_id); // "d" for double (float), "i" for integer
                                 $loan_status_stmt->execute();
-
-                                if ($loan_status_stmt->affected_rows > 0) {
-                                    echo "Loan balance updated successfully.";
-                                } else {
-                                    echo "No rows were updated. Loan ID might not exist.";
-                                }
 
                                 $loan_status_stmt->close();
                             }
@@ -3865,7 +3874,7 @@ class Action
         }
 
         if ($type === 5) {
-            $details = $other . ' Payroll';
+            $details = (is_array($other) ? implode(', ', array_map('strval', $other)) : (string) $other) . ' Payroll';
         }
 
         if ($type === 7) {

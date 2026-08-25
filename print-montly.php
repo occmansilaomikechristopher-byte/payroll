@@ -24,9 +24,8 @@ if (isset($_GET['site_id'])  && $_GET['site_id'] !== 'all') {
 // LEFT JOIN payroll g ON g.id = a.payroll_id 
 // LEFT JOIN employers  h ON g.employer_id = h.id
 
-$query = "SELECT  employer_name, category,  clusters.cluster FROM payroll  
+$query = "SELECT  employer_name, category FROM payroll  
         LEFT JOIN employers  ON payroll.employer_id = employers.id  
-        LEFT JOIN clusters  ON clusters.id = payroll.category 
         WHERE payroll.id = ?";
 $stmt = $conn->prepare($query);
 $stmt->bind_param("i", $id);
@@ -174,7 +173,7 @@ $payroll_type = $payroll['type'];
                             <img style="width: 60px;" src="/payroll/assets/images/gv-logo.png" alt="Logo">
                         </div>
                         <div>
-                            <div>JV Glass</div>
+                            <div>GV Glass</div>
                             <div>Opol Misamis Oriental</h4>
                             </div>
                             <div class="text-center">PAYROLL PERIOD:

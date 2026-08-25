@@ -702,7 +702,9 @@ $payroll_type = $payroll['type'];
                                                 <th></th>
                                                 <th></th>
                                                 <th class="text-right"><?= number_format($t_deduction, 2) ?></th>
-                                                <th colspan="<?= count($refunds_settings) ?>"></th>
+                                                <?php if (count($refunds_settings) > 0) { ?>
+                                                    <th colspan="<?= count($refunds_settings) ?>"></th>
+                                                <?php } ?>
                                                 <th class="text-right"><?= number_format($t_net, 2) ?></th>
                                                 <th></th>
                                                 <th></th>
@@ -1069,7 +1071,6 @@ $payroll_type = $payroll['type'];
                                                 <th></th>
                                                 <th colspan="2" class="text-center">TOTAL AMOUNT</th>
                                                 <th class="text-center"><?= $total_number_days ?></th>
-                                                <th></th>
                                                 <th class="text-right"><?= number_format($t_per_day, 2) ?></th>
                                                 <th class="text-right"><?= number_format($t_basic_rate, 2) ?></th>
                                                 <th></th>
@@ -1084,7 +1085,9 @@ $payroll_type = $payroll['type'];
                                                 <th class="text-right"><?= number_format($t_gross, 2) ?></th>
                                                 <th colspan="<?= count($contributions_settings) ?>"></th>
                                                 <th class="text-right"><?= number_format($t_deduction, 2) ?></th>
-                                                <th colspan="<?= count($refunds_settings) ?>"></th>
+                                                <?php if (count($refunds_settings) > 0) { ?>
+                                                    <th colspan="<?= count($refunds_settings) ?>"></th>
+                                                <?php } ?>
                                                 <th class="text-right"><?= number_format($t_net, 2) ?></th>
                                                 <th></th>
                                                 <th></th>
@@ -1197,10 +1200,13 @@ $payroll_type = $payroll['type'];
                             foreach ($site_ids as $k) {  ?>
 
                                 <?php
-                                $query_site = "SELECT branches.*, users.name AS timekeeper
-                                        FROM branches
-                                        LEFT JOIN users ON branches.timekeeper_id = users.id
-                                        WHERE branches.id = ?";
+                                $query_site = "SELECT sites.*, sites.site_code AS branch_code,
+                                    sites.site_name AS branch_name,
+                                    sites.site_address AS branch_address,
+                                    users.name AS timekeeper
+                                    FROM sites
+                                    LEFT JOIN users ON sites.timekeeper_id = users.id
+                                    WHERE sites.id = ?";
                                 $stmt_site = $conn->prepare($query_site);
                                 if ($stmt_site) {
                                     $stmt_site->bind_param("i", $k);

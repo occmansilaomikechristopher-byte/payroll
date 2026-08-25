@@ -239,7 +239,7 @@ LEFT JOIN sites f ON f.id = a.site_id
                         <img style="width: 60px;" src="/payroll/assets/images/gv-logo.png" alt="Logo">
                     </div>
                     <div>
-                        <div>JV Glass</div>
+                        <div>GV Glass</div>
                         <div>Opol Misamis Oriental</h4>
                         </div>
                         <div class="text-center">PAYROLL PERIOD:
@@ -614,8 +614,11 @@ LEFT JOIN sites f ON f.id = a.site_id
                         <th class="text-right"><?= number_format($t_gross, 2) ?></th>
                         <th colspan="<?= count($contributions_settings) ?>"></th>
                         <th class="text-right"><?= number_format($t_deduction, 2) ?></th>
-                        <th colspan="<?= count($refunds_settings) ?>"></th>
+                        <?php if (count($refunds_settings) > 0) { ?>
+                            <th colspan="<?= count($refunds_settings) ?>"></th>
+                        <?php } ?>
                         <th class="text-right"><?= number_format($t_net, 2) ?></th>
+                        <th></th>
                         <th></th>
                     </tr>
                 </tfoot>

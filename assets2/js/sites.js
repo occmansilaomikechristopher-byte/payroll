@@ -99,7 +99,6 @@ function edit_function(e) {
     $("#site_code").val($(e).attr("site_code"));
     $("#site_address").val($(e).attr("site_address"));
     $("#id").val($(e).attr("id"));
-    $("#cluster-select").val($(e).attr("cluster_id")).trigger("change");
     $("#timekeeper-select").val($(e).attr("timekeeper_id")).trigger("change");
     $("#pic-select").val($(e).attr("pic_id")).trigger("change");
     if ($(e).attr("status") == 1) {

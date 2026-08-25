@@ -329,7 +329,11 @@ function getRole($login_role)
                         <div class="dropdown ms-sm-3 header-item topbar-user">
                             <button type="button" class="btn material-shadow-none" id="page-header-user-dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                 <span class="d-flex align-items-center">
-                                    <img class="rounded-circle header-profile-user" src="assets/images/users/user-dummy-img.jpg" alt="Header Avatar">
+                                    <span class="avatar-xs">
+                                        <span class="avatar-title bg-light text-secondary rounded-circle header-profile-user-icon">
+                                            <i class="ri-user-line fs-16"></i>
+                                        </span>
+                                    </span>
                                     <span class="text-start ms-xl-2">
                                         <span class="d-none d-xl-inline-block ms-1 fw-medium user-name-text"><?= $_SESSION['login_name'] ?></span>
                                         <span class="d-none d-xl-block ms-1 fs-12 user-name-sub-text"><?= getRole($_SESSION['login_role']) ?></span>
@@ -339,7 +343,7 @@ function getRole($login_role)
                             <div class="dropdown-menu dropdown-menu-end">
                                 <!-- item-->
                                 <h6 class="dropdown-header">Welcome <?= $_SESSION['login_name'] ?>!</h6>
-                                <a class="dropdown-item" href="index.php?page=profile"><i class="mdi mdi-account-circle text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Profile</span></a>
+                                <a class="dropdown-item" href="index.php?page=profile"><i class="ri ri-user-line text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Profile</span></a>
                                 <!-- <a class="dropdown-item" href="apps-chat.html"><i class="mdi mdi-message-text-outline text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Messages</span></a>
                                 <a class="dropdown-item" href="apps-tasks-kanban.html"><i class="mdi mdi-calendar-check-outline text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Taskboard</span></a>
                                 <a class="dropdown-item" href="pages-faqs.html"><i class="mdi mdi-lifebuoy text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Help</span></a>
@@ -400,7 +404,6 @@ function getRole($login_role)
                 'dtr-details'          => 'dtr-details',
                 'attendance'           => 'manage_attendance',
                 'sites'                => 'sites',
-                'clusters'             => 'clusters',
                 'position'             => 'position',
                 'users'                => 'users',
                 'visitors-logs'        => 'visitors-logs',
@@ -605,9 +608,6 @@ function getRole($login_role)
     <?php } ?>
     <?php if ($page == 'dtr-details') { ?>
         <script src="assets2/js/dtr-details.js"></script>
-    <?php } ?>
-    <?php if ($page == 'clusters') { ?>
-        <script src="assets2/js/clusters.js"></script>
     <?php } ?>
     <?php if ($page == 'visitors-logs') { ?>
         <script src="assets2/js/logs.js"></script>

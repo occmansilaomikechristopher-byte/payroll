@@ -48,7 +48,6 @@
                                     <tr>
                                         <th><i class="ri-map-pin-2-line me-1"></i>Site</th>
                                         <th><i class="ri-building-2-line me-1"></i>Employer</th>
-                                        <th><i class="ri-global-line me-1"></i>Cluster</th>
                                         <th><i class="ri-user-settings-line me-1"></i>Cashier</th>
                                         <th><i class="ri-user-3-line me-1"></i>PIC</th>
                                         <th class="text-center" style="width:90px;"><i class="ri-pulse-line me-1"></i>Status</th>
@@ -57,9 +56,8 @@
                                 </thead>
                                 <tbody>
                                     <?php
-                                    $query = $conn->query("SELECT A.*, B.cluster, C.name AS cashier, P.name AS pic, P.id AS pic_id, C.id AS cashier_id, D.employer_name AS employer
+                                    $query = $conn->query("SELECT A.*, C.name AS cashier, P.name AS pic, P.id AS pic_id, C.id AS cashier_id, D.employer_name AS employer
                                         FROM sites AS A
-                                        INNER JOIN clusters AS B ON A.cluster_id = B.id
                                         LEFT JOIN users AS C ON A.timekeeper_id = C.id
                                         LEFT JOIN users AS P ON A.pic = P.id
                                         LEFT JOIN employers AS D ON A.employer_id = D.id
@@ -74,9 +72,6 @@
                                             </td>
                                             <td>
                                                 <span class="site-user"><i class="ri-building-2-line me-1 text-muted"></i><?= htmlspecialchars($row['employer']) ?></span>
-                                            </td>
-                                            <td>
-                                                <span class="site-cluster"><i class="ri-global-line me-1"></i><?= htmlspecialchars($row['cluster']) ?></span>
                                             </td>
                                             <td>
                                                 <span class="site-user"><i class="ri-user-settings-line me-1 text-muted"></i><?= htmlspecialchars($row['cashier'] ?? '—') ?></span>
@@ -100,7 +95,6 @@
                                                     site_address="<?= htmlspecialchars($row['site_address']) ?>"
                                                     cashier_id="<?= htmlspecialchars($row['cashier_id']) ?>"
                                                     pic_id="<?= htmlspecialchars($row['pic_id']) ?>"
-                                                    cluster_id="<?= htmlspecialchars($row['cluster_id']) ?>"
                                                     status="<?= htmlspecialchars($row['status']) ?>"
                                                     onclick="edit_function(this)"
                                                     data-bs-toggle="tooltip" data-bs-placement="top" title="Edit Site">

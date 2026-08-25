@@ -131,6 +131,12 @@ if ($action == "mobile-pos-save-owner-requisition") {
 	return;
 }
 
+if ($action == "mobile-pos-update-owner-requisition-payment") {
+	$save = $crud->mobile_pos_update_owner_requisition_payment();
+	echo json_encode($save);
+	return;
+}
+
 if ($action == "mobile-pos-delete-owner-requisition") {
 	$save = $crud->mobile_pos_delete_owner_requisition();
 	echo json_encode($save);
@@ -445,13 +451,6 @@ if ($action == "save_payroll_amount") {
 	echo json_encode($save);
 }
 
-
-if ($action == "save_cluster") {
-	$save = $crud->save_cluster();
-	if ($save)
-		echo $save;
-}
-
 if ($action == "save_employee_loan") {
 	$save = $crud->save_employee_loan();
 	if ($save)
@@ -676,37 +675,38 @@ if ($action == "owner-report-payroll") {
 
 if ($action == "owner-report-payable") {
 	global $conn;
-	$totalPayable = 0;
-	$payableCount = 0;
-	$result = $conn->query(
-		"SELECT " .
-		"IFNULL(ps.count, 0) + IFNULL(orq.count, 0) AS count, " .
-		"IFNULL(ps.total_payable, 0) + IFNULL(orq.total_payable, 0) AS total_payable " .
-		"FROM (" .
-			"SELECT COUNT(*) AS count, IFNULL(SUM(total - payment), 0) AS total_payable " .
-			"FROM pos_sales WHERE total > payment" .
-		") ps " .
-		"CROSS JOIN (" .
-			"SELECT COUNT(*) AS count, IFNULL(SUM(r.quantity * COALESCE(p.unit_price, 0)), 0) AS total_payable " .
-			"FROM owner_requisitions r " .
-			"LEFT JOIN products p ON p.product_name COLLATE utf8mb4_unicode_ci = r.item_name COLLATE utf8mb4_unicode_ci " .
-			"AND p.status = 1 AND p.branch_id = r.branch_id " .
-			"WHERE r.status = 'Approved'" .
-		") orq"
-	);
-	if (!$result) {
-		echo json_encode([
-			'success' => false,
-			'message' => $conn->error,
-		]);
-		return;
+	// Get outstanding POS sales payable
+	$psCount = 0;
+	$psTotal = 0;
+	$res1 = $conn->query("SELECT COUNT(*) AS count, IFNULL(SUM(total - payment), 0) AS total_payable FROM pos_sales WHERE total > payment");
+	if ($res1) {
+		$r1 = $res1->fetch_assoc();
+		$psCount = intval($r1['count'] ?? 0);
+		$psTotal = floatval($r1['total_payable'] ?? 0);
 	}
-	$row = $result->fetch_assoc();
-	$payableCount = intval($row['count'] ?? 0);
-	$totalPayable = floatval($row['total_payable'] ?? 0);
+
+	// Get owner requisitions payable (approved) minus any amount_paid
+	$orqCount = 0;
+	$orqTotal = 0;
+	$res2 = $conn->query(
+		"SELECT COUNT(*) AS count, IFNULL(SUM(CASE WHEN (r.quantity * COALESCE(p.unit_price,0) - IFNULL(r.amount_paid,0)) > 0 " .
+		"THEN (r.quantity * COALESCE(p.unit_price,0) - IFNULL(r.amount_paid,0)) ELSE 0 END), 0) AS total_payable " .
+		"FROM owner_requisitions r " .
+		"LEFT JOIN products p ON p.product_name COLLATE utf8mb4_unicode_ci = r.item_name COLLATE utf8mb4_unicode_ci " .
+		"AND p.status = 1 AND p.branch_id = r.branch_id " .
+		"WHERE r.status = 'Approved'"
+	);
+	if ($res2) {
+		$r2 = $res2->fetch_assoc();
+		$orqCount = intval($r2['count'] ?? 0);
+		$orqTotal = floatval($r2['total_payable'] ?? 0);
+	}
+
+	$totalCount = $psCount + $orqCount;
+	$totalPayable = $psTotal + $orqTotal;
 	echo json_encode([
 		'success' => true,
-		'count' => $payableCount,
+		'count' => $totalCount,
 		'total' => $totalPayable,
 	]);
 	return;
@@ -725,11 +725,11 @@ if ($action == "owner-report-payable-branches") {
 			"FROM pos_sales WHERE total > payment GROUP BY branch_id" .
 		") ps ON ps.pos_branch_id = b.id " .
 		"LEFT JOIN (" .
-			"SELECT r.branch_id AS orq_branch_id, COUNT(*) AS payable_count, IFNULL(SUM(r.quantity * COALESCE(p.unit_price, 0)), 0) AS total_payable " .
+			"SELECT r.branch_id AS orq_branch_id, COUNT(*) AS payable_count, IFNULL(SUM(GREATEST(r.quantity * COALESCE(p.unit_price, 0) - IFNULL(r.amount_paid, 0), 0)), 0) AS total_payable " .
 			"FROM owner_requisitions r " .
 			"LEFT JOIN products p ON p.product_name COLLATE utf8mb4_unicode_ci = r.item_name COLLATE utf8mb4_unicode_ci " .
 			"AND p.status = 1 AND p.branch_id = r.branch_id " .
-			"WHERE r.status = 'Approved' GROUP BY r.branch_id" .
+			"WHERE r.status = 'Approved' AND (r.quantity * COALESCE(p.unit_price, 0) - IFNULL(r.amount_paid, 0)) > 0 GROUP BY r.branch_id" .
 		") orq ON orq.orq_branch_id = b.id " .
 		"GROUP BY b.id, b.branch_name ORDER BY b.branch_name ASC"
 	);

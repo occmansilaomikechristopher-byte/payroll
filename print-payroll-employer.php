@@ -197,7 +197,7 @@ $site_details = $result_site->fetch_assoc();
                             <img style="width: 60px;" src="/payroll/assets/images/gv-logo.png" alt="Logo">
                         </div>
                     <div>
-                        <div>JV Glass</div>
+                        <div>GV Glass</div>
                         <div>Opol Misamis Oriental</h4>
                         </div>
                         <div class="text-center">PAYROLL PERIOD:

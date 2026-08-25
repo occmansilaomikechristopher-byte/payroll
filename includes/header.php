@@ -116,6 +116,15 @@
             margin-bottom: 12px;
         }
 
+        .header-profile-user-icon {
+            width: 32px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
         .site-wapper i {
             background: #E91E63;
             color: #fff;

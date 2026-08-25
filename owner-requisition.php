@@ -21,6 +21,12 @@ $conn->query("CREATE TABLE IF NOT EXISTS owner_requisitions (
     KEY idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+// Ensure amount_paid column exists for owner payments (migration fallback)
+$columnCheck = $conn->query("SHOW COLUMNS FROM owner_requisitions LIKE 'amount_paid'");
+if ($columnCheck && $columnCheck->num_rows === 0) {
+    $conn->query("ALTER TABLE owner_requisitions ADD COLUMN amount_paid DECIMAL(12,2) NOT NULL DEFAULT 0.00");
+}
+
 $message = '';
 $message_type = 'info';
 

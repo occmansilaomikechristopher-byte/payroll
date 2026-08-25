@@ -56,22 +56,6 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
-                                <i class="ri-global-line me-1"></i>Cluster <span class="text-danger">*</span>
-                            </label>
-                            <select id="cluster-select" class="form-control select2" name="cluster_id"
-                                data-placeholder="Select cluster"
-                                data-parsley-required-message="Please select cluster." required>
-                                <option value=""></option>
-                                <?php
-                                $pos = $conn->query("SELECT * FROM clusters ORDER BY cluster ASC");
-                                while ($row = $pos->fetch_assoc()):
-                                ?>
-                                    <option class="opt" value="<?= $row['id'] ?>"><?= htmlspecialchars($row['cluster']) ?></option>
-                                <?php endwhile; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
                                 <i class="ri-user-settings-line me-1"></i>Cashier
                             </label>
                             <select id="timekeeper-select" class="form-control select2" name="timekeeper_id"

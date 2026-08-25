@@ -67,7 +67,7 @@
                                 placeholder="e.g. Dela Cruz"
                                 data-parsley-required-message="Last name is required." required>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
                                 Extension
                             </label>
@@ -75,7 +75,7 @@
                                 value="<?= isset($ext) ? htmlspecialchars($ext) : '' ?>"
                                 placeholder="SR / JR">
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
                                 Birthdate
                             </label>
@@ -86,7 +86,31 @@
                                     placeholder="YYYY-MM-DD" autocomplete="off">
                             </div>
                         </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
+                                Age
+                            </label>
+                            <input type="number" min="0" max="120" class="form-control" name="age"
+                                value="<?= isset($age) ? htmlspecialchars($age) : '' ?>"
+                                placeholder="e.g. 30">
+                        </div>
                         <div class="col-md-4">
+                            <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
+                                Contact Number
+                            </label>
+                            <input type="tel" class="form-control" name="contact_number"
+                                value="<?= isset($contact_number) ? htmlspecialchars($contact_number) : '' ?>"
+                                placeholder="e.g. 0917 123 4567">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
+                                Address
+                            </label>
+                            <textarea class="form-control" rows="2" name="address" placeholder="House number, street, barangay, city">
+                                <?= isset($address) ? htmlspecialchars($address) : '' ?>
+                            </textarea>
+                        </div>
+                        <div class="col-md-12">
                             <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
                                 <i class="ri-briefcase-4-line me-1"></i>Position <span class="text-danger">*</span>
                             </label>

@@ -223,8 +223,22 @@ $fullname  = htmlspecialchars($lastname . ', ' . $firstname . ($middlename ? ' '
                                             <div class="detail-value"><?= $bday ? date('F d, Y', strtotime($bday)) : '<span class="text-muted">—</span>' ?></div>
                                         </div>
                                         <div class="detail-item">
+                                            <div class="detail-label">Age</div>
+                                            <div class="detail-value"><?= htmlspecialchars($age ?: '<span class="text-muted">—</span>') ?></div>
+                                        </div>
+                                        <div class="detail-item">
+                                            <div class="detail-label">Contact Number</div>
+                                            <div class="detail-value"><?= htmlspecialchars($contact_number ?: '<span class="text-muted">—</span>') ?></div>
+                                        </div>
+                                        <div class="detail-item">
                                             <div class="detail-label">Employee Code</div>
                                             <div class="detail-value" style="font-family:monospace;"><?= htmlspecialchars($employee_code) ?: '<span class="text-muted">—</span>' ?></div>
+                                        </div>
+                                    </div>
+                                    <div class="detail-row">
+                                        <div class="detail-item" style="flex:2;">
+                                            <div class="detail-label">Address</div>
+                                            <div class="detail-value"><?= htmlspecialchars($address ?: '<span class="text-muted">—</span>') ?></div>
                                         </div>
                                         <div class="detail-item">
                                             <div class="detail-label">Position</div>
@@ -479,14 +493,12 @@ $fullname  = htmlspecialchars($lastname . ', ' . $firstname . ($middlename ? ' '
                                                 <th class="text-center" style="width:90px;"><i class="ri-qr-code-line me-1"></i>Code</th>
                                                 <th class="text-center" style="width:100px;"><i class="ri-device-line me-1"></i>Device ID</th>
                                                 <th><i class="ri-map-pin-2-line me-1"></i>Site</th>
-                                                <th><i class="ri-global-line me-1"></i>Cluster</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             <?php
-                                            $query = $conn->query("SELECT A.*, B.cluster, C.name AS timekeeper, D.employer_name AS employer, E.device_id, E.code
+                                            $query = $conn->query("SELECT A.*, C.name AS timekeeper, D.employer_name AS employer, E.device_id, E.code
                                                 FROM sites AS A
-                                                INNER JOIN clusters AS B ON A.cluster_id = B.id
                                                 LEFT JOIN users AS C ON A.timekeeper_id = C.id
                                                 LEFT JOIN employers AS D ON C.employer_id = D.id
                                                 INNER JOIN employee_bio AS E ON E.site_id = A.id
@@ -503,7 +515,6 @@ $fullname  = htmlspecialchars($lastname . ', ' . $firstname . ($middlename ? ' '
                                                         <div style="font-size:11px;color:#666;"><i class="ri-hashtag text-muted me-1"></i><?= htmlspecialchars($row['site_code']) ?></div>
                                                         <div style="font-size:11px;color:#888;"><i class="ri-map-pin-line text-muted me-1"></i><?= htmlspecialchars($row['site_address']) ?></div>
                                                     </td>
-                                                    <td><span style="font-weight:600;"><?= htmlspecialchars($row['cluster']) ?></span></td>
                                                 </tr>
                                             <?php endwhile; ?>
                                         </tbody>

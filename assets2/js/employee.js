@@ -399,6 +399,9 @@ function edit_details(e) {
                 $('#form-add [name="lastname"]').val(window.employeeData.lastname || '');
                 $('#form-add [name="ext"]').val(window.employeeData.ext || '');
                 $('#form-add [name="bday"]').val(window.employeeData.bday || '');
+                $('#form-add [name="age"]').val(window.employeeData.age || '');
+                $('#form-add [name="contact_number"]').val(window.employeeData.contact_number || '');
+                $('#form-add [name="address"]').val(window.employeeData.address || '');
                 $('#form-add [name="position_id"]').val(window.employeeData.position_id || '').trigger('change');
                 $('#form-add [name="clasification_id"]').val(window.employeeData.clasification_id || '').trigger('change');
                 $('#form-add [name="basic_pay"]').val(window.employeeData.basic_pay || '');

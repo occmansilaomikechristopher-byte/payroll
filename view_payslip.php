@@ -43,8 +43,10 @@ $perMinute = $payroll['per_minute'];
 $undertime_amount = $payroll['under_time'] * $perMinute;
 $late_amount = $payroll['late'] * $perMinute;
 $total_basic_rate = $payroll['present'] * $payroll['per_day'];
-$allowance_amount = $payroll['allowance_amount'];
-$gross_salary =  $total_basic_rate +   $overtime_amount - $late_amount - $undertime_amount + $allowance_amount;
+$allowance_rate = (float) $payroll['allowance_amount'];
+$allowance_days = (float) ($payroll['allowance_days'] ?? 0);
+$total_allowance = $allowance_rate * $allowance_days;
+$gross_salary =  $total_basic_rate + $overtime_amount - $late_amount - $undertime_amount + $total_allowance;
 $net = $gross_salary -  $total_deductions;
 
 ?>
@@ -179,7 +181,7 @@ $net = $gross_salary -  $total_deductions;
 				<img style="width: 60px;" src="/payroll/assets/images/gv-logo.png" alt="Logo">
 			</div>
 			<div>
-				<h1>JV Glass</h1>
+				<h1>GV Glass</h1>
 				<h4>Opol Misamis Oriental</h4>
 			</div>
 		</div>
@@ -218,6 +220,10 @@ $net = $gross_salary -  $total_deductions;
 									<tr>
 										<td>Salary : </td>
 										<td class="text-right"><b><?= number_format($payroll['salary'], 2) ?></b></td>
+									</tr>
+									<tr>
+										<td>Allowance : </td>
+										<td class="text-right"><b><?= number_format($total_allowance, 2) ?></b></td>
 									</tr>
 									<tr>
 										<td>Undertime : </td>
