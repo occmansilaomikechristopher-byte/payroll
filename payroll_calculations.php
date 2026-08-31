@@ -1200,13 +1200,13 @@ $payroll_type = $payroll['type'];
                             foreach ($site_ids as $k) {  ?>
 
                                 <?php
-                                $query_site = "SELECT sites.*, sites.site_code AS branch_code,
-                                    sites.site_name AS branch_name,
-                                    sites.site_address AS branch_address,
+                                $query_site = "SELECT branches.*, branches.branch_code,
+                                    branches.branch_name,
+                                    branches.address AS branch_address,
                                     users.name AS timekeeper
-                                    FROM sites
-                                    LEFT JOIN users ON sites.timekeeper_id = users.id
-                                    WHERE sites.id = ?";
+                                    FROM branches
+                                    LEFT JOIN users ON users.branch_id = branches.id
+                                    WHERE branches.id = ?";
                                 $stmt_site = $conn->prepare($query_site);
                                 if ($stmt_site) {
                                     $stmt_site->bind_param("i", $k);

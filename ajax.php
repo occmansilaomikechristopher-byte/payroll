@@ -444,12 +444,6 @@ if ($action == "filter_attendance") {
 
 
 
-if ($action == "save_site") {
-	$save = $crud->save_site();
-	if ($save)
-		echo json_encode($save);
-}
-
 if ($action == "save_user") {
 	$save = $crud->save_user();
 	if ($save)

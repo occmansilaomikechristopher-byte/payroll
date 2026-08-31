@@ -72,20 +72,20 @@ $filter_query = '';
                                             <?php
                                             $login_role = intval($_SESSION['login_role'] ?? 0);
                                             $branch_filter = intval($_SESSION['login_branch_id'] ?? 0);
-                                            $where = "WHERE DTR.status = 1";
+                                            $where = "WHERE dtr.status = 1";
                                             if (!in_array($login_role, [1, 10], true) && $branch_filter > 0) {
-                                                $where .= " AND DTR.branch_id = " . $branch_filter;
+                                                $where .= " AND dtr.branch_id = " . $branch_filter;
                                             }
-                                            $query = $conn->query("SELECT DTR.*, 
+                                            $query = $conn->query("SELECT dtr.*,
                                                 branches.branch_code, branches.branch_name, 
                                                 timekeeper.name AS timekeeper_name, 
                                                 uploaded.name AS uploaded_by_name 
-                                                FROM DTR 
-                                                LEFT JOIN branches ON DTR.branch_id = branches.id 
-                                                LEFT JOIN users AS timekeeper ON DTR.timekeeper_id = timekeeper.id 
-                                                LEFT JOIN users AS uploaded ON DTR.uploaded_by = uploaded.id 
+                                                FROM dtr
+                                                LEFT JOIN branches ON dtr.branch_id = branches.id
+                                                LEFT JOIN users AS timekeeper ON dtr.timekeeper_id = timekeeper.id
+                                                LEFT JOIN users AS uploaded ON dtr.uploaded_by = uploaded.id
                                                 $where 
-                                                ORDER BY DTR.id DESC");
+                                                ORDER BY dtr.id DESC");
                                             if (!$query) { echo '<tr><td colspan="6">Query error: ' . htmlspecialchars($conn->error) . '</td></tr>'; } else
                                             while ($row = $query->fetch_assoc()):
                                                 $period = date("M d", strtotime($row['date_from'])) . ' &ndash; ' . date("M j, Y", strtotime($row['date_to']));

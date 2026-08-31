@@ -4,7 +4,7 @@ if ($db->connect_error) {
     echo 'CONNERR: ' . $db->connect_error . PHP_EOL;
     exit(1);
 }
-$res = $db->query('SHOW COLUMNS FROM DTR');
+$res = $db->query('SHOW COLUMNS FROM dtr');
 if (!$res) {
     echo 'ERR: ' . $db->error . PHP_EOL;
     exit(1);

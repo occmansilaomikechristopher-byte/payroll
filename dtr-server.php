@@ -14,28 +14,28 @@ $length = isset($_POST['length']) ? intval($_POST['length']) : 10;
 $login_role = intval($_SESSION['login_role'] ?? 0);
 $branch_filter = intval($_SESSION['login_branch_id'] ?? 0);
 
-$where = "WHERE DTR.status = 2";
+$where = "WHERE dtr.status = 2";
 if (!in_array($login_role, [1, 10], true) && $branch_filter > 0) {
-    $where .= " AND DTR.branch_id = " . $branch_filter;
+    $where .= " AND dtr.branch_id = " . $branch_filter;
 }
 
 // Query to get total records
-$totalRecordsQuery = "SELECT COUNT(*) as total FROM DTR $where";
+$totalRecordsQuery = "SELECT COUNT(*) as total FROM dtr $where";
 $totalRecordsResult = $conn->query($totalRecordsQuery);
 $totalRecordsRow = $totalRecordsResult ? $totalRecordsResult->fetch_assoc() : ['total' => 0];
 $totalRecords = intval($totalRecordsRow['total'] ?? 0);
 
 // Fetch data with LIMIT for pagination
-$query = "SELECT DTR.*, branches.branch_code, branches.branch_name, branches.address AS branch_address, 
+$query = "SELECT dtr.*, branches.branch_code, branches.branch_name, branches.address AS branch_address,
             timekeeper.name AS timekeeper_name, uploaded.name AS uploaded_by, 
             approved.name AS approve_by
-          FROM DTR 
-          LEFT JOIN branches ON DTR.branch_id = branches.id 
-          LEFT JOIN users AS timekeeper ON DTR.timekeeper_id = timekeeper.id 
-          LEFT JOIN users AS uploaded ON DTR.uploaded_by = uploaded.id 
-          LEFT JOIN users AS approved ON DTR.approved_by = approved.id  
+          FROM dtr
+          LEFT JOIN branches ON dtr.branch_id = branches.id
+          LEFT JOIN users AS timekeeper ON dtr.timekeeper_id = timekeeper.id
+          LEFT JOIN users AS uploaded ON dtr.uploaded_by = uploaded.id
+          LEFT JOIN users AS approved ON dtr.approved_by = approved.id
           $where 
-          ORDER BY DTR.id DESC 
+          ORDER BY dtr.id DESC
           LIMIT $start, $length";
 
 $result = $conn->query($query);

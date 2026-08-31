@@ -47,12 +47,12 @@ $commaSeparatedSites = implode(',', $site_ids);
 $status = $payroll['status'];
 
 $i = 0;
-$query = $conn->query("SELECT  a.*, f.site_code,f.site_name,f.site_address, e.employee_no, e.lastname, e.firstname, e.middlename, e.basic_pay, d.name as department, p.name as position
+$query = $conn->query("SELECT  a.*, f.branch_code AS site_code, f.branch_name AS site_name, f.address AS site_address, e.employee_no, e.lastname, e.firstname, e.middlename, e.basic_pay, d.name as department, p.name as position
 FROM payroll_items a 
 INNER JOIN employee e ON a.employee_id = e.id 
 LEFT JOIN department d ON e.department_id = d.id 
 LEFT JOIN position p ON e.position_id = p.id 
-LEFT JOIN sites f ON f.id = a.site_id 
+LEFT JOIN branches f ON f.id = a.site_id
 WHERE  a.payroll_id = $id $filter_query  ORDER BY lastname ASC ");
 
 $contributions_settings = json_decode($payroll['settings'], true) ?: [];

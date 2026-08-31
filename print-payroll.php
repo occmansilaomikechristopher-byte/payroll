@@ -12,7 +12,7 @@ if ($site_id !== '') {
 }
 
 
-$site_query = "SELECT * FROM sites WHERE id = ?";
+$site_query = "SELECT branch_code AS site_code, branch_name AS site_name, address AS site_address FROM branches WHERE id = ?";
 $stmt_site = $conn->prepare($site_query);
 $stmt_site->bind_param("i", $site_id);
 $stmt_site->execute();
@@ -196,12 +196,12 @@ $site_details = $result_site->fetch_assoc();
 
     $i = 0;
 
-    $query = $conn->query("SELECT  a.*, f.site_code,f.site_name,f.site_address, e.employee_no, e.lastname, e.firstname, e.middlename, e.basic_pay, d.name as department, p.name as position
+    $query = $conn->query("SELECT  a.*, f.branch_code AS site_code, f.branch_name AS site_name, f.address AS site_address, e.employee_no, e.lastname, e.firstname, e.middlename, e.basic_pay, d.name as department, p.name as position
 FROM payroll_items a 
 INNER JOIN employee e ON a.employee_id = e.id 
 LEFT JOIN department d ON e.department_id = d.id 
 LEFT JOIN position p ON e.position_id = p.id 
-LEFT JOIN sites f ON f.id = a.site_id 
+LEFT JOIN branches f ON f.id = a.site_id 
         WHERE  a.payroll_id = $id $custom_query ORDER BY lastname ASC
     ");
 

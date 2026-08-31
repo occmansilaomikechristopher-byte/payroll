@@ -7,7 +7,7 @@ $id = $_GET['id'];
 $type = $_GET['type'];
 $site_id = isset($_GET['site_id']) ? $_GET['site_id'] : '';
 
-$site_query = "SELECT * FROM sites WHERE id = ?";
+$site_query = "SELECT branch_code AS site_code, branch_name AS site_name, address AS site_address FROM branches WHERE id = ?";
 $stmt_site = $conn->prepare($site_query);
 $stmt_site->bind_param("i", $site_id);
 $stmt_site->execute();
@@ -178,8 +178,8 @@ $site_details = $result_site->fetch_assoc();
     $query = $conn->query("SELECT COUNT(employee_id) AS total_employee, a.present, sum(a.under_time) AS under_time, sum(a.late) AS late
             , sum(a.ot_rate) AS ot_rate, sum(a.per_day) AS per_day, sum(a.ot_amount) AS ot_amount
             ,sum(a.ot_rate * a.ot) as overtime_amount , sum(a.ot) AS ot, sum(a.salary) AS salary, sum(a.per_minute) AS per_minute,  sum(a.deduction_amount) AS deduction_amount, sum(a.other_deduction) AS other_deduction, sum(a.net) AS net
-            ,a.payroll_id, f.id AS site_id, f.site_code,f.site_name,f.site_address  FROM payroll_items AS a
-            LEFT JOIN sites f ON f.id = a.site_id
+            ,a.payroll_id, f.id AS site_id, f.branch_code AS site_code, f.branch_name AS site_name, f.address AS site_address  FROM payroll_items AS a
+            LEFT JOIN branches f ON f.id = a.site_id
             WHERE a.payroll_id = $id  GROUP BY a.site_id
     ");
 

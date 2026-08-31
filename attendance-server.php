@@ -19,7 +19,7 @@ $site_id      = intval($_POST['site_id'] ?? 0);
 $cols = [
     0 => 'a.date_time',
     1 => 'e.lastname',
-    2 => 's.site_name',
+    2 => 's.branch_name',
     3 => 'a.work_hours',
     4 => 'a.overtime',
     5 => 'a.undertime',
@@ -42,13 +42,13 @@ if ($search) {
     $s = mysqli_real_escape_string($conn, $search);
     $where .= " AND (e.firstname LIKE '%$s%' OR e.lastname LIKE '%$s%'
                 OR CONCAT(e.lastname,', ',e.firstname) LIKE '%$s%'
-                OR s.site_name LIKE '%$s%' OR s.site_code LIKE '%$s%')";
+                OR s.branch_name LIKE '%$s%' OR s.branch_code LIKE '%$s%')";
 }
 
-$base_join = "FROM DTR_details a
+$base_join = "FROM dtr_details a
               INNER JOIN employee e ON a.employee_id = e.id
-              INNER JOIN DTR d ON a.ddtr_id = d.id
-              LEFT JOIN sites s ON d.site_id = s.id";
+              INNER JOIN dtr d ON a.ddtr_id = d.id
+              LEFT JOIN branches s ON d.site_id = s.id";
 
 // Stats (filtered, no pagination)
 $stats_sql = "SELECT
@@ -65,12 +65,12 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
 $filtered_count = (int) $conn->query("SELECT COUNT(*) AS c $base_join WHERE $where")->fetch_assoc()['c'];
 
 // Total unfiltered count
-$total_count = (int) $conn->query("SELECT COUNT(*) AS c FROM DTR_details")->fetch_assoc()['c'];
+$total_count = (int) $conn->query("SELECT COUNT(*) AS c FROM dtr_details")->fetch_assoc()['c'];
 
 // Data query
 $data_sql = "SELECT a.*, e.employee_no, e.lastname, e.firstname, e.middlename,
              d.status AS dtr_status, d.site_id,
-             s.site_code, s.site_name, s.site_address
+             s.branch_code AS site_code, s.branch_name AS site_name, s.address AS site_address
              $base_join
              WHERE $where
              ORDER BY $orderColumn $orderDir

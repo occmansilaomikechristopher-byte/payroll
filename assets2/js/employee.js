@@ -90,7 +90,6 @@ $(document).ready(function () {
 let tloan = $("#table-loan").DataTable();
 let tcontribution = $("#table-contributions").DataTable();
 let tdeductions = $("#table-deductions").DataTable();
-let tsites = $("#table-sites").DataTable();
 // $("#search-input").keyup(function () {
 //     oTable.search($(this).val()).draw();
 // });

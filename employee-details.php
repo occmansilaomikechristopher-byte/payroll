@@ -185,9 +185,6 @@ $fullname  = htmlspecialchars($lastname . ', ' . $firstname . ($middlename ? ' '
                                 </a>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <a class="nav-link" data-bs-toggle="tab" href="#arrow-sites" role="tab">
-                                    <i class="ri-map-pin-2-line me-1"></i><span class="d-none d-sm-inline">Sites</span>
-                                </a>
                             </li>
                         </ul>
 
@@ -476,44 +473,6 @@ $fullname  = htmlspecialchars($lastname . ', ' . $firstname . ($middlename ? ' '
                                                             data-bs-toggle="tooltip" data-bs-placement="top" title="Delete Deduction">
                                                             <i class="ri-delete-bin-line"></i>
                                                         </button>
-                                                    </td>
-                                                </tr>
-                                            <?php endwhile; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            <!-- SITES TAB -->
-                            <div class="tab-pane" id="arrow-sites" role="tabpanel">
-                                <div class="table-responsive mt-2">
-                                    <table id="table-sites" class="table table-hover table-bordered align-middle">
-                                        <thead class="table-dark">
-                                            <tr>
-                                                <th class="text-center" style="width:90px;"><i class="ri-qr-code-line me-1"></i>Code</th>
-                                                <th class="text-center" style="width:100px;"><i class="ri-device-line me-1"></i>Device ID</th>
-                                                <th><i class="ri-map-pin-2-line me-1"></i>Site</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php
-                                            $query = $conn->query("SELECT A.*, C.name AS timekeeper, D.employer_name AS employer, E.device_id, E.code
-                                                FROM sites AS A
-                                                LEFT JOIN users AS C ON A.timekeeper_id = C.id
-                                                LEFT JOIN employers AS D ON C.employer_id = D.id
-                                                INNER JOIN employee_bio AS E ON E.site_id = A.id
-                                                WHERE E.employee_id=" . $emp_id . "
-                                                GROUP BY E.site_id
-                                                ORDER BY A.site_name ASC");
-                                            while ($row = $query->fetch_assoc()):
-                                            ?>
-                                                <tr>
-                                                    <td class="text-center"><span style="font-family:monospace;font-weight:700;color:#1976d2;"><?= htmlspecialchars($row['code']) ?></span></td>
-                                                    <td class="text-center"><span style="font-family:monospace;font-size:12px;"><?= htmlspecialchars($row['device_id']) ?></span></td>
-                                                    <td>
-                                                        <div style="font-weight:600;font-size:13px;"><i class="ri-radio-button-line text-success me-1"></i><?= htmlspecialchars($row['site_name']) ?></div>
-                                                        <div style="font-size:11px;color:#666;"><i class="ri-hashtag text-muted me-1"></i><?= htmlspecialchars($row['site_code']) ?></div>
-                                                        <div style="font-size:11px;color:#888;"><i class="ri-map-pin-line text-muted me-1"></i><?= htmlspecialchars($row['site_address']) ?></div>
                                                     </td>
                                                 </tr>
                                             <?php endwhile; ?>

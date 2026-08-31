@@ -1,11 +1,10 @@
 <?php
-$servername = "localhost";
+$host = "localhost";
+$db_name = "u109581358_payroll_db";
 $username = "root";
 $password = "";
-$dbname = "payroll_management";
-
 // Create connection
-$conn = new mysqli($servername, $username, $password, $dbname);
+$conn = new mysqli($host, $username, $password, $db_name);
 
 // Check connection
 if ($conn->connect_error) {

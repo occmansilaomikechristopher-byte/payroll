@@ -74,11 +74,10 @@ if ($login_role != 1) {
                                             employers.employer_name,
                                             branches.branch_name,
                                             branches.branch_code,
-                                            GROUP_CONCAT(CONCAT(sites.site_code,'|',sites.site_name,'|',sites.site_address) SEPARATOR '||') AS site_data
+                                            GROUP_CONCAT(CONCAT(branches.branch_code,'|',branches.branch_name,'|',branches.address) SEPARATOR '||') AS branch_data
                                         FROM users
                                         LEFT JOIN employers ON employers.id = users.employer_id
                                         LEFT JOIN branches ON branches.id = users.branch_id
-                                        LEFT JOIN sites ON sites.id = users.site_id
                                         WHERE users.role != 1
                                         GROUP BY users.id
                                         ORDER BY users.name ASC
@@ -107,10 +106,10 @@ if ($login_role != 1) {
                                             </td>
                                             <td>
                                                 <?= getRole($row['role']) ?>
-                                                <?php if ($row['role'] == 5 && !empty($row['site_data'])): ?>
+                                                <?php if (in_array((int)$row['role'], [5, 6, 9], true) && !empty($row['branch_data'])): ?>
                                                     <div class="mt-1">
                                                         <?php
-                                                        foreach (explode('||', $row['site_data']) as $s):
+                                                        foreach (explode('||', $row['branch_data']) as $s):
                                                             [$code, $name, $address] = array_pad(explode('|', $s), 3, '');
                                                         ?>
                                                             <div class="usr-site-item">

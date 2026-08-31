@@ -282,11 +282,10 @@
             <div class="glass-rim"></div>
             <div class="login-card">
             <div class="brand-block">
-                <img src="/payroll/assets/images/gv-logo.png" alt="GV Aluminum and Glass Supply logo" class="brand-logo" width="76" height="76">
+                <img src="assets/images/gv-logo.png" alt="GV Aluminum and Glass Supply logo" class="brand-logo" width="76" height="76">
                 <div class="brand-title">GV Aluminum and Glass Supply</div>
                 <div class="brand-subtitle">Inventory Sales &amp; Payroll Management System</div>
             </div>
-            <!-- <h1 class="login-title">Sign In</h1>  -->
             <p class="login-subtitle"></p>
             <form id="form-login" novalidate>
                 <div id="message-show" class="form-alert"></div>

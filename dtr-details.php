@@ -10,9 +10,9 @@ $device_id   = base64_decode($_GET['device_id']);
 $branch_id   = base64_decode($_GET['branch_id'] ?? '');
 $timekeeper_name = base64_decode($_GET['timekeeper_name'] ?? '');
 
-$query = "SELECT DTR.*, branches.branch_code, branches.branch_name FROM DTR
-        LEFT JOIN branches ON branches.id = DTR.branch_id
-        WHERE DTR.id = ?";
+$query = "SELECT dtr.*, branches.branch_code, branches.branch_name FROM dtr
+    LEFT JOIN branches ON branches.id = dtr.branch_id
+    WHERE dtr.id = ?";
 $stmt = $conn->prepare($query);
 $stmt->bind_param("i", $id);
 $stmt->execute();
@@ -136,7 +136,7 @@ $query = $conn->query("SELECT
                         d.name as department, 
                         p.name as position,
                         DATE(a.date_time) as attendance_date
-                    FROM DTR_details a 
+                    FROM dtr_details a
                     INNER JOIN employee e ON a.employee_id = e.id 
                     LEFT JOIN department d ON e.department_id = d.id 
                     LEFT JOIN position p ON e.position_id = p.id  
@@ -818,11 +818,11 @@ while ($row = $query->fetch_assoc()) {
                                                 $logs = isset($logs) ? $logs : [];
                                                 $date_check  = date("Y-m-d", strtotime($row['date_time']));
                                                 $employee_id = $row['employee_id'];
-                                                $check_duplicate = $conn->query("SELECT DTR.*, timekeeper.name AS timekeeper_name, uploaded.name AS uploaded_by
-                                                    FROM DTR_details
-                                                    LEFT JOIN DTR ON DTR_details.ddtr_id = DTR.id
-                                                    LEFT JOIN users AS timekeeper ON DTR.timekeeper_id = timekeeper.id
-                                                    LEFT JOIN users AS uploaded ON DTR.uploaded_by = uploaded.id
+                                                $check_duplicate = $conn->query("SELECT dtr.*, timekeeper.name AS timekeeper_name, uploaded.name AS uploaded_by
+                                                    FROM dtr_details
+                                                    LEFT JOIN dtr ON dtr_details.ddtr_id = dtr.id
+                                                    LEFT JOIN users AS timekeeper ON dtr.timekeeper_id = timekeeper.id
+                                                    LEFT JOIN users AS uploaded ON dtr.uploaded_by = uploaded.id
                                                     WHERE date_time = '$date_check' AND employee_id = '$employee_id' AND ddtr_id != '$id'
                                                     GROUP BY date_time");
                                                 $timekeeper_name = $device_id2 = $status = $branch_id2 = $id_dtr = $branch_name2 = '';

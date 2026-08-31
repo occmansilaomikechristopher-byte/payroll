@@ -20,7 +20,7 @@ $ddtrId = intval($ddtrId);
 $employeeId = intval($employeeId);
 
 // Get DTR master info
-$query = $conn->prepare("SELECT DTR.*, branches.branch_code, branches.branch_name FROM DTR LEFT JOIN branches ON branches.id = DTR.branch_id WHERE DTR.id = ? LIMIT 1");
+$query = $conn->prepare("SELECT dtr.*, branches.branch_code, branches.branch_name FROM dtr LEFT JOIN branches ON branches.id = dtr.branch_id WHERE dtr.id = ? LIMIT 1");
 $query->bind_param('i', $ddtrId);
 $query->execute();
 $result = $query->get_result();
@@ -36,7 +36,7 @@ if (!$dtr) {
 // Get employee info and all attendance entries for this DTR
 $detailQuery = $conn->prepare(
     "SELECT a.*, e.employee_no, e.lastname, e.firstname, e.middlename, d.name AS department, p.name AS position
-        FROM DTR_details a
+        FROM dtr_details a
         INNER JOIN employee e ON a.employee_id = e.id
         LEFT JOIN department d ON e.department_id = d.id
         LEFT JOIN position p ON e.position_id = p.id

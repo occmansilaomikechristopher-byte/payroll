@@ -813,7 +813,7 @@ class Action
             return ['result' => false, 'message' => 'Invalid DTR ID'];
         }
 
-        $stmt = $this->db->prepare("SELECT branch_id, status FROM DTR WHERE id = ? LIMIT 1");
+        $stmt = $this->db->prepare("SELECT branch_id, status FROM dtr WHERE id = ? LIMIT 1");
         if (!$stmt) {
             return ['result' => false, 'message' => 'Failed to validate DTR'];
         }
@@ -841,7 +841,7 @@ class Action
 
         $this->db->begin_transaction();
         try {
-            $stmtDelDetails = $this->db->prepare("DELETE FROM DTR_details WHERE ddtr_id = ?");
+            $stmtDelDetails = $this->db->prepare("DELETE FROM dtr_details WHERE ddtr_id = ?");
             if (!$stmtDelDetails) {
                 throw new Exception($this->db->error);
             }
@@ -850,7 +850,7 @@ class Action
                 throw new Exception($stmtDelDetails->error);
             }
 
-            $stmtDelete = $this->db->prepare("DELETE FROM DTR WHERE id = ?");
+            $stmtDelete = $this->db->prepare("DELETE FROM dtr WHERE id = ?");
             if (!$stmtDelete) {
                 throw new Exception($this->db->error);
             }
@@ -956,87 +956,6 @@ class Action
         return 1;
     }
 
-    function save_site()
-    {
-        try {
-            // Ensure all expected keys exist
-            $site_name     = isset($_POST['site_name']) ? trim($_POST['site_name']) : '';
-            $site_address  = isset($_POST['site_address']) ? trim($_POST['site_address']) : '';
-            $employer_id   = isset($_POST['employer_id']) ? $_POST['employer_id'] : '';
-            $site_code     = isset($_POST['site_code']) ? trim($_POST['site_code']) : '';
-            $timekeeper_id = isset($_POST['timekeeper_id']) ? $_POST['timekeeper_id'] : '';
-            $pic           = isset($_POST['pic']) ? trim($_POST['pic']) : '';
-            $id            = isset($_POST['id']) ? $_POST['id'] : '';
-            $status        = isset($_POST['status']) ? 1 : 0;
-
-            // Sanitize inputs
-            $site_name     = mysqli_real_escape_string($this->db, $site_name);
-            $site_address  = mysqli_real_escape_string($this->db, $site_address);
-            $employer_id   = mysqli_real_escape_string($this->db, $employer_id);
-            $site_code     = mysqli_real_escape_string($this->db, $site_code);
-            $timekeeper_id = mysqli_real_escape_string($this->db, $timekeeper_id);
-            $pic           = mysqli_real_escape_string($this->db, $pic);
-            $id            = mysqli_real_escape_string($this->db, $id);
-
-            // Basic validation
-            if (empty($site_name) || empty($employer_id)) {
-                return [
-                    'status'  => "success",
-                    'message' => 'Site name and employer are required.'
-                ];
-            }
-
-            // Build SQL data string
-            $data = "
-                site_name = '$site_name',
-                site_address = '$site_address',
-                employer_id = '$employer_id',
-                site_code = '$site_code',
-                status = '$status',
-                timekeeper_id = '$timekeeper_id'
-        ";
-
-            // Insert or update
-            if (empty($id)) {
-                $save = $this->db->query("INSERT INTO sites SET $data");
-                if (!$save) {
-                    throw new Exception("Insert failed: " . $this->db->error);
-                }
-
-                $new_id = $this->db->insert_id;
-                if (!empty($timekeeper_id)) {
-                    $this->db->query("UPDATE users SET site_id = '$new_id' WHERE id = '$timekeeper_id'");
-                }
-
-                return [
-                    'status'  => "success",
-                    'message' => 'Site created successfully.'
-                ];
-            } else {
-                $save = $this->db->query("UPDATE sites SET $data WHERE id = '$id'");
-                if (!$save) {
-                    throw new Exception("Update failed: " . $this->db->error);
-                }
-
-                if (!empty($timekeeper_id)) {
-                    $this->db->query("UPDATE users SET site_id = '$id' WHERE id = '$timekeeper_id'");
-                }
-
-                return [
-                    'status'  => "success",
-                    'message' => 'Site updated successfully.'
-                ];
-            }
-        } catch (Exception $e) {
-            // Catch and return any error message
-            return [
-                'status'  => "error",
-                'message' => 'Error: ' . $e->getMessage()
-            ];
-        }
-    }
-
-
     function save_user()
     {
         try {
@@ -1101,12 +1020,8 @@ class Action
                 $data .= ", employer_id = '$employer_id'";
             }
 
-            if (!empty($site_id)) {
-                $data .= ", site_id = '$site_id'";
-            }
-
             // Branch assignment
-            if ($role == '9') {
+            if ($role == '5' || $role == '6' || $role == '9') {
                 if (!empty($branch_id)) {
                     $data .= ", branch_id = '$branch_id'";
                 } else {
@@ -1130,9 +1045,6 @@ class Action
                 $save = $this->db->query("UPDATE users SET $data WHERE id = '$id'");
                 $user_id = $id;
             }
-
-            // Optional: update related site for timekeeper role
-            // Relationship stored on users.site_id, not sites.cashier_id
 
             // Success response
             if ($save) {
@@ -1970,12 +1882,13 @@ class Action
                 ];
             }
 
-            // ✅ Timekeeper (and others) — return ACTIVE sites assigned to this user
-            $timekeeper_id = $user['id'];
+            // Timekeepers and PICs are assigned to a branch.
+            $branch_id = intval($user['branch_id'] ?? 0);
             $qry_sites = $this->db->query("
-            SELECT sites.*
-            FROM sites
-            WHERE sites.timekeeper_id = '$timekeeper_id' AND sites.status = 1
+            SELECT id, branch_code AS site_code, branch_name AS site_name,
+                   address AS site_address, status
+            FROM branches
+            WHERE id = '$branch_id' AND status = 1
         ");
 
             $sites = [];
@@ -1984,7 +1897,7 @@ class Action
             }
 
             if (count($sites) === 0) {
-                return ['result' => false, 'message' => 'No active sites assigned to you.'];
+                return ['result' => false, 'message' => 'No active branch assigned to you.'];
             }
 
             return [
@@ -2016,28 +1929,22 @@ class Action
         $user_data = $qry->fetch_assoc();
         // $site_id = $user_data['site_id'];
         $employer_id = $user_data['employer_id'];
-        $qry_exist = $this->db->query("SELECT * FROM DTR WHERE date_from = '$date_from' AND date_to = '$date_to' AND site_id = '$site_id'  LIMIT 1 ");
+        $qry_exist = $this->db->query("SELECT * FROM dtr WHERE date_from = '$date_from' AND date_to = '$date_to' AND site_id = '$site_id'  LIMIT 1 ");
         if ($qry_exist->num_rows > 0) {
             return ['result' => false, 'message' => 'DTR date already exist'];
         }
 
-        $qry_site = $this->db->query("SELECT * FROM sites WHERE id = '$site_id' AND  status = 1 ");
+        $qry_site = $this->db->query("SELECT id FROM branches WHERE id = '$site_id' AND status = 1");
         if ($qry_site->num_rows === 0) {
-            return ['result' => false, 'message' => 'Site is inactive'];
+            return ['result' => false, 'message' => 'Branch is inactive'];
         }
 
-        $qry_site_2 = $this->db->query("SELECT * FROM sites WHERE timekeeper_id = '$timekeeper_id' ");
+        $qry_site_2 = $this->db->query("SELECT id FROM users WHERE id = '$timekeeper_id' AND branch_id = '$site_id'");
         if ($qry_site_2->num_rows === 0) {
-            return ['result' => false, 'message' => "You're not currently assigned to this site. Please log in again."];
+            return ['result' => false, 'message' => "You're not currently assigned to this branch. Please log in again."];
         }
 
-        $qry_site_2 = $this->db->query("SELECT COUNT(*) AS total_sites FROM sites WHERE timekeeper_id = '$timekeeper_id' AND status = 1");
-        if ($qry_site_2->num_rows > 0) {
-            $row_site = $qry_site_2->fetch_assoc();
-            if ($row_site['total_sites'] > 1) {
-                return ['result' => false, 'message' => "Too many sites are currently assigned. Please contact the administrator for assistance."];
-            }
-        }
+        // A user can now be assigned to one branch only.
 
         $this->db->begin_transaction();
         try {
@@ -2045,7 +1952,7 @@ class Action
             if ($qry->num_rows == 0) {
                 throw new Exception('User not found');
             }
-            $sql = "INSERT INTO DTR (local_id, date_from, date_to, cashier_id, site_id, device_id, file, uploaded_by, employer_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?,?)";
+            $sql = "INSERT INTO dtr (local_id, date_from, date_to, cashier_id, site_id, device_id, file, uploaded_by, employer_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?,?)";
             $stmt = $this->db->prepare($sql);
             $stmt->bind_param('sssssssss', $local_id, $date_from, $date_to, $timekeeper_id, $site_id, $device_id, $file, $_SESSION['login_id'], $employer_id);
             $stmt->execute();
@@ -2076,7 +1983,7 @@ class Action
                     }
                 }
 
-                $sql2 = "INSERT INTO DTR_details (ddtr_id, employee_id, date_time, work_hours, logs, attendance_type, overtime) VALUES (?, ?, ?, ?, ?, ?, ?)";
+                    $sql2 = "INSERT INTO dtr_details (ddtr_id, employee_id, date_time, work_hours, logs, attendance_type, overtime) VALUES (?, ?, ?, ?, ?, ?, ?)";
                 $stmt2 = $this->db->prepare($sql2);
                 $stmt2->bind_param('sssssss', $ddtr_id, $employee_id, $date_time, $hours, $logs, $attendance_type, $overtime);
                 try {
@@ -2109,7 +2016,7 @@ class Action
         $ptype = $post['dtr']['weekly_payroll'];
         $qry = $this->db->query("SELECT id FROM users WHERE id = '$timekeeper_id' AND role IN (5,9) ");
 
-        $qry_exist = $this->db->query("SELECT * FROM DTR WHERE date_from = '$date_from' AND date_to = '$date_to' AND ptype='$ptype' AND timekeeper_id='$timekeeper_id' LIMIT 1 ");
+        $qry_exist = $this->db->query("SELECT * FROM dtr WHERE date_from = '$date_from' AND date_to = '$date_to' AND ptype='$ptype' AND timekeeper_id='$timekeeper_id' LIMIT 1 ");
         if ($qry_exist->num_rows > 0) {
             return ['result' => false, 'message' => 'DTR date already exist'];
         }
@@ -2120,7 +2027,7 @@ class Action
                 throw new Exception('User not found');
             }
 
-            $stmt = $this->db->prepare("INSERT INTO DTR (local_id, date_from, date_to, timekeeper_id, branch_id, device_id, file, uploaded_by, ptype) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt = $this->db->prepare("INSERT INTO dtr (local_id, date_from, date_to, timekeeper_id, branch_id, device_id, file, uploaded_by, ptype) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
             if (!$stmt) throw new Exception('DTR prepare failed: ' . $this->db->error);
             $stmt->bind_param('sssssssss', $local_id, $date_from, $date_to, $timekeeper_id, $branch_id, $device_id, $file, $timekeeper_id, $ptype);
             if (!$stmt->execute()) throw new Exception('DTR insert failed: ' . $stmt->error);
@@ -2151,7 +2058,7 @@ class Action
                     }
                 }
 
-                $stmt2 = $this->db->prepare("INSERT INTO DTR_details (ddtr_id, employee_id, date_time, work_hours, logs, attendance_type, overtime, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt2 = $this->db->prepare("INSERT INTO dtr_details (ddtr_id, employee_id, date_time, work_hours, logs, attendance_type, overtime, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
                 if (!$stmt2) throw new Exception('DTR_details prepare failed: ' . $this->db->error);
                 $stmt2->bind_param('ssssssss', $ddtr_id, $employee_id, $date_time, $hours, $logs, $attendance_type, $overtime, $notes);
                 if (!$stmt2->execute()) throw new Exception('DTR_details insert failed for employee ' . $employee_id . ': ' . $stmt2->error);
@@ -2314,7 +2221,7 @@ class Action
 
         $this->db->begin_transaction();
         try {
-            $check_dup = $this->db->prepare("SELECT id FROM DTR WHERE date_from = ? AND date_to = ? AND branch_id = ? AND device_id = ? LIMIT 1");
+            $check_dup = $this->db->prepare("SELECT id FROM dtr WHERE date_from = ? AND date_to = ? AND branch_id = ? AND device_id = ? LIMIT 1");
             if ($check_dup) {
                 $check_dup->bind_param('ssis', $date_from, $date_to, $branch_id, $device_id);
                 $check_dup->execute();
@@ -2324,7 +2231,7 @@ class Action
                 }
             }
 
-            $stmt = $this->db->prepare("INSERT INTO DTR (local_id, date_from, date_to, timekeeper_id, branch_id, device_id, file, uploaded_by, approved_by, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)");
+            $stmt = $this->db->prepare("INSERT INTO dtr (local_id, date_from, date_to, timekeeper_id, branch_id, device_id, file, uploaded_by, approved_by, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)");
             if (!$stmt) {
                 throw new Exception('Failed to prepare DTR insert: ' . $this->db->error);
             }
@@ -2335,7 +2242,7 @@ class Action
             }
             $ddtr_id = $stmt->insert_id;
 
-            $insert_details = $this->db->prepare("INSERT INTO DTR_details (ddtr_id, employee_id, date_time, work_hours, logs, attendance_type, overtime, undertime, late, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $insert_details = $this->db->prepare("INSERT INTO dtr_details (ddtr_id, employee_id, date_time, work_hours, logs, attendance_type, overtime, undertime, late, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             if (!$insert_details) {
                 throw new Exception('Failed to prepare DTR details insert: ' . $this->db->error);
             }
@@ -2501,7 +2408,7 @@ class Action
             }
 
             if ($device_id !== '0' && $device_id !== '') {
-                $update_device = $this->db->prepare("UPDATE DTR SET device_id = ? WHERE id = ?");
+                $update_device = $this->db->prepare("UPDATE dtr SET device_id = ? WHERE id = ?");
                 if ($update_device) {
                     $update_device->bind_param('si', $device_id, $ddtr_id);
                     $update_device->execute();
@@ -2730,12 +2637,12 @@ class Action
 
         try {
             // Construct the SQL query with the site IDs directly included
-            $sql = "SELECT DTR_details.*, employee.salary, employee.allowance_rate, employee.sss_fund, employee.basic_pay, employee.ot_rate, employee.isAutoDeduct, employee.loan_id, employee.loan_deduction, employee.loan, DTR.branch_id
-                FROM DTR_details
-                INNER JOIN DTR ON DTR.id = DTR_details.ddtr_id
-                INNER JOIN employee ON DTR_details.employee_id = employee.id
-                WHERE date(DTR_details.date_time) BETWEEN ? AND ? AND DTR.status = 2
-                AND DTR.branch_id IN ($commaSeparatedSites) AND employee.weekly_payroll=$weekly_payroll";
+            $sql = "SELECT dtr_details.*, employee.salary, employee.allowance_rate, employee.sss_fund, employee.basic_pay, employee.ot_rate, employee.isAutoDeduct, employee.loan_id, employee.loan_deduction, employee.loan, dtr.branch_id
+                FROM dtr_details
+                INNER JOIN dtr ON dtr.id = dtr_details.ddtr_id
+                INNER JOIN employee ON dtr_details.employee_id = employee.id
+                WHERE date(dtr_details.date_time) BETWEEN ? AND ? AND dtr.status = 2
+                AND dtr.branch_id IN ($commaSeparatedSites) AND employee.weekly_payroll=$weekly_payroll";
 
             $stmt = $this->db->prepare($sql);
             // Bind the date parameters only
@@ -2818,12 +2725,12 @@ class Action
                 }
                 foreach ($grouped_data as $employee_id => $data) {
                     $last_attendance = $data['date_time'];
-                    $sql2 = "SELECT DTR_details.*, DTR.branch_id
-                            FROM DTR_details
-                            INNER JOIN DTR ON DTR.id = DTR_details.ddtr_id
-                            INNER JOIN employee ON DTR_details.employee_id = employee.id
-                            WHERE date(DTR_details.date_time) BETWEEN ? AND ? AND DTR.status = 2 AND DTR.branch_id NOT IN ($commaSeparatedSites)
-                            AND employee.weekly_payroll=$weekly_payroll AND DTR_details.employee_id = $employee_id ORDER BY DTR_details.date_time DESC
+                    $sql2 = "SELECT dtr_details.*, dtr.branch_id
+                            FROM dtr_details
+                            INNER JOIN dtr ON dtr.id = dtr_details.ddtr_id
+                            INNER JOIN employee ON dtr_details.employee_id = employee.id
+                            WHERE date(dtr_details.date_time) BETWEEN ? AND ? AND dtr.status = 2 AND dtr.branch_id NOT IN ($commaSeparatedSites)
+                            AND employee.weekly_payroll=$weekly_payroll AND dtr_details.employee_id = $employee_id ORDER BY dtr_details.date_time DESC
                             ";
                     $stmt2 = $this->db->prepare($sql2);
                     $stmt2->bind_param("ss", $date_from, $date_to);
@@ -2873,6 +2780,10 @@ class Action
                     $refunds = [];
                     foreach ($settings as $setting) {
                         if ($setting['type'] == 1) {
+                            // Benefit contributions are controlled by the employee's Auto Deductions switch.
+                            if ((int) ($data['isAutoDeduct'] ?? 0) !== 1) {
+                                continue;
+                            }
                             $contibution_id = $setting['id'];
                             $query = "SELECT * FROM employee_contributions WHERE employee_id = ? AND contribution_id = ? ";
                             $stmt = $this->db->prepare($query);
@@ -2899,9 +2810,12 @@ class Action
                         }
                         if ($setting['type'] == 2) {
                             $deduction_id = $setting['id'];
-                            $query = "SELECT * FROM employee_deductions WHERE employee_id = ?  AND deduction_id = ? ";
+                            $query = "SELECT * FROM employee_deductions
+                                      WHERE employee_id = ? AND deduction_id = ?
+                                      AND (effective_date IS NULL OR date(effective_date) <= ?)
+                                      ORDER BY effective_date DESC, id DESC";
                             $stmt = $this->db->prepare($query);
-                            $stmt->bind_param("is", $employee_id, $deduction_id);
+                            $stmt->bind_param("iis", $employee_id, $deduction_id, $date_to);
                             $stmt->execute();
                             $result = $stmt->get_result();
                             while ($row = $result->fetch_assoc()) {
@@ -2912,7 +2826,10 @@ class Action
 
                         if ($setting['type'] == 3) {
                             $clt_id = (int)  $setting['id'];
-                            $query = "SELECT * FROM loans WHERE employee_id = ?  AND loan_type = ? ";
+                            $query = "SELECT * FROM loans
+                                      WHERE employee_id = ? AND loan_type = ?
+                                      AND loan_status = 0 AND loan_balance > 0
+                                      ORDER BY loan_date ASC, loan_id ASC";
                             $stmt = $this->db->prepare($query);
                             $stmt->bind_param("is", $employee_id, $clt_id);
                             $stmt->execute();
@@ -2923,8 +2840,10 @@ class Action
                                 if ($balance < $damount) {
                                     $damount = $balance;
                                 }
+                                $deduction_amount += $damount;
                                 $loans[] = [
                                     "amount" => $damount,
+                                    "loan_id" => (int) $row['loan_id'],
                                     "deduction_id" => $row['loan_type'],
                                     "type" => 2
                                 ];
@@ -3053,7 +2972,7 @@ class Action
         $approved_by = $_SESSION['login_id'];
         $status = 2;
         if ($id) {
-            $stmt = $this->db->prepare("UPDATE DTR SET status = ?, approved_by = ? WHERE id = ?");
+            $stmt = $this->db->prepare("UPDATE dtr SET status = ?, approved_by = ? WHERE id = ?");
             $stmt->bind_param('ssi', $status, $approved_by, $id);
             if ($stmt->execute()) {
                 return ['result' => true, 'message' => 'updated'];
@@ -3128,22 +3047,22 @@ class Action
         $disabled = false;
         $sites = $this->db->query("
             SELECT 
-                        sites.*, 
+                        branches.id, branches.branch_code AS site_code,
+                        branches.branch_name AS site_name, branches.address AS site_address,
                         users.name, 
-                         DTR.date_from,
-                          DTR.date_to
+                         dtr.date_from,
+                          dtr.date_to
                     FROM users
-                    INNER JOIN sites 
-                        ON sites.id = users.site_id
-                    INNER JOIN DTR 
-                        ON DTR.site_id = sites.id
+                    INNER JOIN branches
+                        ON branches.id = users.branch_id
+                    INNER JOIN dtr
+                        ON dtr.site_id = branches.id
                     WHERE users.role = 5
-                    AND sites.status = 1
-                    AND sites.employer_id = '$employer_id'
-                    AND DTR.date_from BETWEEN '$date_from' AND '$date_to'
-                    AND DTR.status = 2 
+                    AND branches.status = 1
+                    AND dtr.date_from BETWEEN '$date_from' AND '$date_to'
+                    AND dtr.status = 2
                     $filter_query
-                    GROUP BY sites.id
+                    GROUP BY branches.id
         ");
 
 
@@ -3228,7 +3147,7 @@ class Action
     function delete_dtr_logs()
     {
         extract($_POST);
-        $delete = $this->db->query("DELETE FROM DTR_details where id = " . $id);
+            $delete = $this->db->query("DELETE FROM dtr_details where id = " . $id);
         if ($delete) {
             return ['result' => true, 'message' => 'deleted'];
         } else {
@@ -3259,7 +3178,7 @@ class Action
             $employee_id = $_POST['employee_id'];
             $date_time = $_POST['date_time'];
             $datetime_log = $_POST['datetime_log'];
-            $query = "SELECT  * FROM DTR_details
+            $query = "SELECT  * FROM dtr_details
         WHERE ddtr_id = ? AND employee_id = ? AND date_time = ? ";
             $stmt = $this->db->prepare($query);
             $stmt->bind_param("iis", $id, $employee_id, $date_time);
@@ -3274,7 +3193,7 @@ class Action
                     $new_logs[$k]['type'] =  'manual';
                 }
                 $updated_logs =  array_merge($logs, $new_logs);
-                $query_update = "UPDATE DTR_details SET logs = ? WHERE id = ?";
+                $query_update = "UPDATE dtr_details SET logs = ? WHERE id = ?";
                 $stmt3 = $this->db->prepare($query_update);
                 if ($stmt3 === false) {
                     throw new Exception('Failed to prepare the statement: ' . $this->db->error);
@@ -3297,7 +3216,7 @@ class Action
                     $new_logs[$k]['type'] =  'manual';
                 }
                 $logs = json_encode($new_logs);
-                $sql2 = "INSERT INTO DTR_details (ddtr_id, employee_id, date_time, work_hours, logs, attendance_type, overtime) VALUES (?, ?, ?, ?, ?, ?, ?)";
+                $sql2 = "INSERT INTO dtr_details (ddtr_id, employee_id, date_time, work_hours, logs, attendance_type, overtime) VALUES (?, ?, ?, ?, ?, ?, ?)";
                 $stmt2 = $this->db->prepare($sql2);
                 $stmt2->bind_param('sssssss', $id, $employee_id, $date_time, $hours, $logs, $attendance_type, $overtime);
                 try {
@@ -3320,7 +3239,7 @@ class Action
         $id = $_POST['id'];
         if (isset($_POST['work_hours'])) {
             try {
-                $query_update = "UPDATE DTR_details SET work_hours = ? WHERE id = ?";
+                $query_update = "UPDATE dtr_details SET work_hours = ? WHERE id = ?";
                 $stmt3 = $this->db->prepare($query_update);
                 if ($stmt3 === false) {
                     throw new Exception('Failed to prepare the statement: ' . $this->db->error);
@@ -3341,7 +3260,7 @@ class Action
 
         if (isset($_POST['overtime'])) {
             try {
-                $query_update = "UPDATE DTR_details SET overtime = ? WHERE id = ?";
+                $query_update = "UPDATE dtr_details SET overtime = ? WHERE id = ?";
                 $stmt3 = $this->db->prepare($query_update);
                 if ($stmt3 === false) {
                     throw new Exception('Failed to prepare the statement: ' . $this->db->error);
@@ -3362,7 +3281,7 @@ class Action
 
         if (isset($_POST['undertime'])) {
             try {
-                $query_update = "UPDATE DTR_details SET undertime = ? WHERE id = ?";
+                $query_update = "UPDATE dtr_details SET undertime = ? WHERE id = ?";
                 $stmt3 = $this->db->prepare($query_update);
                 if ($stmt3 === false) {
                     throw new Exception('Failed to prepare the statement: ' . $this->db->error);
@@ -3383,7 +3302,7 @@ class Action
 
         if (isset($_POST['late'])) {
             try {
-                $query_update = "UPDATE DTR_details SET late = ? WHERE id = ?";
+                $query_update = "UPDATE dtr_details SET late = ? WHERE id = ?";
                 $stmt3 = $this->db->prepare($query_update);
                 if ($stmt3 === false) {
                     throw new Exception('Failed to prepare the statement: ' . $this->db->error);

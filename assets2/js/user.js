@@ -31,17 +31,8 @@ $(document).ready(function () {
     $("#role").on("change", function () {
         const selectedValue = $(this).val();
 
-        // Timekeeper / PIC → site selection
-        if (selectedValue == 5 || selectedValue == 6) {
-            $("#site-select").attr("required", true);
-            $("#site-wrapper").show();
-        } else {
-            $("#site-select").removeAttr("required");
-            $("#site-wrapper").hide();
-        }
-
-        // Cashier → branch selection
-        if (selectedValue == 9) {
+        // Timekeeper / PIC / Cashier → branch selection
+        if (selectedValue == 5 || selectedValue == 6 || selectedValue == 9) {
             $("#branch-select").attr("required", true);
             $("#branch-wrapper").show();
             $("#all-branches-option").hide();

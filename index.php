@@ -403,7 +403,6 @@ function getRole($login_role)
                 'dtr'                  => 'dtr',
                 'dtr-details'          => 'dtr-details',
                 'attendance'           => 'manage_attendance',
-                'sites'                => 'sites',
                 'position'             => 'position',
                 'users'                => 'users',
                 'visitors-logs'        => 'visitors-logs',
@@ -593,10 +592,6 @@ function getRole($login_role)
     <?php } ?>
     <?php if ($page == 'allowances') { ?>
         <script src="assets2/js/allowances.js"></script>
-    <?php } ?>
-
-    <?php if ($page == 'sites') { ?>
-        <script src="assets2/js/sites.js"></script>
     <?php } ?>
 
     <?php if ($page == 'users') { ?>

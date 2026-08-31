@@ -38,20 +38,20 @@
                         </div>
                     </div>
 
-                    <!-- Site -->
+                    <!-- Branch -->
                     <div class="mb-1">
                         <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
-                            <i class="ri-map-pin-2-line me-1"></i>Site <span class="text-muted fw-normal">(optional)</span>
+                            <i class="ri-git-branch-line me-1"></i>Branch <span class="text-muted fw-normal">(optional)</span>
                         </label>
                         <select id="site-select" class="form-control select2" name="site_id"
-                            data-placeholder="— All Sites —">
-                            <option value="">— All Sites —</option>
+                            data-placeholder="— All Branches —">
+                            <option value="">— All Branches —</option>
                             <?php
-                            $user_forms = $conn->query("SELECT * FROM sites WHERE status = 1 ORDER BY site_name ASC");
+                            $user_forms = $conn->query("SELECT * FROM branches WHERE status = 1 ORDER BY branch_name ASC");
                             while ($row_data_form = $user_forms->fetch_assoc()):
                             ?>
                                 <option value="<?= $row_data_form['id'] ?>">
-                                    <?= htmlspecialchars($row_data_form['site_name']) ?> (<?= htmlspecialchars($row_data_form['site_address']) ?>)
+                                    <?= htmlspecialchars($row_data_form['branch_name']) ?> (<?= htmlspecialchars($row_data_form['address'] ?? '') ?>)
                                 </option>
                             <?php endwhile; ?>
                         </select>

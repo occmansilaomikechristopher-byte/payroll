@@ -20,8 +20,8 @@ $total_sites       = db_count($conn, "SELECT COUNT(*) AS c FROM branches WHERE s
 $total_positions   = db_count($conn, "SELECT COUNT(*) AS c FROM position");
 $total_users       = db_count($conn, "SELECT COUNT(*) AS c FROM users WHERE role!=1 AND status=1");
 $total_payrolls    = db_count($conn, "SELECT COUNT(*) AS c FROM payroll");
-$pending_dtr       = db_count($conn, "SELECT COUNT(*) AS c FROM DTR WHERE status=1");
-$approved_dtr      = db_count($conn, "SELECT COUNT(*) AS c FROM DTR WHERE status=2");
+$pending_dtr       = db_count($conn, "SELECT COUNT(*) AS c FROM dtr WHERE status=1");
+$approved_dtr      = db_count($conn, "SELECT COUNT(*) AS c FROM dtr WHERE status=2");
 
 // ── Payroll status breakdown ────────────────────────────────────
 $pay_new        = db_count($conn, "SELECT COUNT(*) AS c FROM payroll WHERE status=0");
@@ -74,7 +74,7 @@ $recent_payrolls = $conn->query("
 // ── Recent DTR uploads ──────────────────────────────────────────
 $recent_dtr = $conn->query("
     SELECT d.*, s.branch_name, s.branch_code, u.name AS uploader
-    FROM DTR d
+    FROM dtr d
     LEFT JOIN branches s ON d.branch_id = s.id
     LEFT JOIN users u ON d.uploaded_by = u.id
     ORDER BY d.id DESC LIMIT 6
@@ -196,11 +196,11 @@ $recent_dtr = $conn->query("
                     <div class="stat-card__top">
                         <div class="stat-card__content">
                             <p class="stat-card__value"><?= $total_sites ?></p>
-                            <p class="stat-card__label">Active Sites</p>
+                            <p class="stat-card__label">Active Branches</p>
                         </div>
                         <div class="stat-card__icon stat-card__icon--blue"><i class="ri-map-pin-2-line"></i></div>
                     </div>
-                    <p class="stat-card__meta">Available sites</p>
+                    <p class="stat-card__meta">Available branches</p>
                 </div>
                 <div class="stat-card stat-card--purple">
                     <div class="stat-card__top">

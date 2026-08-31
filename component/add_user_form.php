@@ -124,8 +124,8 @@ function setupRoleChangeListener() {
         
         console.log('Role changed to:', role);
         
-        if (role === '9') {
-            // Cashier - show branch, make required
+        if (role === '5' || role === '6' || role === '9') {
+            // Timekeeper, PIC, and cashier - show required branch
             branchWrapper.style.display = 'block';
             branchWrapper.style.visibility = 'visible';
             branchSelect.removeAttribute('disabled');
