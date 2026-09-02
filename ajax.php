@@ -723,6 +723,20 @@ if ($action == "owner-report-payroll") {
 	return;
 }
 
+if ($action == "owner-report-quotations") {
+	global $conn;
+	$count = 0;
+	$total = 0;
+	$result = $conn->query("SELECT COUNT(*) AS count, IFNULL(SUM(total), 0) AS total_value FROM pos_quotations");
+	if ($result) {
+		$row = $result->fetch_assoc();
+		$count = intval($row['count'] ?? 0);
+		$total = floatval($row['total_value'] ?? 0);
+	}
+	echo json_encode(['success' => true, 'count' => $count, 'total' => $total, 'total_value' => $total]);
+	return;
+}
+
 if ($action == "owner-report-payable") {
 	global $conn;
 	// Get outstanding POS sales payable
