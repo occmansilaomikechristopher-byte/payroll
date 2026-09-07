@@ -48,6 +48,44 @@ if (!isset($_GET['action'])) {
 }
 
 $action = $_GET['action'];
+
+// This aggregate report does not need Action initialization. Keeping it early
+// prevents unrelated schema checks in admin_class.php from blanking the API
+// response on installations with older quotation tables.
+if ($action === 'owner-report-quotations') {
+	$authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+	if ($authHeader === '' && function_exists('getallheaders')) {
+		foreach (getallheaders() as $headerName => $headerValue) {
+			if (strtolower($headerName) === 'authorization') {
+				$authHeader = trim($headerValue);
+				break;
+			}
+		}
+	}
+	$authorized = preg_match('/Bearer\s+(.+)$/i', trim($authHeader), $matches) &&
+		hash_equals(API_TOKEN, trim($matches[1]));
+	if ((!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true) && !$authorized) {
+		http_response_code(403);
+		echo json_encode(['success' => false, 'message' => 'Access Forbidden']);
+		exit();
+	}
+
+	include 'db_connect.php';
+	$count = 0;
+	$total = 0;
+	$branchColumn = $conn->query("SHOW COLUMNS FROM pos_quotations LIKE 'branch_id'");
+	$quotationFilter = ($branchColumn && $branchColumn->num_rows > 0) ? ' WHERE branch_id = 1' : '';
+	mysqli_report(MYSQLI_REPORT_OFF);
+	$result = $conn->query("SELECT COUNT(*) AS count, IFNULL(SUM(total), 0) AS total_value FROM pos_quotations$quotationFilter");
+	if ($result) {
+		$row = $result->fetch_assoc();
+		$count = intval($row['count'] ?? 0);
+		$total = floatval($row['total_value'] ?? 0);
+	}
+	echo json_encode(['success' => true, 'branch_name' => 'Main Branch', 'count' => $count, 'total' => $total, 'total_value' => $total]);
+	exit();
+}
+
 include 'admin_class.php';
 $crud = new Action();
 
@@ -181,6 +219,19 @@ if ($action == "mobile-pos-delete-damage") {
 	return;
 }
 
+if ($action == "mobile-pos-approve-damage") {
+	$cashierWebSession = isset($_SESSION['is_login']) && $_SESSION['is_login'] === true &&
+		intval($_SESSION['login_role'] ?? 0) === 9;
+	if (!$cashierWebSession && !isValidApiTokenRequest($action)) {
+		header("HTTP/1.0 403 Forbidden");
+		echo json_encode(['result' => false, 'message' => 'Access Forbidden']);
+		return;
+	}
+	$save = $crud->mobile_pos_approve_damage();
+	echo json_encode($save);
+	return;
+}
+
 if ($action == "mobile-pos-save-owner-requisition") {
 	$save = $crud->mobile_pos_save_owner_requisition();
 	echo json_encode($save);
@@ -194,12 +245,26 @@ if ($action == "mobile-pos-update-owner-requisition-payment") {
 }
 
 if ($action == "mobile-pos-delete-owner-requisition") {
+	$cashierWebSession = isset($_SESSION['is_login']) && $_SESSION['is_login'] === true &&
+		intval($_SESSION['login_role'] ?? 0) === 9;
+	if (!$cashierWebSession && !isValidApiTokenRequest($action)) {
+		header("HTTP/1.0 403 Forbidden");
+		echo json_encode(['result' => false, 'message' => 'Access Forbidden']);
+		return;
+	}
 	$save = $crud->mobile_pos_delete_owner_requisition();
 	echo json_encode($save);
 	return;
 }
 
 if ($action == "mobile-pos-update-owner-requisition-status") {
+	$cashierWebSession = isset($_SESSION['is_login']) && $_SESSION['is_login'] === true &&
+		intval($_SESSION['login_role'] ?? 0) === 9;
+	if (!$cashierWebSession && !isValidApiTokenRequest($action)) {
+		header("HTTP/1.0 403 Forbidden");
+		echo json_encode(['result' => false, 'message' => 'Access Forbidden']);
+		return;
+	}
 	$save = $crud->mobile_pos_update_owner_requisition_status();
 	echo json_encode($save);
 	return;
@@ -275,6 +340,16 @@ function isValidApiTokenRequest($action) {
 		}
 	}
 	return false;
+}
+
+// Only administrator and cashier sessions may use the web application.
+// Token-authenticated mobile/API requests remain independent of web roles.
+if (isset($_SESSION['is_login']) && $_SESSION['is_login'] === true &&
+	!in_array(intval($_SESSION['login_role'] ?? 0), [1, 9], true) &&
+	!isValidApiTokenRequest($action)) {
+	header("HTTP/1.0 403 Forbidden");
+	echo json_encode(['success' => false, 'message' => 'This account cannot access the web application.']);
+	exit();
 }
 
 // end mobile

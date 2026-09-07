@@ -10,7 +10,8 @@ $filter_query = '';
     .dtr-user { font-size:13px; font-weight:600; }
     .dtr-user small { font-size:10px; color: #888; font-weight:400; display:block; }
     .dtr-action { display:flex; gap:4px; justify-content:center; }
-    #data-table1 thead th { background-color: #009688 !important; border-color: #038479 !important; color: #fff !important; }
+    #data-table1 thead th,
+    #data-table thead th { background-color: #009688 !important; border-color: #038479 !important; color: #fff !important; }
 </style>
 
 <div class="main-content">

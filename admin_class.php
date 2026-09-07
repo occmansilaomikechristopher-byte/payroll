@@ -62,13 +62,26 @@ class Action
         $this->db->query("CREATE TABLE IF NOT EXISTS pos_quotations (
             id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
             quotation_no VARCHAR(50) NOT NULL UNIQUE,
-            customer_name VARCHAR(255) NOT NULL DEFAULT '',
+            branch_id INT NOT NULL DEFAULT 1,
             subtotal DECIMAL(12,2) NOT NULL DEFAULT 0.00,
             discount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
             total DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-            status VARCHAR(30) NOT NULL DEFAULT 'Pending',
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $branchColumn = $this->db->query("SHOW COLUMNS FROM pos_quotations LIKE 'branch_id'");
+        if ($branchColumn && $branchColumn->num_rows === 0) {
+            $this->db->query("ALTER TABLE pos_quotations ADD COLUMN branch_id INT NOT NULL DEFAULT 1 AFTER quotation_no");
+        }
+
+        $customerColumn = $this->db->query("SHOW COLUMNS FROM pos_quotations LIKE 'customer_name'");
+        if ($customerColumn && $customerColumn->num_rows > 0) {
+            $this->db->query("ALTER TABLE pos_quotations DROP COLUMN customer_name");
+        }
+        $quotationStatusColumn = $this->db->query("SHOW COLUMNS FROM pos_quotations LIKE 'status'");
+        if ($quotationStatusColumn && $quotationStatusColumn->num_rows > 0) {
+            $this->db->query("ALTER TABLE pos_quotations DROP COLUMN status");
+        }
 
         $this->db->query("CREATE TABLE IF NOT EXISTS pos_quotation_items (
             id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -164,11 +177,13 @@ class Action
             $result = $stmt->get_result();
             if ($result->num_rows == 1) {
                 $row = $result->fetch_assoc();
-                if ($row['role'] === 5) {
-                    return ['result' => false, 'message' => 'No user found with the given username'];
+                $role = intval($row['role'] ?? 0);
+                if (!in_array($role, [1, 9], true)) {
+                    return ['result' => false, 'message' => 'Only administrator and cashier accounts can access the web application.'];
                 }
                 $stored_hashed_password = $row['password'];
                 if (password_verify($password, $stored_hashed_password)) {
+                    session_regenerate_id(true);
                     foreach ($row as $key => $value) {
                         if ($key != 'passwors' && !is_numeric($key)) {
                             $_SESSION['login_' . $key] = $value;
@@ -1256,7 +1271,7 @@ class Action
     function mobile_pos_quotations()
     {
         try {
-            $res = $this->db->query("SELECT id, quotation_no, customer_name, subtotal, discount, total, status, created_at
+            $res = $this->db->query("SELECT id, quotation_no, subtotal, discount, total, created_at
                                      FROM pos_quotations ORDER BY created_at DESC LIMIT 200");
             $quotations = [];
             while ($row = $res->fetch_assoc()) $quotations[] = $row;
@@ -1273,7 +1288,6 @@ class Action
             $input = json_decode(file_get_contents('php://input'), true);
             if (!$input || empty($input['items'])) return ['result' => false, 'message' => 'No items in quotation.'];
 
-            $customer_name = trim($input['customer_name'] ?? '');
             $discount = max(0, floatval($input['discount'] ?? 0));
             $items = $input['items'];
             $subtotal = 0;
@@ -1287,9 +1301,9 @@ class Action
 
             $this->db->begin_transaction();
             $stmt = $this->db->prepare("INSERT INTO pos_quotations
-                (quotation_no, customer_name, subtotal, discount, total, status)
-                VALUES (?, ?, ?, ?, ?, 'Pending')");
-            $stmt->bind_param('ssddd', $quotation_no, $customer_name, $subtotal, $discount, $total);
+                (quotation_no, branch_id, subtotal, discount, total)
+                VALUES (?, 1, ?, ?, ?)");
+            $stmt->bind_param('sddd', $quotation_no, $subtotal, $discount, $total);
             $stmt->execute();
             $quotation_id = $this->db->insert_id;
             $stmt->close();
@@ -1674,6 +1688,10 @@ class Action
     function mobile_pos_delete_owner_requisition()
     {
         try {
+            if (isset($_SESSION['is_login']) && $_SESSION['is_login'] === true && intval($_SESSION['login_role'] ?? 0) !== 9) {
+                return ['result' => false, 'message' => 'Only cashier accounts can delete requisitions.'];
+            }
+
             $input = json_decode(file_get_contents('php://input'), true) ?: [];
             $requisition_id = intval($input['requisition_id'] ?? 0);
 
@@ -1699,19 +1717,82 @@ class Action
         }
     }
 
+    function mobile_pos_approve_damage()
+    {
+        try {
+            if (isset($_SESSION['is_login']) && $_SESSION['is_login'] === true && intval($_SESSION['login_role'] ?? 0) !== 9) {
+                return ['result' => false, 'message' => 'Only cashier accounts can approve damage items.'];
+            }
+
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $damage_id = intval($input['damage_id'] ?? 0);
+            if ($damage_id <= 0) {
+                return ['result' => false, 'message' => 'Invalid damage item ID.'];
+            }
+
+            $this->db->begin_transaction();
+            $stmt = $this->db->prepare('SELECT status FROM damage_items WHERE id = ? FOR UPDATE');
+            if (!$stmt) {
+                $this->db->rollback();
+                return ['result' => false, 'message' => 'Failed to prepare damage item lookup.'];
+            }
+            $stmt->bind_param('i', $damage_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $damage = $result ? $result->fetch_assoc() : null;
+            $stmt->close();
+
+            if (!$damage) {
+                $this->db->rollback();
+                return ['result' => false, 'message' => 'Damage item not found.'];
+            }
+            if (($damage['status'] ?? '') !== 'Pending') {
+                $this->db->rollback();
+                return ['result' => false, 'message' => 'Only pending damage items can be approved.'];
+            }
+
+            $update = $this->db->prepare("UPDATE damage_items SET status = 'Approved' WHERE id = ? AND status = 'Pending'");
+            if (!$update) {
+                $this->db->rollback();
+                return ['result' => false, 'message' => 'Failed to prepare damage approval.'];
+            }
+            $update->bind_param('i', $damage_id);
+            if (!$update->execute()) {
+                $update->close();
+                $this->db->rollback();
+                return ['result' => false, 'message' => 'Failed to approve damage item.'];
+            }
+            $update->close();
+            $this->db->commit();
+
+            return ['result' => true, 'message' => 'Damage item approved successfully.'];
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return ['result' => false, 'message' => 'Unable to approve damage item.'];
+        }
+    }
+
     function mobile_pos_update_owner_requisition_status()
     {
         try {
+            if (isset($_SESSION['is_login']) && $_SESSION['is_login'] === true && intval($_SESSION['login_role'] ?? 0) !== 9) {
+                return ['result' => false, 'message' => 'Only cashier accounts can approve requisitions.'];
+            }
+
             $input = json_decode(file_get_contents('php://input'), true) ?: [];
             $requisition_id = intval($input['requisition_id'] ?? 0);
             $status = trim($input['status'] ?? '');
 
-            if ($requisition_id <= 0 || $status === '') {
+            if ($requisition_id <= 0 || !in_array($status, ['Approved', 'Rejected'], true)) {
                 return ['result' => false, 'message' => 'Invalid requisition status update.'];
             }
 
-            $stmt = $this->db->prepare('SELECT item_name, quantity, branch_id FROM owner_requisitions WHERE id = ?');
+            $this->db->begin_transaction();
+
+            $stmt = $this->db->prepare("SELECT item_name, quantity, branch_id, status
+                FROM owner_requisitions WHERE id = ? FOR UPDATE");
             if (!$stmt) {
+                $this->db->rollback();
                 return ['result' => false, 'message' => 'Failed to prepare requisition lookup.'];
             }
             $stmt->bind_param('i', $requisition_id);
@@ -1719,6 +1800,7 @@ class Action
             $result = $stmt->get_result();
             if (!$result) {
                 $stmt->close();
+                $this->db->rollback();
                 return ['result' => false, 'message' => 'Failed to fetch requisition.'];
             }
 
@@ -1726,14 +1808,18 @@ class Action
             $stmt->close();
 
             if (!$requisition) {
+                $this->db->rollback();
                 return ['result' => false, 'message' => 'Requisition not found.'];
+            }
+
+            if (($requisition['status'] ?? '') !== 'Pending') {
+                $this->db->rollback();
+                return ['result' => false, 'message' => 'Only pending requisitions can be updated.'];
             }
 
             $item_name = trim($requisition['item_name'] ?? '');
             $quantity = floatval($requisition['quantity'] ?? 0);
             $branch_id = intval($requisition['branch_id'] ?? 0);
-
-            $this->db->begin_transaction();
 
             if ($status === 'Approved' && $item_name !== '' && $quantity > 0 && $branch_id > 0) {
                 $product = $this->db->query("SELECT id, quantity_on_hand FROM products WHERE product_name = '" . $this->db->real_escape_string($item_name) . "' AND branch_id = $branch_id AND status = 1 LIMIT 1");
@@ -1759,7 +1845,8 @@ class Action
                 }
             }
 
-            $updateStmt = $this->db->prepare('UPDATE owner_requisitions SET status = ? WHERE id = ?');
+            $updateStmt = $this->db->prepare("UPDATE owner_requisitions
+                SET status = ? WHERE id = ? AND status = 'Pending'");
             if (!$updateStmt) {
                 $this->db->rollback();
                 return ['result' => false, 'message' => 'Failed to prepare status update.'];
@@ -2952,17 +3039,23 @@ class Action
     function update_status_user()
     {
         $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
-        $status = isset($_POST['status']) ? $this->db->real_escape_string($_POST['status']) : '';
-        if ($id) {
+        $status = isset($_POST['status']) ? (int)$_POST['status'] : 0;
+        if ($id > 0 && in_array($status, [1, 2], true)) {
             $stmt = $this->db->prepare("UPDATE users SET status = ? WHERE id = ?");
+            if (!$stmt) {
+                return ['result' => false, 'message' => 'Unable to prepare status update.'];
+            }
             $stmt->bind_param('si', $status, $id);
             if ($stmt->execute()) {
+                $stmt->close();
                 return ['result' => true, 'message' => 'updated'];
             } else {
-                return ['result' => false, 'message' => $stmt->error];
+                $error = $stmt->error;
+                $stmt->close();
+                return ['result' => false, 'message' => $error];
             }
         } else {
-            return ['result' => false, 'message' => 'Invalid parameters'];
+            return ['result' => false, 'message' => 'Invalid user status parameters.'];
         }
     }
 

@@ -2,7 +2,7 @@
 if (!isset($_SESSION)) {
     session_start();
 }
-if (!isset($_SESSION['login_role']) || $_SESSION['login_role'] !== 9) {
+if (intval($_SESSION['login_role'] ?? 0) !== 9) {
     header('location: home');
     exit;
 }
@@ -153,11 +153,12 @@ if ($stats_query) {
                                     <th>Branch</th>
                                     <th>Status</th>
                                     <th>Date</th>
+                                    <th class="text-center" style="width:110px;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php if (count($items) === 0): ?>
-                                    <tr><td colspan="6" class="text-center text-muted py-4">No owner requisitions recorded yet.</td></tr>
+                                    <tr><td colspan="7" class="text-center text-muted py-4">No owner requisitions recorded yet.</td></tr>
                                 <?php else: foreach ($items as $row): ?>
                                     <tr>
                                         <td><span class="or-code"><?= htmlspecialchars($row['requisition_code']) ?></span></td>
@@ -173,6 +174,18 @@ if ($stats_query) {
                                             </span>
                                         </td>
                                         <td><?= date('M j, Y g:i A', strtotime($row['created_at'])) ?></td>
+                                        <td class="text-center">
+                                            <?php if ($row['status'] === 'Pending'): ?>
+                                                <button type="button" class="btn btn-sm btn-outline-success btn-approve-requisition d-block mx-auto mb-1"
+                                                    data-id="<?= intval($row['id']) ?>" title="Approve requisition">
+                                                    <i class="ri-check-line me-1"></i>Approve
+                                                </button>
+                                            <?php endif; ?>
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-delete-requisition d-block mx-auto"
+                                                data-id="<?= intval($row['id']) ?>" title="Delete requisition">
+                                                <i class="ri-delete-bin-line"></i>
+                                            </button>
+                                        </td>
                                     </tr>
                                 <?php endforeach; endif; ?>
                             </tbody>
@@ -272,7 +285,71 @@ if ($stats_query) {
 </script>
 
 <script>
-if (window.jQuery && $.fn.DataTable) {
-    $('#owner-table').DataTable({ order: [[5, 'desc']], pageLength: 25 });
-}
+document.addEventListener('DOMContentLoaded', function () {
+    if (!window.jQuery) {
+        return;
+    }
+
+    $(document).on('click', '.btn-approve-requisition', function () {
+        var button = $(this);
+        var requisitionId = parseInt(button.data('id'), 10);
+
+        if (!requisitionId || !confirm('Approve this requisition and update branch inventory?')) {
+            return;
+        }
+
+        button.prop('disabled', true).html('<i class="ri-loader-4-line ri-spin me-1"></i>Approving...');
+
+        $.ajax({
+            url: 'ajax.php?action=mobile-pos-update-owner-requisition-status',
+            method: 'POST',
+            contentType: 'application/json',
+            dataType: 'json',
+            data: JSON.stringify({ requisition_id: requisitionId, status: 'Approved' })
+        }).done(function (response) {
+            if (response && response.result) {
+                location.reload();
+                return;
+            }
+            alert(response && response.message ? response.message : 'Unable to approve requisition.');
+            button.prop('disabled', false).html('<i class="ri-check-line me-1"></i>Approve');
+        }).fail(function () {
+            alert('Unable to approve requisition. Please try again.');
+            button.prop('disabled', false).html('<i class="ri-check-line me-1"></i>Approve');
+        });
+    });
+
+    $(document).on('click', '.btn-delete-requisition', function () {
+        var button = $(this);
+        var requisitionId = parseInt(button.data('id'), 10);
+
+        if (!requisitionId || !confirm('Delete this requisition?')) {
+            return;
+        }
+
+        button.prop('disabled', true).html('<i class="ri-loader-4-line ri-spin"></i>');
+
+        $.ajax({
+            url: 'ajax.php?action=mobile-pos-delete-owner-requisition',
+            method: 'POST',
+            contentType: 'application/json',
+            dataType: 'json',
+            data: JSON.stringify({ requisition_id: requisitionId })
+        }).done(function (response) {
+            if (response && response.result) {
+                location.reload();
+                return;
+            }
+            alert(response && response.message ? response.message : 'Unable to delete requisition.');
+            button.prop('disabled', false).html('<i class="ri-delete-bin-line"></i>');
+        }).fail(function () {
+            alert('Unable to delete requisition. Please try again.');
+            button.prop('disabled', false).html('<i class="ri-delete-bin-line"></i>');
+        });
+    });
+
+    if ($.fn.DataTable) {
+        $('#owner-table').DataTable({ order: [[5, 'desc']], pageLength: 25 });
+    }
+});
 </script>

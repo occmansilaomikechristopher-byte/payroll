@@ -2,7 +2,7 @@
 if (!isset($_SESSION)) {
     session_start();
 }
-if (!isset($_SESSION['login_role']) || $_SESSION['login_role'] !== 9) {
+if (intval($_SESSION['login_role'] ?? 0) !== 9) {
     header('location: home');
     exit;
 }

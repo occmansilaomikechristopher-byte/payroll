@@ -93,6 +93,10 @@ if ($login_role != 1) {
                                     while ($row = $query->fetch_assoc()):
                                         $initials = strtoupper(substr($row['name'], 0, 1))
                                                   . strtoupper(substr(strstr($row['name'], ' ') ?: $row['name'], 1, 1));
+                                        $employer_name = trim((string)($row['employer_name'] ?? ''));
+                                        if ($employer_name === '') {
+                                            $employer_name = 'Main Employer';
+                                        }
                                     ?>
                                         <tr>
                                             <td>
@@ -133,9 +137,9 @@ if ($login_role != 1) {
                                                 <?php endif; ?>
                                             </td>
                                             <td>
-                                                <span class="usr-employer"><i class="ri-building-2-line me-1 text-muted"></i><?= htmlspecialchars($row['employer_name'] ?? '—') ?></span>
+                                                <span class="usr-employer"><i class="ri-building-2-line me-1 text-muted"></i><?= htmlspecialchars($employer_name) ?></span>
                                             </td>
-                                            <td class="text-center">
+                                            <td class="text-center user-status-cell">
                                                 <?php if ($row['status'] == 1): ?>
                                                     <span class="badge rounded-pill bg-success"><i class="ri-checkbox-circle-line me-1"></i>Active</span>
                                                 <?php else: ?>
@@ -156,13 +160,13 @@ if ($login_role != 1) {
                                                         <i class="ri-edit-line me-1"></i>Edit
                                                     </button>
                                                     <?php if ($row['status'] == 1): ?>
-                                                        <button onclick="updateUserStatus(<?= $row['id'] ?>, 2)"
+                                                        <button data-user-status-id="<?= $row['id'] ?>" onclick="updateUserStatus(<?= $row['id'] ?>, 2)"
                                                             class="btn btn-sm btn-outline-danger"
                                                             data-bs-toggle="tooltip" data-bs-placement="top" title="Set Inactive">
                                                             <i class="ri-forbid-line"></i>
                                                         </button>
                                                     <?php else: ?>
-                                                        <button onclick="updateUserStatus(<?= $row['id'] ?>, 1)"
+                                                        <button data-user-status-id="<?= $row['id'] ?>" onclick="updateUserStatus(<?= $row['id'] ?>, 1)"
                                                             class="btn btn-sm btn-outline-success"
                                                             data-bs-toggle="tooltip" data-bs-placement="top" title="Set Active">
                                                             <i class="ri-checkbox-circle-line"></i>
@@ -186,6 +190,58 @@ if ($login_role != 1) {
 <?php include 'component/add_user_form.php'; ?>
 
 <script>
+function updateUserStatus(userId, status) {
+    if (!Number.isInteger(Number(userId)) || Number(userId) <= 0 || ![1, 2].includes(Number(status))) {
+        alert_toast('Invalid user status request.', 'error');
+        return;
+    }
+
+    var statusLabel = Number(status) === 1 ? 'active' : 'inactive';
+
+    if (typeof start_load === 'function') {
+        start_load();
+    }
+
+    $.ajax({
+        url: 'ajax.php?action=update_status_user',
+        method: 'POST',
+        dataType: 'json',
+        data: { id: Number(userId), status: Number(status) },
+        success: function (response) {
+            if (response && response.result === true) {
+                var statusButton = document.querySelector('[data-user-status-id="' + Number(userId) + '"]');
+                var statusCell = statusButton ? statusButton.closest('tr').querySelector('.user-status-cell') : null;
+                if (statusCell) {
+                    statusCell.innerHTML = Number(status) === 1
+                        ? '<span class="badge rounded-pill bg-success"><i class="ri-checkbox-circle-line me-1"></i>Active</span>'
+                        : '<span class="badge rounded-pill bg-danger"><i class="ri-close-circle-line me-1"></i>Inactive</span>';
+                }
+                if (statusButton) {
+                    statusButton.className = Number(status) === 1
+                        ? 'btn btn-sm btn-outline-success'
+                        : 'btn btn-sm btn-outline-danger';
+                    statusButton.title = Number(status) === 1 ? 'Set Inactive' : 'Set Active';
+                    statusButton.setAttribute('onclick', 'updateUserStatus(' + Number(userId) + ', ' + (Number(status) === 1 ? 2 : 1) + ')');
+                    statusButton.innerHTML = Number(status) === 1
+                        ? '<i class="ri-forbid-line"></i>'
+                        : '<i class="ri-checkbox-circle-line"></i>';
+                }
+                alert_toast('User set ' + statusLabel + ' successfully.', 'success');
+            } else {
+                alert_toast((response && response.message) || 'Unable to update user status.', 'error');
+            }
+        },
+        error: function () {
+            alert_toast('Unable to update user status. Please try again.', 'error');
+        },
+        complete: function () {
+            if (typeof end_load === 'function') {
+                end_load();
+            }
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
         new bootstrap.Tooltip(el, { trigger: 'hover' });

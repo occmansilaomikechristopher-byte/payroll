@@ -2,7 +2,7 @@
 if (!isset($_SESSION)) {
     session_start();
 }
-if (!isset($_SESSION['login_role']) || $_SESSION['login_role'] !== 9) {
+if (intval($_SESSION['login_role'] ?? 0) !== 9) {
     header('location: home');
     exit;
 }
@@ -217,7 +217,7 @@ if ($branch_id > 0) {
                                             </td>
                                             <td class="text-center"><?= number_format($row['quantity'], 2) ?></td>
                                             <td class="text-center">
-                                                <span class="badge <?= $row['status'] === 'Resolved' ? 'bg-success' : ($row['status'] === 'Rejected' ? 'bg-danger' : 'bg-warning text-dark') ?>">
+                                                <span class="badge <?= in_array($row['status'], ['Approved', 'Resolved'], true) ? 'bg-success' : ($row['status'] === 'Rejected' ? 'bg-danger' : 'bg-warning text-dark') ?>">
                                                     <?= htmlspecialchars($row['status']) ?>
                                                 </span>
                                             </td>
@@ -226,9 +226,12 @@ if ($branch_id > 0) {
                                             <td><?= date('M j, Y g:i A', strtotime($row['created_at'])) ?></td>
                                             <td class="text-center">
                                                 <div class="d-flex justify-content-center gap-1">
-                                                    <a class="btn btn-sm btn-outline-primary" href="damage-items-details?id=<?= intval($row['id']) ?>">
-                                                        <i class="ri-eye-line"></i>
-                                                    </a>
+                                                    <?php if ($row['status'] === 'Pending'): ?>
+                                                        <button type="button" class="btn btn-sm btn-outline-success btn-approve-damage"
+                                                            data-id="<?= intval($row['id']) ?>" title="Approve damage item">
+                                                            <i class="ri-check-line"></i>
+                                                        </button>
+                                                    <?php endif; ?>
                                                     <form method="post" onsubmit="return confirm('Delete this damage item?');" style="display:inline;">
                                                         <input type="hidden" name="delete_damage_item" value="<?= intval($row['id']) ?>">
                                                         <button type="submit" class="btn btn-sm btn-outline-danger">
@@ -329,8 +332,43 @@ if ($branch_id > 0) {
 
 <?php if ($branch_id > 0): ?>
 <script>
-if ($.fn.DataTable) {
-    $('#damage-table').DataTable({ order: [[6, 'desc']], pageLength: 25 });
-}
+document.addEventListener('DOMContentLoaded', function () {
+    if (!window.jQuery) {
+        return;
+    }
+
+    $(document).on('click', '.btn-approve-damage', function () {
+        var button = $(this);
+        var damageId = parseInt(button.data('id'), 10);
+
+        if (!damageId || !confirm('Approve this damage item? Inventory will not be deducted again.')) {
+            return;
+        }
+
+        button.prop('disabled', true).html('<i class="ri-loader-4-line ri-spin"></i>');
+
+        $.ajax({
+            url: 'ajax.php?action=mobile-pos-approve-damage',
+            method: 'POST',
+            contentType: 'application/json',
+            dataType: 'json',
+            data: JSON.stringify({ damage_id: damageId })
+        }).done(function (response) {
+            if (response && response.result) {
+                location.reload();
+                return;
+            }
+            alert(response && response.message ? response.message : 'Unable to approve damage item.');
+            button.prop('disabled', false).html('<i class="ri-check-line"></i>');
+        }).fail(function () {
+            alert('Unable to approve damage item. Please try again.');
+            button.prop('disabled', false).html('<i class="ri-check-line"></i>');
+        });
+    });
+
+    if ($.fn.DataTable) {
+        $('#damage-table').DataTable({ order: [[6, 'desc']], pageLength: 25 });
+    }
+});
 </script>
 <?php endif; ?>

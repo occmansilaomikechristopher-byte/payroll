@@ -9,11 +9,10 @@ $clasification_array = ['bg-primary', 'bg-secondary', 'bg-warning', 'bg-danger',
 <?php include 'db_connect.php'; ?>
 <?php
 session_start();
-if (!isset($_SESSION['is_login']))
+if (!isset($_SESSION['is_login']) || $_SESSION['is_login'] !== true || !in_array(intval($_SESSION['login_role'] ?? 0), [1, 9], true)) {
     header('location:login.php');
-
-// Owner role (10) can now access the web app as well.
-
+    exit;
+}
 ?>
 
 <?php include 'includes/header.php' ?>
