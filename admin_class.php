@@ -119,10 +119,14 @@ class Action
     function mobile_notification_list()
     {
         $role = intval($_GET['role'] ?? 0);
+        $user_id = intval($_GET['user_id'] ?? 0);
         $branch_id = intval($_GET['branch_id'] ?? 0);
         $where = [];
         if ($role > 0) {
             $where[] = "(target_role = $role OR target_role IS NULL)";
+        }
+        if ($user_id > 0) {
+            $where[] = "(target_user_id IS NULL OR target_user_id = $user_id)";
         }
         if ($branch_id > 0) {
             $where[] = "(branch_id IS NULL OR branch_id = $branch_id)";
@@ -140,6 +144,57 @@ class Action
     function mobile_notification_all()
     {
         return $this->mobile_notification_list();
+    }
+
+    function mobile_notification_read()
+    {
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $notificationIds = array_values(array_filter(array_map('intval', $input['notification_ids'] ?? [])));
+        if (count($notificationIds) === 0) {
+            return ['result' => true, 'updated' => 0];
+        }
+
+        $role = intval($input['role'] ?? 0);
+        $user_id = intval($input['user_id'] ?? 0);
+        $branch_id = intval($input['branch_id'] ?? 0);
+        $updated = 0;
+        $stmt = $this->db->prepare(
+            'UPDATE notifications SET is_read = 1 WHERE id = ?' .
+            ($role > 0 ? ' AND (target_role = ? OR target_role IS NULL)' : '') .
+            ($user_id > 0 ? ' AND (target_user_id IS NULL OR target_user_id = ?)' : '') .
+            ($branch_id > 0 ? ' AND (branch_id IS NULL OR branch_id = ?)' : '')
+        );
+        if (!$stmt) {
+            return ['result' => false, 'message' => 'Failed to prepare read statement.'];
+        }
+
+        foreach ($notificationIds as $notificationId) {
+            $types = 'i';
+            $values = [$notificationId];
+            if ($role > 0) {
+                $types .= 'i';
+                $values[] = $role;
+            }
+            if ($user_id > 0) {
+                $types .= 'i';
+                $values[] = $user_id;
+            }
+            if ($branch_id > 0) {
+                $types .= 'i';
+                $values[] = $branch_id;
+            }
+            $bindValues = [$types];
+            foreach ($values as $key => $value) {
+                $bindValues[] = &$values[$key];
+            }
+            call_user_func_array([$stmt, 'bind_param'], $bindValues);
+            if ($stmt->execute()) {
+                $updated += $stmt->affected_rows;
+            }
+        }
+        $stmt->close();
+
+        return ['result' => true, 'updated' => $updated];
     }
 
     function mobile_notification_delete()

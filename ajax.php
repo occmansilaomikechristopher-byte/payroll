@@ -282,6 +282,12 @@ if ($action == "mobile-notification-all") {
 	return;
 }
 
+if ($action == "mobile-notification-read") {
+	$save = $crud->mobile_notification_read();
+	echo json_encode($save);
+	return;
+}
+
 if ($action == "mobile-notification-delete") {
 	$save = $crud->mobile_notification_delete();
 	echo json_encode($save);
