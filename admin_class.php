@@ -65,6 +65,8 @@ class Action
             branch_id INT NOT NULL DEFAULT 1,
             subtotal DECIMAL(12,2) NOT NULL DEFAULT 0.00,
             discount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            tax_percentage DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+            tax DECIMAL(12,2) NOT NULL DEFAULT 0.00,
             total DECIMAL(12,2) NOT NULL DEFAULT 0.00,
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
@@ -72,6 +74,13 @@ class Action
         $branchColumn = $this->db->query("SHOW COLUMNS FROM pos_quotations LIKE 'branch_id'");
         if ($branchColumn && $branchColumn->num_rows === 0) {
             $this->db->query("ALTER TABLE pos_quotations ADD COLUMN branch_id INT NOT NULL DEFAULT 1 AFTER quotation_no");
+        }
+
+        foreach (['tax_percentage' => 'DECIMAL(5,2) NOT NULL DEFAULT 0.00 AFTER discount', 'tax' => 'DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER tax_percentage'] as $column => $definition) {
+            $columnResult = $this->db->query("SHOW COLUMNS FROM pos_quotations LIKE '$column'");
+            if ($columnResult && $columnResult->num_rows === 0) {
+                $this->db->query("ALTER TABLE pos_quotations ADD COLUMN $column $definition");
+            }
         }
 
         $customerColumn = $this->db->query("SHOW COLUMNS FROM pos_quotations LIKE 'customer_name'");
@@ -1271,10 +1280,16 @@ class Action
     function mobile_pos_quotations()
     {
         try {
-            $res = $this->db->query("SELECT id, quotation_no, subtotal, discount, total, created_at
-                                     FROM pos_quotations ORDER BY created_at DESC LIMIT 200");
+            $branch_id = intval($_GET['branch_id'] ?? 0);
+            if ($branch_id <= 0) return ['result' => false, 'message' => 'Valid branch is required.'];
+            $stmt = $this->db->prepare("SELECT id, quotation_no, subtotal, discount, tax_percentage, tax, total, created_at
+                                     FROM pos_quotations WHERE branch_id = ? ORDER BY created_at DESC LIMIT 200");
+            $stmt->bind_param('i', $branch_id);
+            $stmt->execute();
+            $res = $stmt->get_result();
             $quotations = [];
             while ($row = $res->fetch_assoc()) $quotations[] = $row;
+            $stmt->close();
             return ['result' => true, 'quotations' => $quotations];
         } catch (Exception $e) {
             return ['result' => false, 'message' => 'Error: ' . $e->getMessage()];
@@ -1288,22 +1303,44 @@ class Action
             $input = json_decode(file_get_contents('php://input'), true);
             if (!$input || empty($input['items'])) return ['result' => false, 'message' => 'No items in quotation.'];
 
+            $branch_id = intval($input['branch_id'] ?? 0);
+            if ($branch_id <= 0) return ['result' => false, 'message' => 'Valid branch is required.'];
+            $branchStmt = $this->db->prepare('SELECT id FROM branches WHERE id = ? AND status = 1 LIMIT 1');
+            $branchStmt->bind_param('i', $branch_id);
+            $branchStmt->execute();
+            if ($branchStmt->get_result()->num_rows === 0) {
+                $branchStmt->close();
+                return ['result' => false, 'message' => 'Branch is inactive or not found.'];
+            }
+            $branchStmt->close();
+
             $discount = max(0, floatval($input['discount'] ?? 0));
+            $tax_percentage = min(100, max(0, floatval($input['tax_percentage'] ?? 0)));
             $items = $input['items'];
+            if (!is_array($items)) return ['result' => false, 'message' => 'Invalid quotation items.'];
             $subtotal = 0;
             foreach ($items as $item) {
-                $subtotal += max(0, floatval($item['price'] ?? 0)) * max(0, floatval($item['qty'] ?? 0));
+                if (!is_array($item) || intval($item['product_id'] ?? 0) <= 0 || trim($item['product_name'] ?? '') === '') {
+                    return ['result' => false, 'message' => 'Each quotation item must have a valid product.'];
+                }
+                $price = floatval($item['price'] ?? -1);
+                $qty = floatval($item['qty'] ?? -1);
+                if ($price < 0 || $qty <= 0 || !is_finite($price) || !is_finite($qty)) {
+                    return ['result' => false, 'message' => 'Quotation items must have valid non-negative prices and positive quantities.'];
+                }
+                $subtotal += $price * $qty;
             }
             if ($subtotal <= 0) return ['result' => false, 'message' => 'Quotation total must be greater than zero.'];
             $discount = min($discount, $subtotal);
-            $total = $subtotal - $discount;
+            $tax = (($subtotal - $discount) * $tax_percentage) / 100;
+            $total = $subtotal - $discount + $tax;
             $quotation_no = 'QUO-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
 
             $this->db->begin_transaction();
             $stmt = $this->db->prepare("INSERT INTO pos_quotations
-                (quotation_no, branch_id, subtotal, discount, total)
-                VALUES (?, 1, ?, ?, ?)");
-            $stmt->bind_param('sddd', $quotation_no, $subtotal, $discount, $total);
+                (quotation_no, branch_id, subtotal, discount, tax_percentage, tax, total)
+                VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param('siddddd', $quotation_no, $branch_id, $subtotal, $discount, $tax_percentage, $tax, $total);
             $stmt->execute();
             $quotation_id = $this->db->insert_id;
             $stmt->close();
@@ -1323,7 +1360,9 @@ class Action
             }
             $itemStmt->close();
             $this->db->commit();
-            return ['result' => true, 'message' => 'Quotation saved successfully.', 'quotation_no' => $quotation_no];
+            return ['result' => true, 'message' => 'Quotation saved successfully.', 'quotation_no' => $quotation_no,
+                'subtotal' => round($subtotal, 2), 'discount' => round($discount, 2),
+                'tax_percentage' => round($tax_percentage, 2), 'tax' => round($tax, 2), 'total' => round($total, 2)];
         } catch (Exception $e) {
             $this->db->rollback();
             return ['result' => false, 'message' => 'Error: ' . $e->getMessage()];
@@ -1335,10 +1374,11 @@ class Action
         try {
             $input = json_decode(file_get_contents('php://input'), true) ?: [];
             $quotation_id = intval($input['quotation_id'] ?? 0);
-            if ($quotation_id <= 0) return ['result' => false, 'message' => 'Invalid quotation.'];
+            $branch_id = intval($input['branch_id'] ?? 0);
+            if ($quotation_id <= 0 || $branch_id <= 0) return ['result' => false, 'message' => 'Invalid quotation or branch.'];
 
-            $stmt = $this->db->prepare('SELECT * FROM pos_quotations WHERE id = ?');
-            $stmt->bind_param('i', $quotation_id);
+            $stmt = $this->db->prepare('SELECT * FROM pos_quotations WHERE id = ? AND branch_id = ?');
+            $stmt->bind_param('ii', $quotation_id, $branch_id);
             $stmt->execute();
             $quotation = $stmt->get_result()->fetch_assoc();
             $stmt->close();
@@ -2769,7 +2809,6 @@ class Action
                         $days = $work_hours / 8;
                     }
 
-                    $under_time = max(0, 8 - $work_hours);
                     $per_day = $row['salary'];
                     $basic_pay = $row['basic_pay'];
                     $per_hour = $per_day / 8;
@@ -2785,12 +2824,15 @@ class Action
                             "present" => 0,
                             "per_minute" => 0,
                             "overtime" => 0,
+                            "under_time" => 0,
                             "late_in_minutes" => 0,
                             "undertime" => 0,
                         ];
                         $ipresent++;
                     }
-                    $grouped_data[$employee_id]["under_time"] += $under_time;
+                    // Use the value saved from DTR Details so manual undertime
+                    // updates are carried into payroll_items on recalculation.
+                    $grouped_data[$employee_id]["under_time"] += (float) $row['undertime'];
 
                     // Add the work hours and pay to the total for the current employee
                     $grouped_data[$employee_id]["total_hours"] += $work_hours;
@@ -2846,6 +2888,7 @@ class Action
                             foreach ($data__details as $data__detail) {
                                 $data['total_hours'] += $data__detail['work_hours'];
                                 $data['overtime'] += $data__detail['overtime'];
+                                $data['under_time'] += (float) $data__detail['undertime'];
                                 $data['undertime'] += $data__detail['undertime'];
                                 $data['late_in_minutes'] += $data__detail['late'];
                                 $data['present'] += $data__detail['work_hours'] / 8;

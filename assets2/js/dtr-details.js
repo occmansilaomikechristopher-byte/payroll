@@ -166,7 +166,9 @@ function addSchedule(id) {
 }
 
 // Single event handler for all updates
-$(document).on("click", ".update-dtr-field", function () {
+$(document).on("click", ".update-dtr-field", function (event) {
+    event.preventDefault();
+    event.stopPropagation();
     const button = $(this);
     const id = button.data("id");
     const fieldType = button.data("field");
@@ -177,10 +179,8 @@ $(document).on("click", ".update-dtr-field", function () {
 });
 
 async function updateDTRField(el, id, fieldType) {
-   
-    const inputField = $(el).closest(".input-group").find('input[type="text"]');
-    const value =  $(el).val();
-    
+    const inputField = $(el).closest(".editable-field").find('input[type="text"]');
+    const value = inputField.val();
 
     // Field configuration
     const fieldConfig = {
@@ -213,7 +213,7 @@ async function updateDTRField(el, id, fieldType) {
     }
 
     // Validation
-    if (Number.isNaN(value) || value < 0) {
+    if (value === "" || !Number.isFinite(Number(value)) || Number(value) < 0) {
         Swal.fire({
             icon: "error",
             title: "Invalid Value",
@@ -284,7 +284,7 @@ async function updateDTRField(el, id, fieldType) {
 // Optional: Update UI without page reload for better user experience
 function updateUIAfterSuccess(el, value, config) {
     // Update the input field visually
-    const inputField = $(el).closest(".input-group").find('input[type="text"]');
+    const inputField = $(el).closest(".editable-field").find('input[type="text"]');
 
     // Add success animation
     inputField.addClass("update-success");

@@ -241,8 +241,17 @@ while ($row = $query->fetch_assoc()) {
 }
 
 /* date group row */
-#table-1 tbody tr.date-separator td { background: #219688; color: #fff; padding: 6px 12px; font-weight: bold; }
-#table-1 tbody tr.date-separator td * { color: #fff; }
+#table-1 tbody tr.date-separator td {
+    background: #e6f5f3 !important;
+    color: #174f49 !important;
+    padding: 7px 12px;
+    font-weight: bold;
+    border-top: 1px solid #9ed8d0 !important;
+    border-bottom: 1px solid #9ed8d0 !important;
+}
+#table-1 tbody tr.date-separator td * { color: #174f49 !important; }
+#table-1 tbody tr.date-separator td .dtr-date-ot { color: #8a5a00 !important; }
+#table-1 tbody tr.date-separator td .dtr-date-late { color: #a32121 !important; }
 .date-separator { cursor: pointer; user-select: none; }
 .dtr-group-row.dtr-hidden { display: none !important; }
 
@@ -288,6 +297,7 @@ while ($row = $query->fetch_assoc()) {
 .dtr-tot-item.late .tot-val { color: #c62828; }
 .dtr-emp-totals { display: flex; gap: 8px; }
 .dtr-date-totals { display: flex; gap: 12px; font-size: 11px; }
+.dtr-emp-count { margin-left: 8px; font-weight: 600; color: #5b7772 !important; }
 .dtr-chevron { font-size: 14px; }
 
 /* print */
@@ -756,8 +766,8 @@ while ($row = $query->fetch_assoc()) {
                                                     </div>
                                                     <div class="dtr-date-totals">
                                                         <span><i class="ri-time-line me-1"></i><?= number_format($dateTotal['work_hours'], 2) ?> hrs</span>
-                                                        <span style="color:#ffd166;">OT <?= number_format($dateTotal['overtime'], 2) ?></span>
-                                                        <span style="color:#ff9090;">Late <?= number_format($dateTotal['late'], 2) ?></span>
+                                                        <span class="dtr-date-ot">OT <?= number_format($dateTotal['overtime'], 2) ?></span>
+                                                        <span class="dtr-date-late">Late <?= number_format($dateTotal['late'], 2) ?></span>
                                                     </div>
                                                 </div>
                                             </td>
@@ -858,7 +868,7 @@ while ($row = $query->fetch_assoc()) {
                                                         <?php if ($login_role !== 6): ?>
                                                             <div class="editable-field">
                                                                 <input type="text" value="<?= $row['work_hours'] ?>" class="form-control form-control-sm text-center" style="width:68px;">
-                                                                <button class="update-dtr-field" data-id="<?= $row['id'] ?>" data-field="work_hours"><i class="ri-save-line"></i></button>
+                                                                <button type="button" class="update-dtr-field" data-id="<?= $row['id'] ?>" data-field="work_hours"><i class="ri-save-line"></i></button>
                                                             </div>
                                                         <?php else: ?><span><?= $row['work_hours'] ?></span><?php endif; ?>
                                                     </td>
@@ -866,7 +876,7 @@ while ($row = $query->fetch_assoc()) {
                                                         <?php if ($login_role !== 6): ?>
                                                             <div class="editable-field">
                                                                 <input type="text" value="<?= $row['overtime'] ?>" class="form-control form-control-sm text-center" style="width:68px;">
-                                                                <button class="update-dtr-field" data-id="<?= $row['id'] ?>" data-field="overtime"><i class="ri-save-line"></i></button>
+                                                                <button type="button" class="update-dtr-field" data-id="<?= $row['id'] ?>" data-field="overtime"><i class="ri-save-line"></i></button>
                                                             </div>
                                                         <?php else: ?><span><?= $row['overtime'] ?></span><?php endif; ?>
                                                     </td>
@@ -874,7 +884,7 @@ while ($row = $query->fetch_assoc()) {
                                                         <?php if ($login_role !== 6): ?>
                                                             <div class="editable-field">
                                                                 <input type="text" value="<?= $row['undertime'] ?>" class="form-control form-control-sm text-center" style="width:68px;">
-                                                                <button class="update-dtr-field" data-id="<?= $row['id'] ?>" data-field="undertime"><i class="ri-save-line"></i></button>
+                                                                <button type="button" class="update-dtr-field" data-id="<?= $row['id'] ?>" data-field="undertime"><i class="ri-save-line"></i></button>
                                                             </div>
                                                         <?php else: ?><span><?= $row['undertime'] ?></span><?php endif; ?>
                                                     </td>
@@ -882,7 +892,7 @@ while ($row = $query->fetch_assoc()) {
                                                         <?php if ($login_role !== 6): ?>
                                                             <div class="editable-field">
                                                                 <input type="text" value="<?= $row['late'] ?>" class="form-control form-control-sm text-center" style="width:68px;">
-                                                                <button class="update-dtr-field" data-id="<?= $row['id'] ?>" data-field="late"><i class="ri-save-line"></i></button>
+                                                                <button type="button" class="update-dtr-field" data-id="<?= $row['id'] ?>" data-field="late"><i class="ri-save-line"></i></button>
                                                             </div>
                                                         <?php else: ?><span><?= $row['late'] ?></span><?php endif; ?>
                                                     </td>
@@ -939,7 +949,6 @@ while ($row = $query->fetch_assoc()) {
     <!-- End Page-content -->
 </div>
 <?php include 'component/add_attendance.php'; ?>
-<script src="assets/js/dtr-details.js"></script>
 <script>
     // Fit table height to viewport
     function fitDtrTable() {
