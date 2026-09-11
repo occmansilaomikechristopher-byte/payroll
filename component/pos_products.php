@@ -4,6 +4,20 @@ $is_cashier = ($login_role === 9);
 $can_manage_products = in_array($login_role, [1, 9, 10], true);
 // Debug: Always show button for testing
 $show_add_button = true;
+$unit_labels = [
+    'pcs' => 'PCS',
+    'box' => 'BOX',
+    'pack' => 'PACK',
+    'pair' => 'PAIR',
+    'set' => 'SET',
+    'sqm' => 'SQM (Square Meter)',
+    'sqft' => 'SQFT (Square Foot)',
+    'meter' => 'METER',
+    'length' => 'LENGTH',
+    'sheet' => 'SHEET',
+    'roll' => 'ROLL',
+    'tube' => 'TUBE',
+];
 ?>
 <div class="row">
     <div class="col-12">
@@ -56,7 +70,10 @@ $show_add_button = true;
                                 <td><small><?= htmlspecialchars($row['branch_name'] ?? '—') ?></small></td>
                                 <td class="text-center">
                                     <span class="<?= floatval($row['quantity_on_hand']) <= floatval($row['reorder_level']) ? 'badge bg-warning text-dark' : '' ?>">
-                                        <?= number_format($row['quantity_on_hand'], 2) ?> <?= htmlspecialchars($row['unit'] ?? 'pcs') ?>
+                                        <?php
+                                        $unit_key = strtolower(trim((string) ($row['unit'] ?? 'pcs')));
+                                        echo number_format($row['quantity_on_hand'], 2) . ' ' . htmlspecialchars($unit_labels[$unit_key] ?? strtoupper($unit_key));
+                                        ?>
                                     </span>
                                 </td>
                                 <td class="text-center">₱ <?= number_format($row['unit_price'], 2) ?></td>

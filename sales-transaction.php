@@ -203,7 +203,13 @@ if ($branch_id > 0) {
                                                                 <div class="fw-semibold"><?= htmlspecialchars($p['product_name']) ?></div>
                                                             </div>
                                                         </td>
-                                                        <td class="text-end">&#8369; <?= number_format($p['unit_price'], 2) ?></td>
+                                                        <td>
+                                                            <input type="number" min="0" step="0.01"
+                                                                value="<?= htmlspecialchars(number_format((float) $p['unit_price'], 2, '.', ''), ENT_QUOTES) ?>"
+                                                                class="form-control form-control-sm product-price"
+                                                                data-product-id="<?= intval($p['id']) ?>"
+                                                                aria-label="Sale price for <?= htmlspecialchars($p['product_name'], ENT_QUOTES) ?>">
+                                                        </td>
                                                         <td class="text-center">
                                                             <span class="badge bg-<?= $p['quantity_on_hand'] > 5 ? 'success' : ($p['quantity_on_hand'] > 0 ? 'warning' : 'danger') ?> badge-stock">
                                                                 <?= intval($p['quantity_on_hand']) ?> <?= htmlspecialchars($p['unit']) ?></span>
@@ -466,7 +472,12 @@ if ($branch_id > 0) {
             var btn = $(this);
             var id = parseInt(btn.data('id'), 10);
             var name = btn.data('name');
-            var price = parseFloat(btn.data('price')) || 0;
+            var priceInput = $('.product-price[data-product-id="' + id + '"]');
+            var price = parseFloat(priceInput.val());
+            if (!isFinite(price) || price < 0) {
+                price = parseFloat(btn.data('price')) || 0;
+                priceInput.val(price.toFixed(2));
+            }
             var stock = parseInt(btn.data('stock'), 10) || 0;
             var image = btn.data('image') || 'assets/images/no-image.svg';
             var qtyInput = $('.product-qty[data-product-id="' + id + '"]');

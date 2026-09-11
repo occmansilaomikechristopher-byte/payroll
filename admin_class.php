@@ -4730,10 +4730,6 @@ class Action
         $query = "INSERT INTO branches (branch_code, branch_name, city, phone, email, status)
                   VALUES ('$branch_code', '$branch_name', '$city', '$phone', '$email', $status)";
         if ($this->db->query($query)) {
-            $this->log_cashier_notification(
-                'Branch added',
-                "Branch '$branch_name' was added by admin.",
-            );
             return 1;
         }
         return "Error: " . $this->db->error;
@@ -4752,10 +4748,6 @@ class Action
         $query = "UPDATE branches SET branch_code='$branch_code', branch_name='$branch_name',
                   city='$city', phone='$phone', email='$email', status=$status WHERE id=$id";
         if ($this->db->query($query)) {
-            $this->log_cashier_notification(
-                'Branch updated',
-                "Branch '$branch_name' was updated by admin.",
-            );
             return 1;
         }
         return "Error: " . $this->db->error;
@@ -4774,10 +4766,6 @@ class Action
         $query = "INSERT INTO product_categories (category_code, category_name, description, status)
                   VALUES ('$category_code', '$category_name', '$description', $status)";
         if ($this->db->query($query)) {
-            $this->log_cashier_notification(
-                'Category added',
-                "Category '$category_name' was added by admin.",
-            );
             return 1;
         }
         return "Error: " . $this->db->error;
@@ -4794,10 +4782,6 @@ class Action
         $query = "UPDATE product_categories SET category_code='$category_code', category_name='$category_name',
                   description='$description', status=$status WHERE id=$id";
         if ($this->db->query($query)) {
-            $this->log_cashier_notification(
-                'Category updated',
-                "Category '$category_name' was updated by admin.",
-            );
             return 1;
         }
         return "Error: " . $this->db->error;
@@ -4876,22 +4860,26 @@ class Action
         $description = $this->db->real_escape_string($description);
         $unit = $this->db->real_escape_string($unit);
 
-        $check = $this->db->query("SELECT id FROM products WHERE product_code='$product_code'");
-        if ($check->num_rows > 0) return "Product code already exists";
+        $check = $this->db->query("SELECT id FROM products WHERE product_code='$product_code' LIMIT 1");
+        if ($check && $check->num_rows > 0) {
+            return 'Product code already exists.';
+        }
 
         $query = "INSERT INTO products (product_code, product_name, category_id, branch_id, description,
                   quantity_on_hand, reorder_level, unit_price, cost_price, unit, image, status)
                   VALUES ('$product_code', '$product_name', $category_id, $branch_id, '$description',
                   $quantity_on_hand, $reorder_level, $unit_price, $cost_price, '$unit', '$image', $status)";
         if ($this->db->query($query)) {
-            $notificationBranchId = $branch_id === 1 ? null : $branch_id;
-            $branchLabel = $branch_id === 1 ? 'Main Branch' : "Branch ID $branch_id";
-            $this->log_cashier_notification(
-                'Product added',
-                "Product '$product_name' was added by admin in $branchLabel.",
-                null,
-                $notificationBranchId,
-            );
+            if ($login_role === 1) {
+                $notificationBranchId = $branch_id === 1 ? null : $branch_id;
+                $branchLabel = $branch_id === 1 ? 'Main Branch' : "Branch ID $branch_id";
+                $this->log_cashier_notification(
+                    'Product added',
+                    "Product '$product_name' was added by admin in $branchLabel.",
+                    null,
+                    $notificationBranchId,
+                );
+            }
             return 1;
         }
         return "Error: " . $this->db->error;
@@ -4913,10 +4901,6 @@ class Action
         $stmt->bind_param('di', $quantity_to_add, $id);
         if ($stmt->execute()) {
             $stmt->close();
-            $this->log_cashier_notification(
-                'Product stock updated',
-                "Product stock was increased by $quantity_to_add.",
-            );
             return 1;
         }
 
@@ -4928,6 +4912,9 @@ class Action
     function update_pos_product() {
         extract($_POST);
         $id = intval($id);
+        if ($id <= 0) {
+            return 'Invalid product.';
+        }
         $product_code = $this->db->real_escape_string($product_code);
         $product_name = $this->db->real_escape_string($product_name);
         $category_id = intval($category_id);
@@ -4945,17 +4932,16 @@ class Action
         $image = $this->db->real_escape_string($newImage !== '' ? $newImage : ($current_image ?? ''));
         $imageSql = ", image='$image'";
 
+        $check = $this->db->query("SELECT id FROM products WHERE product_code='$product_code' AND id <> $id LIMIT 1");
+        if ($check && $check->num_rows > 0) {
+            return 'Product code already exists.';
+        }
+
         $query = "UPDATE products SET product_code='$product_code', product_name='$product_name',
                   category_id=$category_id, branch_id=$branch_id, description='$description',
                   quantity_on_hand=$quantity_on_hand, reorder_level=$reorder_level,
                   unit_price=$unit_price, cost_price=$cost_price, unit='$unit'$imageSql, status=$status WHERE id=$id";
         if ($this->db->query($query)) {
-            $this->log_cashier_notification(
-                'Product updated',
-                "Product '$product_name' was updated by admin.",
-                null,
-                $branch_id,
-            );
             return 1;
         }
         return "Error: " . $this->db->error;

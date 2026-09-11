@@ -247,7 +247,8 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label class="form-label fw-semibold">Product Code <span class="text-danger">*</span></label>
-                                    <input type="text" name="product_code" class="form-control" required placeholder="e.g., PROD001"
+                                    <input type="text" id="add-product-code" name="product_code" class="form-control" required readonly
+                                        placeholder="e.g., PROD001"
                                         data-parsley-required-message="Product code is required.">
                                 </div>
                             </div>
@@ -319,16 +320,18 @@
                                     <select id="add-product-unit" name="unit" class="form-control select2" required
                                         data-parsley-required-message="Please select a unit.">
                                         <option value="" disabled selected>— Select Unit —</option>
-                                        <option value="pcs">pcs</option>
-                                        <option value="box">box</option>
-                                        <option value="pack">pack</option>
-                                        <option value="pair">pair</option>
-                                        <option value="set">set</option>
-                                        <option value="meter">meter</option>
-                                        <option value="roll">roll</option>
-                                        <option value="kg">kg</option>
-                                        <option value="liter">liter</option>
-                                        <option value="tube">tube</option>
+                                        <option value="pcs">PCS</option>
+                                        <option value="box">BOX</option>
+                                        <option value="pack">PACK</option>
+                                        <option value="pair">PAIR</option>
+                                        <option value="set">SET</option>
+                                        <option value="sqm">SQM (Square Meter)</option>
+                                        <option value="sqft">SQFT (Square Foot)</option>
+                                        <option value="meter">METER</option>
+                                        <option value="length">LENGTH</option>
+                                        <option value="sheet">SHEET</option>
+                                        <option value="roll">ROLL</option>
+                                        <option value="tube">TUBE</option>
                                     </select>
                                 </div>
                             </div>
@@ -514,16 +517,18 @@ $is_cashier_stock_modal = $is_cashier_modal && $inventory_modal_mode === 'stock'
                                     <select id="edit-product-unit" name="unit" class="form-control select2" required
                                         data-parsley-required-message="Please select a unit.">
                                         <option value="" disabled>— Select Unit —</option>
-                                        <option value="pcs">pcs</option>
-                                        <option value="box">box</option>
-                                        <option value="pack">pack</option>
-                                        <option value="pair">pair</option>
-                                        <option value="set">set</option>
-                                        <option value="meter">meter</option>
-                                        <option value="roll">roll</option>
-                                        <option value="kg">kg</option>
-                                        <option value="liter">liter</option>
-                                        <option value="tube">tube</option>
+                                        <option value="pcs">PCS</option>
+                                        <option value="box">BOX</option>
+                                        <option value="pack">PACK</option>
+                                        <option value="pair">PAIR</option>
+                                        <option value="set">SET</option>
+                                        <option value="sqm">SQM (Square Meter)</option>
+                                        <option value="sqft">SQFT (Square Foot)</option>
+                                        <option value="meter">METER</option>
+                                        <option value="length">LENGTH</option>
+                                        <option value="sheet">SHEET</option>
+                                        <option value="roll">ROLL</option>
+                                        <option value="tube">TUBE</option>
                                     </select>
                                 </div>
                             </div>
