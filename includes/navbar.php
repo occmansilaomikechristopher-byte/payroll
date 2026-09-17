@@ -149,14 +149,19 @@
                 <li class="nav-item">
                     <a class="nav-link menu-link js-sidebar-collapse-toggle" href="#sidebarReports" role="button"
                         aria-controls="sidebarReports"
-                        aria-expanded="<?= $page === 'sales-report' ? 'true' : 'false' ?>">
+                        aria-expanded="<?= in_array($page, ['sales-report','collections-report']) ? 'true' : 'false' ?>">
                         <i class="ri-bar-chart-box-line"></i> <span>Reports</span> <i class="ri-arrow-right-s-line float-end"></i>
                     </a>
-                    <div class="menu-dropdown collapse <?= $page === 'sales-report' ? 'show' : '' ?>" id="sidebarReports">
+                    <div class="menu-dropdown collapse <?= in_array($page, ['sales-report','collections-report']) ? 'show' : '' ?>" id="sidebarReports">
                         <ul class="nav nav-sm flex-column">
                             <li class="nav-item">
                                 <a href="sales-report" class="nav-link <?= $page === 'sales-report' ? 'active' : '' ?>">
                                     <i class="ri-money-dollar-circle-line me-1"></i>Sales
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="collections-report" class="nav-link <?= $page === 'collections-report' ? 'active' : '' ?>">
+                                    <i class="ri-cash-line me-1"></i>Collections
                                 </a>
                             </li>
                         </ul>

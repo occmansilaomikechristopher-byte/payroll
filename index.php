@@ -424,6 +424,7 @@ function getRole($login_role)
                 'damage-items-details'  => 'damage-items-details',
                 'owner-requisition'    => 'owner-requisition',
                 'sales-report'         => 'sales-report',
+                'collections-report'   => 'collections-report',
                 'inventory-report'     => 'inventory-report',
                 'sales-transaction'    => 'sales-transaction',
             ];
@@ -435,7 +436,7 @@ function getRole($login_role)
             }
 
             if (isset($_SESSION['login_role']) && $_SESSION['login_role'] === 10) {
-                if (!in_array($page, ['sales-report', 'attendance', 'inventory-report', 'payroll-report'])) {
+                if (!in_array($page, ['sales-report', 'collections-report', 'attendance', 'inventory-report', 'payroll-report'])) {
                     $page = 'sales-report';
                 }
             }

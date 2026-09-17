@@ -1232,7 +1232,7 @@ class Action
     function mobile_pos_products()
     {
         try {
-            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
             $branch_id = isset($input['branch_id']) ? intval($input['branch_id']) : 0;
 
             $where = "status = 1";
@@ -1252,9 +1252,18 @@ class Action
     }
 
     // ── Mobile POS: recent sales for a branch ──
+    function ensure_pos_collection_status_column()
+    {
+        $check = $this->db->query("SHOW COLUMNS FROM pos_sales LIKE 'collection_status'");
+        if ($check && $check->num_rows === 0) {
+            $this->db->query("ALTER TABLE pos_sales ADD COLUMN collection_status VARCHAR(20) NOT NULL DEFAULT 'Pending' AFTER change_due");
+        }
+    }
+
     function mobile_pos_sales()
     {
         try {
+            $this->ensure_pos_collection_status_column();
             $input = json_decode(file_get_contents('php://input'), true) ?: [];
             $branch_id = isset($input['branch_id']) ? intval($input['branch_id']) : 0;
             $from = isset($input['from']) ? $this->db->real_escape_string($input['from']) : '';
@@ -1270,7 +1279,7 @@ class Action
             if ($to !== '') {
                 $where .= " AND created_at <= '$to 23:59:59'";
             }
-            $res = $this->db->query("SELECT id, invoice_no, subtotal, discount, total, payment, change_due, created_at
+            $res = $this->db->query("SELECT id, invoice_no, subtotal, discount, total, payment, change_due, collection_status, created_at
                                      FROM pos_sales WHERE $where ORDER BY created_at DESC LIMIT 200");
             $sales = [];
             while ($row = $res->fetch_assoc()) {
@@ -1279,6 +1288,55 @@ class Action
             return ['result' => true, 'sales' => $sales];
         } catch (Exception $e) {
             return ['result' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    function mobile_pos_approve_collection()
+    {
+        try {
+            $this->ensure_pos_collection_status_column();
+            $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
+            $sale_id = intval($input['sale_id'] ?? 0);
+            $branch_id = intval($input['branch_id'] ?? 0);
+            if ($sale_id <= 0) {
+                return ['result' => false, 'message' => 'Valid sale is required.'];
+            }
+
+            // Admin approvals must work for sales created by the cashier mobile app.
+            // The sale ID is authoritative; legacy mobile records may have a branch
+            // value that differs from the branch value rendered by the Admin page.
+            $stmt = $this->db->prepare("UPDATE pos_sales SET collection_status = 'Approved' WHERE id = ?");
+            if (!$stmt) {
+                return ['result' => false, 'message' => 'Unable to approve collection.'];
+            }
+            $stmt->bind_param('i', $sale_id);
+            if (!$stmt->execute()) {
+                $stmt->close();
+                return ['result' => false, 'message' => 'Unable to approve collection.'];
+            }
+            $updated = $stmt->affected_rows;
+            $stmt->close();
+
+            // MySQL reports zero affected rows when the collection was already approved.
+            // Treat that state as success so the action is safe to retry.
+            if ($updated < 1) {
+                $check = $this->db->prepare("SELECT collection_status FROM pos_sales WHERE id = ? LIMIT 1");
+                if (!$check) {
+                    return ['result' => false, 'message' => 'Unable to approve collection.'];
+                }
+                $check->bind_param('i', $sale_id);
+                $check->execute();
+                $check->bind_result($collection_status);
+                $exists = $check->fetch();
+                $check->close();
+                if (!$exists || $collection_status !== 'Approved') {
+                    return ['result' => false, 'message' => 'Sale not found or could not be approved.'];
+                }
+            }
+
+            return ['result' => true, 'message' => 'Collection approved.'];
+        } catch (Exception $e) {
+            return ['result' => false, 'message' => 'Unable to approve collection.'];
         }
     }
 

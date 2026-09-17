@@ -171,6 +171,12 @@ if ($action == "mobile-pos-sales") {
 	return;
 }
 
+if ($action == "mobile-pos-approve-collection") {
+	$save = $crud->mobile_pos_approve_collection();
+	echo json_encode($save);
+	return;
+}
+
 if ($action == "mobile-pos-sale-details") {
 	$save = $crud->mobile_pos_sale_details();
 	echo json_encode($save);
@@ -670,6 +676,18 @@ if ($action == "owner-report-sales") {
 	return;
 }
 
+if ($action == "owner-report-collections") {
+	global $conn;
+	$check = $conn->query("SHOW COLUMNS FROM pos_sales LIKE 'collection_status'");
+	if ($check && $check->num_rows === 0) {
+		$conn->query("ALTER TABLE pos_sales ADD COLUMN collection_status ENUM('Pending','Approved') NOT NULL DEFAULT 'Pending' AFTER change_due");
+	}
+	$result = $conn->query("SELECT IFNULL(SUM(CASE WHEN collection_status = 'Approved' THEN payment ELSE 0 END), 0) AS approved, IFNULL(SUM(CASE WHEN collection_status <> 'Approved' OR collection_status IS NULL THEN payment ELSE 0 END), 0) AS pending FROM pos_sales");
+	$row = $result ? $result->fetch_assoc() : [];
+	echo json_encode(['success' => true, 'approved' => floatval($row['approved'] ?? 0), 'pending' => floatval($row['pending'] ?? 0)]);
+	return;
+}
+
 if ($action == "owner-report-sales-branches") {
 	global $conn;
 	$branches = [];
@@ -684,6 +702,34 @@ if ($action == "owner-report-sales-branches") {
 				'id' => intval($row['id']),
 				'branch_name' => $row['branch_name'],
 				'total_sales' => floatval($row['total_sales']),
+			];
+		}
+	}
+	echo json_encode(['success' => true, 'branches' => $branches]);
+	return;
+}
+
+if ($action == "owner-report-collections-branches") {
+	global $conn;
+	$check = $conn->query("SHOW COLUMNS FROM pos_sales LIKE 'collection_status'");
+	if ($check && $check->num_rows === 0) {
+		$conn->query("ALTER TABLE pos_sales ADD COLUMN collection_status ENUM('Pending','Approved') NOT NULL DEFAULT 'Pending' AFTER change_due");
+	}
+	$branches = [];
+	$result = $conn->query(
+		"SELECT b.id, b.branch_name, " .
+		"IFNULL(SUM(CASE WHEN s.collection_status = 'Approved' THEN s.payment ELSE 0 END), 0) AS approved_collections, " .
+		"IFNULL(SUM(CASE WHEN s.collection_status <> 'Approved' OR s.collection_status IS NULL THEN s.payment ELSE 0 END), 0) AS pending_collections " .
+		"FROM branches b LEFT JOIN pos_sales s ON s.branch_id = b.id " .
+		"GROUP BY b.id, b.branch_name ORDER BY b.branch_name ASC"
+	);
+	if ($result) {
+		while ($row = $result->fetch_assoc()) {
+			$branches[] = [
+				'id' => intval($row['id']),
+				'branch_name' => $row['branch_name'],
+				'approved_collections' => floatval($row['approved_collections']),
+				'pending_collections' => floatval($row['pending_collections']),
 			];
 		}
 	}
