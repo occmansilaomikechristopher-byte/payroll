@@ -153,6 +153,12 @@ if ($action == "upload-biometric-dtr") {
 }
 
 // ── Mobile POS ──
+if ($action == "mobile-pos-product-categories") {
+	$save = $crud->mobile_pos_product_categories();
+	echo json_encode($save);
+	return;
+}
+
 if ($action == "mobile-pos-products") {
 	$save = $crud->mobile_pos_products();
 	echo json_encode($save);

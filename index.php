@@ -565,7 +565,7 @@ function getRole($login_role)
         <script src="assets2/js/home.js"></script>
     <?php } ?>
     <?php if (!empty($include_products_js)) { ?>
-        <script src="assets2/js/products.js"></script>
+        <script src="assets2/js/products.js?v=<?= filemtime(__DIR__ . '/assets2/js/products.js') ?>"></script>
     <?php } ?>
 
     <?php if ($page == 'employee' || $page == 'employee-details') { ?>

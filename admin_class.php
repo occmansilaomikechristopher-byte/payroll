@@ -1229,18 +1229,38 @@ class Action
     }
 
     // ── Mobile POS: fetch active products for a branch ──
+    function mobile_pos_product_categories()
+    {
+        try {
+            $res = $this->db->query("SELECT id, category_name
+                                     FROM product_categories
+                                     WHERE status = 1
+                                     ORDER BY category_name ASC");
+            $categories = [];
+            while ($row = $res->fetch_assoc()) {
+                $categories[] = $row;
+            }
+            return ['result' => true, 'categories' => $categories];
+        } catch (Exception $e) {
+            return ['result' => false, 'message' => $e->getMessage()];
+        }
+    }
+
     function mobile_pos_products()
     {
         try {
             $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
             $branch_id = isset($input['branch_id']) ? intval($input['branch_id']) : 0;
 
-            $where = "status = 1";
+            $where = "p.status = 1";
             if ($branch_id > 0) {
-                $where .= " AND branch_id = $branch_id";
+                $where .= " AND p.branch_id = $branch_id";
             }
-            $res = $this->db->query("SELECT id, product_code, product_name, unit_price, quantity_on_hand, unit, image
-                                     FROM products WHERE $where ORDER BY product_name ASC");
+                 $res = $this->db->query("SELECT p.id, p.product_code, p.product_name, p.category_id,
+                                  c.category_name, p.unit_price, p.quantity_on_hand, p.unit, p.image
+                              FROM products p
+                              LEFT JOIN product_categories c ON c.id = p.category_id
+                              WHERE $where ORDER BY p.product_name ASC");
             $products = [];
             while ($row = $res->fetch_assoc()) {
                 $products[] = $row;
@@ -4982,7 +5002,14 @@ class Action
         $reorder_level = floatval($reorder_level ?? 10);
         $unit_price = floatval($unit_price);
         $cost_price = floatval($cost_price ?? 0);
-        $unit = $this->db->real_escape_string($unit ?? '');
+        $unit = strtolower(trim($unit ?? ''));
+        $unitAliases = [
+            'piece' => 'pcs', 'pieces' => 'pcs',
+            'square meter' => 'sqm', 'sqm (square meter)' => 'sqm',
+            'square foot' => 'sqft', 'sqft (square foot)' => 'sqft',
+        ];
+        $unit = $unitAliases[$unit] ?? $unit;
+        $unit = $this->db->real_escape_string($unit);
         $status = intval($status ?? 1);
 
         // Keep existing image unless a new one is uploaded

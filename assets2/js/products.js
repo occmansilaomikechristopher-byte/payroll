@@ -66,6 +66,15 @@ $(document).ready(function () {
     // Populate edit modal from button data attributes
     $(document).on("click", '[data-bs-target="#modal-edit-product"]', function () {
         var btn = $(this);
+        var rawUnit = String(btn.data("unit") || "").trim().toLowerCase();
+        var unitAliases = {
+            "pcs": "pcs", "piece": "pcs", "pieces": "pcs",
+            "box": "box", "pack": "pack", "pair": "pair", "set": "set",
+            "sqm": "sqm", "square meter": "sqm", "sqm (square meter)": "sqm",
+            "sqft": "sqft", "square foot": "sqft", "sqft (square foot)": "sqft",
+            "meter": "meter", "length": "length", "sheet": "sheet",
+            "roll": "roll", "tube": "tube"
+        };
         $("#edit-product-id").val(btn.data("id"));
         $("#edit-product-code").val(btn.data("code"));
         $("#edit-product-name").val(btn.data("name"));
@@ -74,7 +83,7 @@ $(document).ready(function () {
         $("#edit-product-qty").val(btn.data("qty"));
         $("#edit-product-price").val(btn.data("price"));
         $("#edit-product-cost").val(btn.data("cost"));
-        $("#edit-product-unit").val(btn.data("unit"));
+        $("#edit-product-unit").val(unitAliases[rawUnit] || rawUnit).trigger("change");
         $("#edit-product-reorder").val(btn.data("reorder"));
         $("#edit-product-desc").val(btn.data("desc"));
         $("#edit-product-status").val(btn.data("status"));
