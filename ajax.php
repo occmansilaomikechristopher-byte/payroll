@@ -165,6 +165,12 @@ if ($action == "mobile-pos-products") {
 	return;
 }
 
+if ($action == "mobile-pos-quotation-pricing") {
+	$save = $crud->mobile_pos_quotation_pricing();
+	echo json_encode($save);
+	return;
+}
+
 if ($action == "mobile-pos-save-sale") {
 	$save = $crud->mobile_pos_save_sale();
 	echo json_encode($save);

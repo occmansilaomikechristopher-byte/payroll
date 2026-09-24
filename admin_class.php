@@ -104,6 +104,53 @@ class Action
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             KEY idx_quotation_id (quotation_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $this->db->query("CREATE TABLE IF NOT EXISTS pos_quotation_pricing (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            width DECIMAL(10,2) NOT NULL,
+            height DECIMAL(10,2) NOT NULL,
+            unit VARCHAR(10) NOT NULL,
+            glass_color VARCHAR(100) NOT NULL,
+            thickness TINYINT UNSIGNED NOT NULL,
+            aluminum_profile VARCHAR(50) NOT NULL,
+            price_per_sq_ft DECIMAL(12,4) NOT NULL DEFAULT 0.0000,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_pos_quotation_pricing (width, height, unit, glass_color, thickness, aluminum_profile),
+            KEY idx_pos_quotation_pricing_active (is_active)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $pricingDefaults = [
+            ['', 5, '', 300.00],
+            ['', 6, '', 300.00],
+            ['Clear Glass', 5, 'Black', 281.25],
+            ['Clear Glass', 6, 'Black', 281.25],
+            ['Bronze Glass', 5, 'Black', 300.00],
+            ['Bronze Glass', 6, 'Black', 300.00],
+            ['Dark Gray Glass', 5, 'Black', 331.25],
+            ['Dark Gray Glass', 6, 'Black', 331.25],
+            ['Reflective Blue', 5, 'Black', 343.75],
+            ['Reflective Blue', 6, 'Black', 343.75],
+            ['Reflective Green', 5, 'Black', 343.75],
+            ['Reflective Green', 6, 'Black', 343.75],
+            ['Reflective Bronze', 5, 'Black', 343.75],
+            ['Reflective Bronze', 6, 'Black', 343.75],
+            ['Reflective Dark Gray', 5, 'Black', 400.00],
+            ['Reflective Dark Gray', 6, 'Black', 400.00],
+            ['Reflective Gold', 5, 'Black', 450.00],
+            ['Reflective Gold', 6, 'Black', 450.00],
+        ];
+        $pricingStmt = $this->db->prepare("INSERT IGNORE INTO pos_quotation_pricing
+            (width, height, unit, glass_color, thickness, aluminum_profile, price_per_sq_ft)
+            VALUES (48, 48, 'IN', ?, ?, ?, ?)");
+        if ($pricingStmt) {
+            foreach ($pricingDefaults as [$glassColor, $thickness, $aluminumProfile, $rate]) {
+                $pricingStmt->bind_param('sisd', $glassColor, $thickness, $aluminumProfile, $rate);
+                $pricingStmt->execute();
+            }
+            $pricingStmt->close();
+        }
     }
 
     function log_cashier_notification($title, $message, $user_id = null, $branch_id = null)
@@ -1268,6 +1315,28 @@ class Action
             return ['result' => true, 'products' => $products];
         } catch (Exception $e) {
             return ['result' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    function mobile_pos_quotation_pricing()
+    {
+        try {
+            $res = $this->db->query("SELECT width, height, unit, glass_color, thickness,
+                                            aluminum_profile, price_per_sq_ft
+                                     FROM pos_quotation_pricing
+                                     WHERE is_active = 1
+                                     ORDER BY width, height, glass_color, thickness, aluminum_profile");
+            $pricing = [];
+            while ($row = $res->fetch_assoc()) {
+                $row['width'] = (float) $row['width'];
+                $row['height'] = (float) $row['height'];
+                $row['thickness'] = (int) $row['thickness'];
+                $row['price_per_sq_ft'] = (float) $row['price_per_sq_ft'];
+                $pricing[] = $row;
+            }
+            return ['result' => true, 'pricing' => $pricing];
+        } catch (Exception $e) {
+            return ['result' => false, 'message' => 'Unable to load quotation pricing.'];
         }
     }
 
