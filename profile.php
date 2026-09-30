@@ -1,8 +1,15 @@
 <?php
-$emp = $conn->query("SELECT * FROM users WHERE id=" . $_SESSION['login_id'] . " ")->fetch_array();
-foreach ($emp as $k => $v) {
-	$$k = $v;
+$profileUserId = (int) ($_SESSION['login_id'] ?? 0);
+$profileStatement = $conn->prepare('SELECT name, username FROM users WHERE id = ? LIMIT 1');
+$profileStatement->bind_param('i', $profileUserId);
+$profileStatement->execute();
+$profileUser = $profileStatement->get_result()->fetch_assoc() ?: ['name' => '', 'username' => ''];
+$profileStatement->close();
+
+if (empty($_SESSION['profile_csrf_token'])) {
+	$_SESSION['profile_csrf_token'] = bin2hex(random_bytes(32));
 }
+$profileCsrfToken = $_SESSION['profile_csrf_token'];
 ?>
 <div class="main-content">
 	<div class="page-content">
@@ -31,23 +38,24 @@ foreach ($emp as $k => $v) {
 					</div>
 					<div class="card-body">
 						<div class="table-responsive  mt-3 mb-1">
-							<form class="form-auth-small" id="form-add" method="post" novalidate>
+							<form class="form-auth-small" id="profile-form" method="post" novalidate>
+								<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($profileCsrfToken, ENT_QUOTES, 'UTF-8') ?>">
 								<div class="col-md-12">
 									<div class="form-group">
 										<label>Name</label>
-										<input type="text" value="<?= $name ?>" class="form-control" placeholder="Last Name" name="lastname" data-parsley-required-message="Last name is required." required>
+										<input type="text" value="<?= htmlspecialchars($profileUser['name'], ENT_QUOTES, 'UTF-8') ?>" class="form-control" placeholder="Last Name" name="name" maxlength="200" data-parsley-required-message="Name is required." required>
 									</div>
 								</div>
 								<div class="col-md-12">
 									<div class="form-group">
 										<label>Username</label>
-										<input readonly="" type="text" value="<?= $username ?>" class="form-control" placeholder="Last Name" name="lastname" data-parsley-required-message="Last name is required." required>
+										<input type="text" value="<?= htmlspecialchars($profileUser['username'], ENT_QUOTES, 'UTF-8') ?>" class="form-control" placeholder="Username" name="username" maxlength="100" data-parsley-required-message="Username is required." required autocomplete="username">
 									</div>
 								</div>
 								<div class="col-md-12">
 									<div class="form-group">
 										<label>Password</label>
-										<input type="password" class="form-control" placeholder="Password" name="password">
+										<input type="password" class="form-control" placeholder="Password" name="password" minlength="8" maxlength="72" autocomplete="new-password">
 										<span class="help-block">Leave blank if you don't want to change it</span>
 									</div>
 								</div>

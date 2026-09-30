@@ -8,6 +8,9 @@ RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
+# ── Sales report API ─────────────────────────────────────────────────────
+RewriteRule ^api/payroll/sales-report/?$ ajax.php?action=sales-report [L,QSA]
+
 # ── Clean URL → index.php router ─────────────────────────────────────────
 # /payroll/employee          → index.php?page=employee
 # /payroll/dtr-details?id=5  → index.php?page=dtr-details&id=5

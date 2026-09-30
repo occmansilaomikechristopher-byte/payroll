@@ -598,6 +598,10 @@ function getRole($login_role)
         <script src="assets2/js/user.js?v=<?= filemtime(__DIR__ . '/assets2/js/user.js') ?>"></script>
     <?php } ?>
 
+    <?php if ($page == 'profile') { ?>
+        <script src="assets2/js/profile.js?v=<?= filemtime(__DIR__ . '/assets2/js/profile.js') ?>"></script>
+    <?php } ?>
+
     <?php if ($page == 'dtr') { ?>
         <script src="assets2/js/dtr.js?v=<?= filemtime(__DIR__ . '/assets2/js/dtr.js') ?>"></script>
     <?php } ?>

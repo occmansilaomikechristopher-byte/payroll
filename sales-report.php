@@ -8,20 +8,61 @@
     #sales-table thead th { background-color:#219688 !important; border-color:#176358 !important; color:#fff !important; }
     #sales-table tbody tr:hover td { background:#f0faf9; }
     .sr-filter { background:#219688; color:#fff; border-radius:4px; padding:10px 16px; margin-bottom:12px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
-    .sr-filter input { border:none; border-radius:4px; padding:5px 9px; font-size:13px; }
+    .sr-filter input, .sr-filter select { border:none; border-radius:4px; padding:5px 9px; font-size:13px; }
 </style>
 
 <?php
-// Date filter
+$login_role = intval($_SESSION['login_role'] ?? 0);
+$current_user_id = intval($_SESSION['login_id'] ?? 0);
+$branch_id = intval($_GET['branch_id'] ?? 0);
+$user_id = intval($_GET['user_id'] ?? 0);
+if ($login_role === 9) {
+    $user_id = $current_user_id;
+}
+
+// Date and branch filters
 $from = isset($_GET['from']) && $_GET['from'] !== '' ? $_GET['from'] : '';
 $to   = isset($_GET['to'])   && $_GET['to']   !== '' ? $_GET['to']   : '';
 $where = "1";
+if ($branch_id > 0) { $where .= ' AND s.branch_id = ' . $branch_id; }
 if ($from !== '') { $where .= " AND s.created_at >= '" . $conn->real_escape_string($from) . " 00:00:00'"; }
 if ($to   !== '') { $where .= " AND s.created_at <= '" . $conn->real_escape_string($to)   . " 23:59:59'"; }
 
-$sales = $conn->query("SELECT s.*, b.branch_name, b.branch_code
+$branches = [];
+$branchResult = $conn->query("SELECT id, branch_name, branch_code FROM branches WHERE status = 1 ORDER BY branch_name ASC");
+if ($branchResult) {
+    while ($branch = $branchResult->fetch_assoc()) {
+        $branches[] = $branch;
+    }
+}
+
+$users = [];
+if ($branch_id > 0) {
+    $userWhere = 'branch_id = ' . $branch_id . ' AND role = 9 AND status = 1';
+    if ($login_role === 9) { $userWhere .= ' AND id = ' . $current_user_id; }
+    $userResult = $conn->query("SELECT id, name FROM users WHERE $userWhere ORDER BY name ASC");
+    if ($userResult) {
+        while ($user = $userResult->fetch_assoc()) {
+            $users[] = $user;
+        }
+    }
+
+    $validUserIds = array_map('intval', array_column($users, 'id'));
+    if ($user_id > 0 && !in_array($user_id, $validUserIds, true)) {
+        $user_id = 0;
+    }
+}
+
+if ($login_role === 9) {
+    $where .= ' AND s.cashier_id = ' . $current_user_id;
+} elseif ($branch_id > 0 && $user_id > 0) {
+    $where .= ' AND s.cashier_id = ' . $user_id;
+}
+
+$sales = $conn->query("SELECT s.*, b.branch_name, b.branch_code, u.name AS cashier_name
                        FROM pos_sales s
                        LEFT JOIN branches b ON b.id = s.branch_id
+                       LEFT JOIN users u ON u.id = s.cashier_id
                        WHERE $where
                        ORDER BY s.created_at DESC");
 
@@ -63,27 +104,47 @@ if ($sales) {
 
             <div class="card sr-card">
                 <div class="card-body">
-                    <!-- Date filter -->
+                    <!-- Branch and date filters -->
                     <form method="get" action="index.php" class="sr-filter">
                         <input type="hidden" name="page" value="sales-report">
-                        <i class="ri-calendar-2-line"></i>
+                        <i class="ri-git-branch-line"></i>
+                        <span style="font-size:12px;">Branch</span>
+                        <select name="branch_id" onchange="this.form.elements.user_id.value = '0'; this.form.submit();">
+                            <option value="0" <?= $branch_id === 0 ? 'selected' : '' ?>>All Branches</option>
+                            <?php foreach ($branches as $branch): ?>
+                                <option value="<?= intval($branch['id']) ?>" <?= $branch_id === intval($branch['id']) ? 'selected' : '' ?>><?= htmlspecialchars($branch['branch_code'] . ' - ' . $branch['branch_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <?php if ($branch_id > 0): ?>
+                            <span style="font-size:12px;">User</span>
+                            <select name="user_id" <?= $login_role === 9 ? 'disabled' : '' ?>>
+                                <option value="0" <?= $user_id === 0 ? 'selected' : '' ?>>All Users</option>
+                                <?php foreach ($users as $user): ?>
+                                    <option value="<?= intval($user['id']) ?>" <?= $user_id === intval($user['id']) ? 'selected' : '' ?>><?= htmlspecialchars($user['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <?php if ($login_role === 9): ?><input type="hidden" name="user_id" value="<?= $current_user_id ?>"><?php endif; ?>
+                        <?php else: ?>
+                            <input type="hidden" name="user_id" value="0">
+                        <?php endif; ?>
                         <span style="font-size:12px;">From</span>
                         <input type="date" name="from" value="<?= htmlspecialchars($from) ?>">
                         <span style="font-size:12px;">To</span>
                         <input type="date" name="to" value="<?= htmlspecialchars($to) ?>">
                         <button type="submit" class="btn btn-sm btn-light"><i class="ri-search-line me-1"></i>Apply</button>
-                        <?php if ($from || $to): ?>
+                        <?php if ($from || $to || $branch_id > 0): ?>
                             <a href="index.php?page=sales-report" class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;"><i class="ri-close-line me-1"></i>Clear</a>
                         <?php endif; ?>
                     </form>
 
                     <div class="table-responsive">
-                        <table id="sales-table" class="table table-hover table-bordered align-middle">
+                        <table id="sales-table" class="table table-hover table-bordered align-middle" data-has-sales="<?= $rows ? '1' : '0' ?>">
                             <thead>
                                 <tr>
                                     <th><i class="ri-file-list-3-line me-1"></i>Invoice</th>
                                     <th><i class="ri-git-branch-line me-1"></i>Branch</th>
                                     <th><i class="ri-calendar-2-line me-1"></i>Date</th>
+                                    <th>User</th>
                                     <th class="text-end">Subtotal</th>
                                     <th class="text-end">Discount</th>
                                     <th class="text-end">Total</th>
@@ -96,14 +157,18 @@ if ($sales) {
                                         <td><span class="sr-inv"><?= htmlspecialchars($r['invoice_no']) ?></span></td>
                                         <td><span class="sr-branch"><?= htmlspecialchars($r['branch_code'] ?? '—') ?></span> <?= htmlspecialchars($r['branch_name'] ?? '') ?></td>
                                         <td><?= date('M j, Y g:i A', strtotime($r['created_at'])) ?></td>
+                                        <td><?= htmlspecialchars($r['cashier_name'] ?? '—') ?></td>
                                         <td class="text-end">&#8369; <?= number_format($r['subtotal'], 2) ?></td>
                                         <td class="text-end" style="color:#c62828;">&#8369; <?= number_format($r['discount'], 2) ?></td>
                                         <td class="text-end fw-bold">&#8369; <?= number_format($r['total'], 2) ?></td>
                                         <td class="text-center">
-                                            <button class="btn btn-sm btn-outline-primary view-sale" data-id="<?= $r['id'] ?>"><i class="ri-eye-line"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-primary view-sale" data-id="<?= $r['id'] ?>" onclick="openSaleDetails(this.getAttribute('data-id'))"><i class="ri-eye-line"></i></button>
                                         </td>
                                     </tr>
                                 <?php endforeach; endif; ?>
+                                <?php if ($sales && !$rows): ?>
+                                    <tr><td colspan="8" class="text-center text-muted py-4">No data available.</td></tr>
+                                <?php endif; ?>
                             </tbody>
                         </table>
                         <?php if (!$sales): ?>
@@ -160,45 +225,62 @@ if ($sales) {
 </div>
 
 <script>
+var peso = function (n) { return '₱ ' + parseFloat(n || 0).toFixed(2); };
+
+function openSaleDetails(id) {
+    id = Number(id);
+    if (!id) {
+        $('#sd-items').html('<tr><td colspan="4" class="text-danger text-center">Invalid sale ID.</td></tr>');
+        $('#modal-sale-details').modal('show');
+        return;
+    }
+
+    $('#sd-items').html('<tr><td colspan="4" class="text-center text-muted py-3">Loading...</td></tr>');
+
+    $.ajax({
+        url: 'ajax.php?action=get_pos_sale_details',
+        method: 'POST',
+        data: { sale_id: id },
+        dataType: 'json',
+        success: function (res) {
+            if (!res || !res.result) {
+                $('#sd-items').html('<tr><td colspan="4" class="text-danger text-center">' + (res && res.message ? res.message : 'Failed to load sale.') + '</td></tr>');
+                $('#modal-sale-details').modal('show');
+                return;
+            }
+
+            var s = res.sale || {};
+            $('#sd-invoice').text(s.invoice_no || 'Sale Details');
+            $('#sd-branch').html('<i class="ri-git-branch-line me-1"></i>' + (s.branch_name || '—') + (s.cashier_name ? ' &middot; Cashier: ' + s.cashier_name : ''));
+            $('#sd-date').text(s.created_at ? new Date(s.created_at.replace(' ', 'T')).toLocaleString() : '');
+            $('#sd-subtotal').text(peso(s.subtotal));
+            $('#sd-discount').text('- ' + peso(s.discount));
+            $('#sd-total').text(peso(s.total));
+            $('#sd-payment').text(peso(s.payment));
+            $('#sd-change').text(peso(s.change_due));
+
+            var html = '';
+            (res.items || []).forEach(function (it) {
+                html += '<tr><td>' + (it.product_name || 'Product') + '</td><td class="text-end">' + peso(it.price) +
+                        '</td><td class="text-center">' + parseFloat(it.qty || 0) + '</td><td class="text-end fw-semibold">' + peso(it.line_total) + '</td></tr>';
+            });
+            $('#sd-items').html(html || '<tr><td colspan="4" class="text-center text-muted">No items</td></tr>');
+            $('#modal-sale-details').modal('show');
+        },
+        error: function () {
+            $('#sd-items').html('<tr><td colspan="4" class="text-danger text-center">Failed to load sale details.</td></tr>');
+            $('#modal-sale-details').modal('show');
+        }
+    });
+}
+
 $(function () {
-    if ($.fn.DataTable) {
+    if ($.fn.DataTable && $('#sales-table').attr('data-has-sales') === '1') {
         $('#sales-table').DataTable({ order: [[2, 'desc']], pageLength: 25 });
     }
-    var peso = function (n) { return '₱ ' + parseFloat(n || 0).toFixed(2); };
 
     $('#sales-table').on('click', '.view-sale', function () {
-        var id = $(this).data('id');
-        $('#sd-items').html('<tr><td colspan="4" class="text-center text-muted py-3">Loading...</td></tr>');
-        $('#modal-sale-details').modal('show');
-
-        $.ajax({
-            url: 'ajax.php?action=get_pos_sale_details',
-            method: 'POST',
-            data: { sale_id: id },
-            dataType: 'json',
-            success: function (res) {
-                if (!res.result) { $('#sd-items').html('<tr><td colspan="4" class="text-danger text-center">' + (res.message || 'Error') + '</td></tr>'); return; }
-                var s = res.sale;
-                $('#sd-invoice').text(s.invoice_no);
-                $('#sd-branch').html('<i class="ri-git-branch-line me-1"></i>' + (s.branch_name || '—') + (s.cashier_name ? ' &middot; Cashier: ' + s.cashier_name : ''));
-                $('#sd-date').text(new Date(s.created_at.replace(' ', 'T')).toLocaleString());
-                $('#sd-subtotal').text(peso(s.subtotal));
-                $('#sd-discount').text('- ' + peso(s.discount));
-                $('#sd-total').text(peso(s.total));
-                $('#sd-payment').text(peso(s.payment));
-                $('#sd-change').text(peso(s.change_due));
-
-                var html = '';
-                res.items.forEach(function (it) {
-                    html += '<tr><td>' + it.product_name + '</td><td class="text-end">' + peso(it.price) +
-                            '</td><td class="text-center">' + parseFloat(it.qty) + '</td><td class="text-end fw-semibold">' + peso(it.line_total) + '</td></tr>';
-                });
-                $('#sd-items').html(html || '<tr><td colspan="4" class="text-center text-muted">No items</td></tr>');
-            },
-            error: function () {
-                $('#sd-items').html('<tr><td colspan="4" class="text-danger text-center">Failed to load.</td></tr>');
-            }
-        });
+        openSaleDetails($(this).data('id'));
     });
 });
 </script>

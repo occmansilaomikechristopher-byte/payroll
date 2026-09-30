@@ -115,11 +115,12 @@ $(document).ready(function () {
             data: new FormData(form[0]),
             processData: false,
             contentType: false,
-            error: function () {
+            error: function (xhr, status, error) {
                 Swal.close();
                 btn.removeAttr("disabled").html(btnHtml);
-                console.error('AJAX error adding/updating product');
-                Swal.fire({ icon: "error", title: "Error!", text: "Something went wrong. Please check console / network tab and try again." });
+                var message = xhr.responseText || error || status || "Unknown server error";
+                console.error('AJAX error adding/updating product:', xhr.status, message);
+                Swal.fire({ icon: "error", title: "Error!", text: message.substring(0, 500) });
             },
             success: function (resp) {
                 console.log('AJAX response for product action:', resp);

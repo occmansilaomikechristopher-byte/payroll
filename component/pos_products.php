@@ -95,6 +95,7 @@ $unit_labels = [
                                         data-cost="<?= $row['cost_price'] ?>"
                                         data-unit="<?= htmlspecialchars($row['unit'] ?? '') ?>"
                                         data-reorder="<?= $row['reorder_level'] ?>"
+                                        data-image="<?= htmlspecialchars($row['image'] ?? '') ?>"
                                         data-desc="<?= htmlspecialchars($row['description'] ?? '') ?>"
                                         data-status="<?= $row['status'] ?>">
                                         <i class="ri-edit-line"></i> Edit

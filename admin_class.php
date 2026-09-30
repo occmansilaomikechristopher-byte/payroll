@@ -24,6 +24,7 @@ class Action
 
         $this->db = $conn;
         $this->ensureNotificationTable();
+        $this->ensureOwnerRequisitionPaymentSchema();
         $this->ensureQuotationTables();
     }
 
@@ -55,6 +56,60 @@ class Action
         if ($result && $result->num_rows === 0) {
             $this->db->query("ALTER TABLE notifications ADD COLUMN branch_id INT NULL AFTER target_user_id");
         }
+    }
+
+    private function ensureOwnerRequisitionPaymentSchema()
+    {
+        $this->db->query("CREATE TABLE IF NOT EXISTS owner_requisitions (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            requisition_code VARCHAR(60) NOT NULL UNIQUE,
+            item_name VARCHAR(255) NOT NULL,
+            quantity DECIMAL(10,2) NOT NULL DEFAULT 1.00,
+            branch_id INT NULL,
+            description TEXT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'Pending',
+            amount_paid DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            total_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            balance DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            payment_remark VARCHAR(50) NOT NULL DEFAULT 'Pay later',
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            KEY idx_branch_id (branch_id),
+            KEY idx_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $columns = [
+            'amount_paid' => 'DECIMAL(12,2) NOT NULL DEFAULT 0.00',
+            'total_amount' => 'DECIMAL(12,2) NOT NULL DEFAULT 0.00',
+            'balance' => 'DECIMAL(12,2) NOT NULL DEFAULT 0.00',
+            'payment_remark' => "VARCHAR(50) NOT NULL DEFAULT 'Pay later'",
+        ];
+        foreach ($columns as $column => $definition) {
+            $columnResult = $this->db->query("SHOW COLUMNS FROM owner_requisitions LIKE '$column'");
+            if ($columnResult && $columnResult->num_rows === 0) {
+                $this->db->query("ALTER TABLE owner_requisitions ADD COLUMN $column $definition");
+            }
+        }
+
+        $this->db->query("CREATE TABLE IF NOT EXISTS owner_requisition_payments (
+            payment_id VARCHAR(80) NOT NULL PRIMARY KEY,
+            requisition_id INT UNSIGNED NOT NULL,
+            amount DECIMAL(12,2) NOT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_requisition_payment (requisition_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $this->db->query("UPDATE owner_requisitions r
+            LEFT JOIN products p ON p.product_name = r.item_name
+                AND (p.branch_id = r.branch_id OR r.branch_id IS NULL)
+            SET r.total_amount = ROUND(r.quantity * COALESCE(p.unit_price, 0), 2)
+            WHERE r.total_amount = 0 AND p.id IS NOT NULL");
+        $this->db->query("UPDATE owner_requisitions
+            SET balance = GREATEST(total_amount - amount_paid, 0),
+                payment_remark = CASE
+                    WHEN total_amount > 0 AND amount_paid >= total_amount THEN 'Fully Paid'
+                    ELSE COALESCE(NULLIF(payment_remark, ''), 'Pay later')
+                END");
     }
 
     private function ensureQuotationTables()
@@ -1082,6 +1137,85 @@ class Action
         return 1;
     }
 
+    function update_profile()
+    {
+        $userId = intval($_SESSION['login_id'] ?? 0);
+        if ($userId <= 0) {
+            return ['result' => false, 'message' => 'Your session has expired. Please sign in again.'];
+        }
+
+        $sessionToken = $_SESSION['profile_csrf_token'] ?? '';
+        $submittedToken = $_POST['csrf_token'] ?? '';
+        if (!is_string($sessionToken) || $sessionToken === '' || !is_string($submittedToken) || !hash_equals($sessionToken, $submittedToken)) {
+            return ['result' => false, 'message' => 'Your session could not be verified. Refresh the page and try again.'];
+        }
+
+        $name = trim((string) ($_POST['name'] ?? ''));
+        $username = trim((string) ($_POST['username'] ?? ''));
+        $password = (string) ($_POST['password'] ?? '');
+        $nameLength = function_exists('mb_strlen') ? mb_strlen($name, 'UTF-8') : strlen($name);
+        $usernameLength = function_exists('mb_strlen') ? mb_strlen($username, 'UTF-8') : strlen($username);
+        $passwordLength = function_exists('mb_strlen') ? mb_strlen($password, 'UTF-8') : strlen($password);
+
+        if ($name === '' || $nameLength > 200) {
+            return ['result' => false, 'message' => 'Name is required and must be 200 characters or fewer.'];
+        }
+        if ($username === '' || $usernameLength > 100) {
+            return ['result' => false, 'message' => 'Username is required and must be 100 characters or fewer.'];
+        }
+        if ($password !== '' && ($passwordLength < 8 || strlen($password) > 72)) {
+            return ['result' => false, 'message' => 'A new password must be at least 8 characters and no more than 72 bytes.'];
+        }
+
+        try {
+            $checkUsername = $this->db->prepare('SELECT id FROM users WHERE username = ? AND id <> ? LIMIT 1');
+            if (!$checkUsername) {
+                throw new RuntimeException('Unable to prepare username check.');
+            }
+            $checkUsername->bind_param('si', $username, $userId);
+            if (!$checkUsername->execute()) {
+                throw new RuntimeException('Unable to check username.');
+            }
+            $duplicateUsername = $checkUsername->get_result()->fetch_assoc();
+            $checkUsername->close();
+            if ($duplicateUsername) {
+                return ['result' => false, 'message' => 'That username is already in use. Please choose another.'];
+            }
+
+            if ($password !== '') {
+                $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+                if ($passwordHash === false) {
+                    throw new RuntimeException('Unable to hash password.');
+                }
+                $update = $this->db->prepare('UPDATE users SET name = ?, username = ?, password = ? WHERE id = ?');
+                if (!$update) {
+                    throw new RuntimeException('Unable to prepare profile update.');
+                }
+                $update->bind_param('sssi', $name, $username, $passwordHash, $userId);
+            } else {
+                $update = $this->db->prepare('UPDATE users SET name = ?, username = ? WHERE id = ?');
+                if (!$update) {
+                    throw new RuntimeException('Unable to prepare profile update.');
+                }
+                $update->bind_param('ssi', $name, $username, $userId);
+            }
+
+            if (!$update->execute()) {
+                $update->close();
+                throw new RuntimeException('Unable to save profile.');
+            }
+            $update->close();
+
+            $_SESSION['login_name'] = $name;
+            $_SESSION['login_username'] = $username;
+
+            return ['result' => true, 'message' => 'Your profile was updated successfully.'];
+        } catch (Throwable $e) {
+            error_log('Profile update failed: ' . $e->getMessage());
+            return ['result' => false, 'message' => 'Unable to save your profile right now. Please try again.'];
+        }
+    }
+
     function save_user()
     {
         try {
@@ -1432,20 +1566,39 @@ class Action
     // ── Web admin: sale + line items (reads $_POST) ──
     function get_pos_sale_details()
     {
-        $sale_id = isset($_POST['sale_id']) ? intval($_POST['sale_id']) : 0;
-        if ($sale_id <= 0) return ['result' => false, 'message' => 'Invalid sale.'];
+        $sale_id = isset($_REQUEST['sale_id']) ? intval($_REQUEST['sale_id']) : 0;
+        if ($sale_id <= 0) {
+            return ['result' => false, 'message' => 'Invalid sale.'];
+        }
 
-        $sale = $this->db->query("SELECT s.*, b.branch_name, b.branch_code, u.name AS cashier_name
-                                  FROM pos_sales s
-                                  LEFT JOIN branches b ON b.id = s.branch_id
-                                  LEFT JOIN users u ON u.id = s.cashier_id
-                                  WHERE s.id = $sale_id")->fetch_assoc();
-        if (!$sale) return ['result' => false, 'message' => 'Sale not found.'];
+        $saleStmt = $this->db->prepare("SELECT s.*, b.branch_name, b.branch_code, u.name AS cashier_name
+            FROM pos_sales s
+            LEFT JOIN branches b ON b.id = s.branch_id
+            LEFT JOIN users u ON u.id = s.cashier_id
+            WHERE s.id = ? LIMIT 1");
+        if (!$saleStmt) {
+            return ['result' => false, 'message' => 'Unable to load sale details.'];
+        }
+        $saleStmt->bind_param('i', $sale_id);
+        $saleStmt->execute();
+        $sale = $saleStmt->get_result()->fetch_assoc();
+        $saleStmt->close();
+        if (!$sale) {
+            return ['result' => false, 'message' => 'Sale not found.'];
+        }
 
-        $res = $this->db->query("SELECT product_name, price, qty, line_total
-                                 FROM pos_sale_items WHERE sale_id = $sale_id ORDER BY id ASC");
+        $itemsStmt = $this->db->prepare("SELECT COALESCE(product_name, 'Product') AS product_name, price, qty, line_total
+            FROM pos_sale_items WHERE sale_id = ? ORDER BY id ASC");
         $items = [];
-        while ($row = $res->fetch_assoc()) $items[] = $row;
+        if ($itemsStmt) {
+            $itemsStmt->bind_param('i', $sale_id);
+            $itemsStmt->execute();
+            $itemsRes = $itemsStmt->get_result();
+            while ($row = $itemsRes->fetch_assoc()) {
+                $items[] = $row;
+            }
+            $itemsStmt->close();
+        }
 
         return ['result' => true, 'sale' => $sale, 'items' => $items];
     }
@@ -1723,7 +1876,9 @@ class Action
     function mobile_pos_save_damage()
     {
         try {
-            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $input = !empty($_POST)
+                ? $_POST
+                : (json_decode(file_get_contents('php://input'), true) ?: []);
             $branch_id = intval($input['branch_id'] ?? 0);
             $cashier_id = intval($input['cashier_id'] ?? 0);
             $product_id = intval($input['product_id'] ?? 0);
@@ -1731,11 +1886,67 @@ class Action
             $quantity = floatval($input['quantity'] ?? 0);
             $description = trim($input['description'] ?? '');
 
-            if ($branch_id <= 0 || $cashier_id <= 0) {
+            if ($cashier_id <= 0) {
                 return ['result' => false, 'message' => 'Invalid branch or cashier.'];
+            }
+            // Recover the branch for older mobile sessions that did not save
+            // branch_id locally during login.
+            if ($branch_id <= 0) {
+                $branchStmt = $this->db->prepare('SELECT branch_id FROM users WHERE id = ? LIMIT 1');
+                if ($branchStmt) {
+                    $branchStmt->bind_param('i', $cashier_id);
+                    $branchStmt->execute();
+                    $branchRow = $branchStmt->get_result()->fetch_assoc();
+                    $branch_id = intval($branchRow['branch_id'] ?? 0);
+                    $branchStmt->close();
+                }
+            }
+            if ($branch_id <= 0) {
+                return ['result' => false, 'message' => 'No branch is assigned to this cashier.'];
             }
             if ($item_name === '' || $quantity <= 0) {
                 return ['result' => false, 'message' => 'Invalid damage item data.'];
+            }
+
+            $duplicateStmt = $this->db->prepare("SELECT id FROM damage_items
+                WHERE branch_id = ? AND status NOT IN ('Approved', 'Resolved') AND (
+                    (? > 0 AND product_id = ?)
+                    OR (? = 0 AND COALESCE(product_id, 0) = 0
+                        AND LOWER(TRIM(item_name)) = LOWER(TRIM(?)))
+                ) LIMIT 1");
+            if ($duplicateStmt) {
+                $duplicateStmt->bind_param('iiiis', $branch_id, $product_id, $product_id, $product_id, $item_name);
+                $duplicateStmt->execute();
+                $duplicate = $duplicateStmt->get_result()->fetch_assoc();
+                $duplicateStmt->close();
+                if ($duplicate) {
+                    return ['result' => false, 'message' => 'This item already has an active damage report for this branch.'];
+                }
+            }
+
+            $damage_image = '';
+            if (isset($_FILES['damage_image']) && $_FILES['damage_image']['error'] === UPLOAD_ERR_OK) {
+                $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+                $fileType = mime_content_type($_FILES['damage_image']['tmp_name']);
+                if (!in_array($fileType, $allowedTypes, true)) {
+                    return ['result' => false, 'message' => 'Only JPG, PNG, or WebP pictures are allowed.'];
+                }
+
+                $uploadDirectory = __DIR__ . '/uploads/damage/';
+                if (!is_dir($uploadDirectory) && !mkdir($uploadDirectory, 0755, true)) {
+                    return ['result' => false, 'message' => 'Unable to create the damage picture folder.'];
+                }
+                $extension = $fileType === 'image/png' ? 'png' : ($fileType === 'image/webp' ? 'webp' : 'jpg');
+                $fileName = 'damage_' . date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
+                if (!move_uploaded_file($_FILES['damage_image']['tmp_name'], $uploadDirectory . $fileName)) {
+                    return ['result' => false, 'message' => 'Unable to save the damage picture.'];
+                }
+                $damage_image = 'uploads/damage/' . $fileName;
+            }
+
+            $imageColumnCheck = $this->db->query("SELECT COUNT(*) AS cnt FROM information_schema.COLUMNS WHERE table_schema = DATABASE() AND table_name = 'damage_items' AND column_name = 'damage_image'");
+            if ($imageColumnCheck && intval($imageColumnCheck->fetch_assoc()['cnt'] ?? 0) === 0) {
+                $this->db->query("ALTER TABLE damage_items ADD COLUMN damage_image VARCHAR(255) NULL DEFAULT NULL AFTER description");
             }
 
             $columnCheck = $this->db->query("SELECT COUNT(*) AS cnt FROM information_schema.COLUMNS WHERE table_schema = DATABASE() AND table_name = 'damage_items' AND column_name = 'product_id'");
@@ -1765,13 +1976,13 @@ class Action
             }
 
             $damage_code = 'DMG-' . date('YmdHis') . '-' . rand(100, 999);
-            $stmt = $this->db->prepare("INSERT INTO damage_items (damage_code, product_id, item_name, quantity, description, branch_id, reported_by, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending')");
+            $stmt = $this->db->prepare("INSERT INTO damage_items (damage_code, product_id, item_name, quantity, description, damage_image, branch_id, reported_by, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pending')");
             if (!$stmt) {
                 $this->db->rollback();
                 return ['result' => false, 'message' => 'Failed to prepare damage item insert.'];
             }
 
-            $stmt->bind_param('sisdiii', $damage_code, $product_id, $item_name, $quantity, $description, $branch_id, $cashier_id);
+            $stmt->bind_param('sisdssii', $damage_code, $product_id, $item_name, $quantity, $description, $damage_image, $branch_id, $cashier_id);
             if (!$stmt->execute()) {
                 $error = $stmt->error;
                 $stmt->close();
@@ -1786,6 +1997,8 @@ class Action
                 'result' => true,
                 'message' => 'Damage item recorded and inventory adjusted.',
                 'damage_id' => $damage_id,
+                'branch_id' => $branch_id,
+                'image_path' => $damage_image,
             ];
         } catch (Exception $e) {
             if ($this->db->errno === 0) {
@@ -1864,26 +2077,68 @@ class Action
         }
     }
 
+    function mobile_pos_damage_history()
+    {
+        try {
+            $branch_id = intval($_GET['branch_id'] ?? 0);
+            if ($branch_id <= 0) {
+                return ['result' => false, 'message' => 'Invalid branch.'];
+            }
+
+            $imageColumnCheck = $this->db->query("SELECT COUNT(*) AS cnt FROM information_schema.COLUMNS WHERE table_schema = DATABASE() AND table_name = 'damage_items' AND column_name = 'damage_image'");
+            if ($imageColumnCheck && intval($imageColumnCheck->fetch_assoc()['cnt'] ?? 0) === 0) {
+                $this->db->query("ALTER TABLE damage_items ADD COLUMN damage_image VARCHAR(255) NULL DEFAULT NULL AFTER description");
+            }
+
+            $stmt = $this->db->prepare("SELECT d.id AS server_id, d.product_id, d.item_name, d.quantity,
+                d.description, d.damage_image AS image_path, d.status, d.created_at, d.reported_by,
+                COALESCE(u.name, 'Unknown cashier') AS cashier_name
+                FROM damage_items d
+                LEFT JOIN users u ON u.id = d.reported_by
+                WHERE d.branch_id = ?
+                ORDER BY d.created_at DESC, d.id DESC");
+            if (!$stmt) {
+                return ['result' => false, 'message' => 'Failed to prepare damage history.'];
+            }
+            $stmt->bind_param('i', $branch_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $items = [];
+            while ($row = $result->fetch_assoc()) {
+                $row['server_id'] = intval($row['server_id']);
+                $row['quantity'] = floatval($row['quantity']);
+                $items[] = $row;
+            }
+            $stmt->close();
+            return ['result' => true, 'items' => $items];
+        } catch (Exception $e) {
+            return ['result' => false, 'message' => 'Unable to load damage history.'];
+        }
+    }
+
     function mobile_pos_save_owner_requisition()
     {
         try {
             $input = json_decode(file_get_contents('php://input'), true) ?: [];
             $item_name = trim($input['item_name'] ?? '');
             $quantity = floatval($input['quantity'] ?? 0);
-            $amount_paid = floatval($input['amount_paid'] ?? 0);
+            $total_amount = round(floatval($input['total_amount'] ?? 0), 2);
             $branch_id = intval($input['branch_id'] ?? 0);
             $description = trim($input['description'] ?? '');
 
-            if ($item_name === '' || $quantity <= 0 || $amount_paid < 0) {
+            if ($item_name === '' || $quantity <= 0 || $total_amount < 0) {
                 return ['result' => false, 'message' => 'Invalid requisition data.'];
             }
 
             $requisition_code = 'REQ-' . date('YmdHis') . '-' . rand(100, 999);
-            $stmt = $this->db->prepare("INSERT INTO owner_requisitions (requisition_code, item_name, quantity, amount_paid, branch_id, description, status) VALUES (?, ?, ?, ?, ?, ?, 'Pending')");
+            $stmt = $this->db->prepare("INSERT INTO owner_requisitions
+                (requisition_code, item_name, quantity, amount_paid, total_amount, balance, payment_remark, branch_id, description, status)
+                VALUES (?, ?, ?, 0, ?, ?, 'Pay later', ?, ?, 'Pending')");
             if (!$stmt) {
                 return ['result' => false, 'message' => 'Failed to prepare requisition insert.'];
             }
-            $stmt->bind_param('ssddis', $requisition_code, $item_name, $quantity, $amount_paid, $branch_id, $description);
+            $balance = $total_amount;
+            $stmt->bind_param('ssdddis', $requisition_code, $item_name, $quantity, $total_amount, $balance, $branch_id, $description);
             if (!$stmt->execute()) {
                 $error = $stmt->error;
                 $stmt->close();
@@ -1898,32 +2153,169 @@ class Action
         }
     }
 
+    function mobile_pos_owner_requisitions()
+    {
+        try {
+            $branch_id = intval($_GET['branch_id'] ?? 0);
+            if ($branch_id > 0) {
+                $stmt = $this->db->prepare("SELECT r.id, r.requisition_code, r.item_name, r.quantity,
+                    r.branch_id, r.description, r.status, r.amount_paid, r.total_amount, r.balance,
+                    r.payment_remark, r.created_at, b.branch_name
+                    FROM owner_requisitions r
+                    LEFT JOIN branches b ON b.id = r.branch_id
+                    WHERE r.branch_id = ? OR r.branch_id IS NULL
+                    ORDER BY r.created_at DESC");
+                $stmt->bind_param('i', $branch_id);
+            } else {
+                $stmt = $this->db->prepare("SELECT r.id, r.requisition_code, r.item_name, r.quantity,
+                    r.branch_id, r.description, r.status, r.amount_paid, r.total_amount, r.balance,
+                    r.payment_remark, r.created_at, b.branch_name
+                    FROM owner_requisitions r
+                    LEFT JOIN branches b ON b.id = r.branch_id
+                    ORDER BY r.created_at DESC");
+            }
+            if (!$stmt) {
+                return ['result' => false, 'message' => 'Failed to prepare requisition list.'];
+            }
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $items = [];
+            while ($row = $result->fetch_assoc()) {
+                $row['id'] = intval($row['id']);
+                $row['server_id'] = $row['id'];
+                $row['quantity'] = floatval($row['quantity']);
+                $row['amount_paid'] = floatval($row['amount_paid']);
+                $row['total_amount'] = floatval($row['total_amount']);
+                $row['balance'] = floatval($row['balance']);
+                $row['unit_price'] = $row['quantity'] > 0 ? $row['total_amount'] / $row['quantity'] : 0;
+                $row['total_price'] = $row['total_amount'];
+                $row['branch_name'] = $row['branch_name'] ?: 'All branches';
+                $items[] = $row;
+            }
+            $stmt->close();
+
+            $requestedPaymentIds = json_decode($_GET['pending_payment_ids'] ?? '[]', true);
+            $appliedPaymentIds = [];
+            if (is_array($requestedPaymentIds)) {
+                $paymentCheck = $this->db->prepare('SELECT payment_id FROM owner_requisition_payments WHERE payment_id = ? LIMIT 1');
+                if ($paymentCheck) {
+                    foreach (array_slice(array_unique($requestedPaymentIds), 0, 50) as $requestedPaymentId) {
+                        $requestedPaymentId = substr(trim((string) $requestedPaymentId), 0, 80);
+                        if ($requestedPaymentId === '') {
+                            continue;
+                        }
+                        $paymentCheck->bind_param('s', $requestedPaymentId);
+                        $paymentCheck->execute();
+                        if ($paymentCheck->get_result()->num_rows > 0) {
+                            $appliedPaymentIds[] = $requestedPaymentId;
+                        }
+                    }
+                    $paymentCheck->close();
+                }
+            }
+            return [
+                'result' => true,
+                'items' => $items,
+                'applied_payment_ids' => $appliedPaymentIds,
+            ];
+        } catch (Exception $e) {
+            return ['result' => false, 'message' => 'Unable to load requisitions.'];
+        }
+    }
+
     function mobile_pos_update_owner_requisition_payment()
     {
+        $transactionStarted = false;
         try {
             $input = json_decode(file_get_contents('php://input'), true) ?: [];
             $requisition_id = intval($input['requisition_id'] ?? 0);
-            $amount_paid = floatval($input['amount_paid'] ?? 0);
+            $payment_id = trim($input['payment_id'] ?? '');
+            $payment_amount = round(floatval($input['payment_amount'] ?? 0), 2);
 
-            if ($requisition_id <= 0 || $amount_paid < 0) {
+            if ($requisition_id <= 0 || $payment_id === '' || strlen($payment_id) > 80 || $payment_amount <= 0 || !is_finite($payment_amount)) {
                 return ['result' => false, 'message' => 'Invalid payment data.'];
             }
 
-            $stmt = $this->db->prepare('UPDATE owner_requisitions SET amount_paid = ? WHERE id = ?');
+            $this->db->begin_transaction();
+            $transactionStarted = true;
+
+            $stmt = $this->db->prepare('SELECT amount_paid, total_amount, balance, payment_remark FROM owner_requisitions WHERE id = ? FOR UPDATE');
             if (!$stmt) {
-                return ['result' => false, 'message' => 'Failed to prepare payment update.'];
+                throw new RuntimeException('Failed to prepare requisition lookup.');
             }
-            $stmt->bind_param('di', $amount_paid, $requisition_id);
-            if (!$stmt->execute()) {
-                $error = $stmt->error;
-                $stmt->close();
-                return ['result' => false, 'message' => 'Error: ' . $error];
+            $stmt->bind_param('i', $requisition_id);
+            $stmt->execute();
+            $requisition = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if (!$requisition) {
+                throw new RuntimeException('Requisition not found.');
             }
 
-            $stmt->close();
-            return ['result' => true, 'message' => 'Payment saved successfully.'];
+            $amountPaid = floatval($requisition['amount_paid'] ?? 0);
+            $totalAmount = floatval($requisition['total_amount'] ?? 0);
+            $balance = max(0, round($totalAmount - $amountPaid, 2));
+
+            $checkPayment = $this->db->prepare('SELECT requisition_id, amount FROM owner_requisition_payments WHERE payment_id = ? LIMIT 1');
+            if (!$checkPayment) {
+                throw new RuntimeException('Failed to check payment ID.');
+            }
+            $checkPayment->bind_param('s', $payment_id);
+            $checkPayment->execute();
+            $existingPayment = $checkPayment->get_result()->fetch_assoc();
+            $checkPayment->close();
+            if ($existingPayment) {
+                if (intval($existingPayment['requisition_id']) !== $requisition_id || round(floatval($existingPayment['amount']), 2) !== $payment_amount) {
+                    throw new RuntimeException('Payment ID has already been used for a different payment.');
+                }
+                $this->db->commit();
+                $transactionStarted = false;
+                return [
+                    'result' => true,
+                    'duplicate' => true,
+                    'message' => 'Payment was already applied.',
+                    'amount_paid' => $amountPaid,
+                    'balance' => $balance,
+                    'payment_remark' => $requisition['payment_remark'] ?? ($balance <= 0 ? 'Fully Paid' : 'Pay later'),
+                ];
+            }
+
+            if ($totalAmount <= 0 || $payment_amount > $balance) {
+                throw new RuntimeException($totalAmount <= 0 ? 'Requisition total is not available.' : 'Payment exceeds the remaining balance.');
+            }
+
+            $insertPayment = $this->db->prepare('INSERT INTO owner_requisition_payments (payment_id, requisition_id, amount) VALUES (?, ?, ?)');
+            if (!$insertPayment) {
+                throw new RuntimeException('Failed to prepare payment record.');
+            }
+            $insertPayment->bind_param('sid', $payment_id, $requisition_id, $payment_amount);
+            $insertPayment->execute();
+            $insertPayment->close();
+
+            $newAmountPaid = round($amountPaid + $payment_amount, 2);
+            $newBalance = max(0, round($totalAmount - $newAmountPaid, 2));
+            $paymentRemark = $newBalance === 0.0 ? 'Fully Paid' : 'Pay later';
+            $update = $this->db->prepare('UPDATE owner_requisitions SET amount_paid = ?, balance = ?, payment_remark = ? WHERE id = ?');
+            if (!$update) {
+                throw new RuntimeException('Failed to prepare requisition balance update.');
+            }
+            $update->bind_param('ddsi', $newAmountPaid, $newBalance, $paymentRemark, $requisition_id);
+            $update->execute();
+            $update->close();
+
+            $this->db->commit();
+            $transactionStarted = false;
+            return [
+                'result' => true,
+                'message' => 'Payment saved successfully.',
+                'amount_paid' => $newAmountPaid,
+                'balance' => $newBalance,
+                'payment_remark' => $paymentRemark,
+            ];
         } catch (Exception $e) {
-            return ['result' => false, 'message' => 'Error: ' . $e->getMessage()];
+            if ($transactionStarted) {
+                $this->db->rollback();
+            }
+            return ['result' => false, 'message' => $e->getMessage()];
         }
     }
 
@@ -4945,7 +5337,14 @@ class Action
         }
         $ext = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
         $fname = 'prod_' . uniqid() . '_' . time() . '.' . strtolower($ext);
-        if (move_uploaded_file($_FILES['image']['tmp_name'], 'uploads/products/' . $fname)) {
+        $uploadDir = __DIR__ . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'products';
+        if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true)) {
+            return '';
+        }
+        if (!is_writable($uploadDir)) {
+            return '';
+        }
+        if (move_uploaded_file($_FILES['image']['tmp_name'], $uploadDir . DIRECTORY_SEPARATOR . $fname)) {
             return $fname;
         }
         return '';
@@ -5057,21 +5456,20 @@ class Action
     }
 
     function update_pos_product() {
-        extract($_POST);
-        $id = intval($id);
+        $id = intval($_POST['id'] ?? 0);
         if ($id <= 0) {
             return 'Invalid product.';
         }
-        $product_code = $this->db->real_escape_string($product_code);
-        $product_name = $this->db->real_escape_string($product_name);
-        $category_id = intval($category_id);
-        $branch_id = intval($branch_id);
-        $description = $this->db->real_escape_string($description ?? '');
-        $quantity_on_hand = floatval($quantity_on_hand ?? 0);
-        $reorder_level = floatval($reorder_level ?? 10);
-        $unit_price = floatval($unit_price);
-        $cost_price = floatval($cost_price ?? 0);
-        $unit = strtolower(trim($unit ?? ''));
+        $product_code = $this->db->real_escape_string(trim($_POST['product_code'] ?? ''));
+        $product_name = $this->db->real_escape_string(trim($_POST['product_name'] ?? ''));
+        $category_id = intval($_POST['category_id'] ?? 0);
+        $branch_id = intval($_POST['branch_id'] ?? 0);
+        $description = $this->db->real_escape_string($_POST['description'] ?? '');
+        $quantity_on_hand = floatval($_POST['quantity_on_hand'] ?? 0);
+        $reorder_level = floatval($_POST['reorder_level'] ?? 10);
+        $unit_price = floatval($_POST['unit_price'] ?? 0);
+        $cost_price = floatval($_POST['cost_price'] ?? 0);
+        $unit = strtolower(trim($_POST['unit'] ?? ''));
         $unitAliases = [
             'piece' => 'pcs', 'pieces' => 'pcs',
             'square meter' => 'sqm', 'sqm (square meter)' => 'sqm',
@@ -5079,11 +5477,18 @@ class Action
         ];
         $unit = $unitAliases[$unit] ?? $unit;
         $unit = $this->db->real_escape_string($unit);
-        $status = intval($status ?? 1);
+        $status = intval($_POST['status'] ?? 1);
+
+        if ($product_code === '' || $product_name === '' || $category_id <= 0 || $branch_id <= 0 || $unit === '') {
+            return 'Please complete all required product fields.';
+        }
+        if ($unit_price < 0 || $quantity_on_hand < 0 || $reorder_level < 0 || $cost_price < 0) {
+            return 'Product amounts cannot be negative.';
+        }
 
         // Keep existing image unless a new one is uploaded
         $newImage = $this->upload_product_image();
-        $image = $this->db->real_escape_string($newImage !== '' ? $newImage : ($current_image ?? ''));
+        $image = $this->db->real_escape_string($newImage !== '' ? $newImage : ($_POST['current_image'] ?? ''));
         $imageSql = ", image='$image'";
 
         $check = $this->db->query("SELECT id FROM products WHERE product_code='$product_code' AND id <> $id LIMIT 1");

@@ -48,11 +48,6 @@ $simple_add_product_modal = false;
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="mb-0">Products</h5>
-                        <?php if ($can_manage_products): ?>
-                        <button type="button" class="btn btn-sm text-white" style="background:#219688;border-color:#219688;" data-bs-toggle="modal" data-bs-target="#modal-add-product">
-                            <i class="ri-add-line me-1"></i>Add Product
-                        </button>
-                        <?php endif; ?>
                     </div>
                     <div class="table-responsive">
                         <table id="inventory-table" class="table table-hover table-bordered align-middle">

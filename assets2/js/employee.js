@@ -180,14 +180,17 @@ $("#form-add").on("submit", async function (e) {
             url: "ajax.php?action=save_employee",
             method: "POST",
             data: $(this).serialize(),
-            // dataType: 'JSON',
+            dataType: "json",
             error: (xhr, status, error) => {
                 Swal.close();
                 handleError(error || "");
                 $(".submitbutton").removeAttr("disabled");
             },
             success: function (res) {
-                if (res == "updated") {
+                const response = typeof res === 'string' ? { success: res === 'updated', status: res, id: Number(res) || 0 } : (res || {});
+                const savedId = Number(response.id || response.employee_id || 0);
+
+                if (response.status === 'updated' || res === 'updated') {
                     Swal.fire({
                         icon: "success",
                         title: "Success!",
@@ -206,7 +209,7 @@ $("#form-add").on("submit", async function (e) {
                     cancelButtonText: "Close",
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        window.location.href = `index.php?page=employee-details&id=${res}`;
+                        window.location.href = `index.php?page=employee-details&id=${savedId || response.id || ''}`;
                     } else {
                         window.location.reload();
                     }

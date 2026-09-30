@@ -236,7 +236,7 @@ LEFT JOIN branches f ON f.id = a.site_id
             <?php if ($site_id === '') { ?>
                 <div class="top">
                     <div class="logo-area">
-                        <img style="width: 60px;" src="/payroll/assets/images/gv-logo.png" alt="Logo">
+                        <img style="width: 60px;" src="assets/images/gv-logo.png" alt="GV Glass Logo">
                     </div>
                     <div>
                         <div>GV Glass</div>
@@ -631,25 +631,20 @@ LEFT JOIN branches f ON f.id = a.site_id
 <script src="xlsx.full.min.js"></script> -->
 
 <script>
-    // Automatically navigate back to dashboard after print dialog closes
+    // Return to the Payroll Details screen after the print dialog closes.
+    const payrollDetailsUrl = 'index.php?page=payroll_calculations&id=<?= (int) $id ?>';
+    let isReturningToPayrollDetails = false;
+
+    function returnToPayrollDetails() {
+        if (isReturningToPayrollDetails) return;
+        isReturningToPayrollDetails = true;
+        window.location.replace(payrollDetailsUrl);
+    }
+
+    // Register before printing so the event is not missed; keep a fallback for older browsers.
+    window.addEventListener('afterprint', returnToPayrollDetails, { once: true });
     window.print();
-    
-    // Detect when print dialog is closed (either by printing or canceling)
-    // Different browsers handle this differently, so we use multiple methods
-    
-    // Method 1: Listen for afterprint event (works in modern browsers)
-    window.addEventListener('afterprint', function() {
-        window.location.href = '/payroll/index.php';
-    });
-    
-    // Method 2: Fallback for browsers that don't support afterprint
-    // Wait a short delay to see if the dialog is still open, then redirect
-    setTimeout(function() {
-        // Check if the window is still focused (user closed print dialog)
-        if (!window.isPrinting) {
-            window.location.href = '/payroll/index.php';
-        }
-    }, 2000);
+    setTimeout(returnToPayrollDetails, 2000);
 
     // function exportTableToExcel(tableID, filename = "PAYROLL.xlsx") {
     //     let table = document.getElementById(tableID);

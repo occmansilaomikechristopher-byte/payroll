@@ -237,6 +237,12 @@ if ($action == "mobile-pos-delete-damage") {
 	return;
 }
 
+if ($action == "mobile-pos-damage-history") {
+	$save = $crud->mobile_pos_damage_history();
+	echo json_encode($save);
+	return;
+}
+
 if ($action == "mobile-pos-approve-damage") {
 	$cashierWebSession = isset($_SESSION['is_login']) && $_SESSION['is_login'] === true &&
 		intval($_SESSION['login_role'] ?? 0) === 9;
@@ -252,6 +258,12 @@ if ($action == "mobile-pos-approve-damage") {
 
 if ($action == "mobile-pos-save-owner-requisition") {
 	$save = $crud->mobile_pos_save_owner_requisition();
+	echo json_encode($save);
+	return;
+}
+
+if ($action == "mobile-pos-owner-requisitions") {
+	$save = $crud->mobile_pos_owner_requisitions();
 	echo json_encode($save);
 	return;
 }
@@ -405,8 +417,15 @@ if ($action == 'signup') {
 // }
 if ($action == "save_employee") {
 	$save = $crud->save_employee();
-	if ($save)
-		echo $save;
+	if ($save) {
+		if (is_string($save) && $save === 'updated') {
+			echo json_encode(['success' => true, 'status' => 'updated']);
+		} else {
+			echo json_encode(['success' => true, 'id' => intval($save)]);
+		}
+		return;
+	}
+	echo json_encode(['success' => false, 'message' => 'Unable to save employee.']);
 }
 
 if ($action == "save_employee_contribution") {
@@ -549,6 +568,12 @@ if ($action == "save_user") {
 		echo json_encode($save);
 }
 
+if ($action == "update_profile") {
+	$save = $crud->update_profile();
+	echo json_encode($save);
+	return;
+}
+
 if ($action == "update_status_user") {
 	$save = $crud->update_status_user();
 	if ($save)
@@ -645,6 +670,55 @@ if ($action == "get_pos_sale_details") {
 	echo json_encode($crud->get_pos_sale_details());
 }
 
+if ($action === "sales-report") {
+	$login_role = intval($_SESSION['login_role'] ?? 0);
+	$session_user_id = intval($_SESSION['login_id'] ?? 0);
+	if (empty($_SESSION['is_login']) || !in_array($login_role, [1, 9], true)) {
+		http_response_code(403);
+		echo json_encode(['success' => false, 'message' => 'Access Forbidden']);
+		return;
+	}
+
+	$user_id = $login_role === 9 ? $session_user_id : intval($_GET['user_id'] ?? 0);
+	if ($login_role === 9 && $user_id <= 0) {
+		http_response_code(403);
+		echo json_encode(['success' => false, 'message' => 'Unable to identify cashier account.']);
+		return;
+	}
+
+	$where = $user_id > 0 ? ' WHERE s.cashier_id = ?' : '';
+	$sql = "SELECT s.*, b.branch_name, b.branch_code, u.name AS cashier_name
+			FROM pos_sales s
+			LEFT JOIN branches b ON b.id = s.branch_id
+			LEFT JOIN users u ON u.id = s.cashier_id$where
+			ORDER BY s.created_at DESC";
+	$stmt = $conn->prepare($sql);
+	if (!$stmt || ($user_id > 0 && !$stmt->bind_param('i', $user_id)) || !$stmt->execute()) {
+		http_response_code(500);
+		echo json_encode(['success' => false, 'message' => 'Unable to load sales report.']);
+		return;
+	}
+
+	$result = $stmt->get_result();
+	$sales = [];
+	$total_sales = 0;
+	$total_discount = 0;
+	while ($row = $result->fetch_assoc()) {
+		$sales[] = $row;
+		$total_sales += floatval($row['total'] ?? 0);
+		$total_discount += floatval($row['discount'] ?? 0);
+	}
+	$stmt->close();
+	echo json_encode([
+		'success' => true,
+		'sales' => $sales,
+		'total_count' => count($sales),
+		'total_sales' => $total_sales,
+		'total_discount' => $total_discount,
+	]);
+	return;
+}
+
 // ── POS: Branches ──
 if ($action == "add_pos_branch") {
 	$save = $crud->add_pos_branch();
@@ -702,10 +776,32 @@ if ($action == "owner-report-collections") {
 
 if ($action == "owner-report-sales-branches") {
 	global $conn;
+	$from = trim($_GET['from'] ?? '');
+	$to = trim($_GET['to'] ?? '');
+	$datePattern = '/^\d{4}-\d{2}-\d{2}$/';
+	if (($from !== '' && !preg_match($datePattern, $from)) || ($to !== '' && !preg_match($datePattern, $to))) {
+		http_response_code(400);
+		echo json_encode(['success' => false, 'message' => 'Invalid sales date range.']);
+		return;
+	}
+	if ($from !== '' && $to !== '' && $from > $to) {
+		http_response_code(400);
+		echo json_encode(['success' => false, 'message' => 'The From date cannot be later than the To date.']);
+		return;
+	}
+	$fromSql = $from !== '' ? $conn->real_escape_string($from . ' 00:00:00') : '';
+	$toSql = $to !== '' ? $conn->real_escape_string($to . ' 23:59:59') : '';
+	$dateJoin = '';
+	if ($fromSql !== '') {
+		$dateJoin .= " AND s.created_at >= '$fromSql'";
+	}
+	if ($toSql !== '') {
+		$dateJoin .= " AND s.created_at <= '$toSql'";
+	}
 	$branches = [];
 	$result = $conn->query(
 		"SELECT b.id, b.branch_name, IFNULL(SUM(s.total), 0) AS total_sales " .
-		"FROM branches b LEFT JOIN pos_sales s ON s.branch_id = b.id " .
+		"FROM branches b LEFT JOIN pos_sales s ON s.branch_id = b.id$dateJoin " .
 		"GROUP BY b.id, b.branch_name ORDER BY b.branch_name ASC"
 	);
 	if ($result) {
@@ -723,6 +819,28 @@ if ($action == "owner-report-sales-branches") {
 
 if ($action == "owner-report-collections-branches") {
 	global $conn;
+	$from = trim($_GET['from'] ?? '');
+	$to = trim($_GET['to'] ?? '');
+	$datePattern = '/^\d{4}-\d{2}-\d{2}$/';
+	if (($from !== '' && !preg_match($datePattern, $from)) || ($to !== '' && !preg_match($datePattern, $to))) {
+		http_response_code(400);
+		echo json_encode(['success' => false, 'message' => 'Invalid collections date range.']);
+		return;
+	}
+	if ($from !== '' && $to !== '' && $from > $to) {
+		http_response_code(400);
+		echo json_encode(['success' => false, 'message' => 'The From date cannot be later than the To date.']);
+		return;
+	}
+	$fromSql = $from !== '' ? $conn->real_escape_string($from . ' 00:00:00') : '';
+	$toSql = $to !== '' ? $conn->real_escape_string($to . ' 23:59:59') : '';
+	$dateJoin = '';
+	if ($fromSql !== '') {
+		$dateJoin .= " AND s.created_at >= '$fromSql'";
+	}
+	if ($toSql !== '') {
+		$dateJoin .= " AND s.created_at <= '$toSql'";
+	}
 	$check = $conn->query("SHOW COLUMNS FROM pos_sales LIKE 'collection_status'");
 	if ($check && $check->num_rows === 0) {
 		$conn->query("ALTER TABLE pos_sales ADD COLUMN collection_status ENUM('Pending','Approved') NOT NULL DEFAULT 'Pending' AFTER change_due");
@@ -732,7 +850,7 @@ if ($action == "owner-report-collections-branches") {
 		"SELECT b.id, b.branch_name, " .
 		"IFNULL(SUM(CASE WHEN s.collection_status = 'Approved' THEN s.payment ELSE 0 END), 0) AS approved_collections, " .
 		"IFNULL(SUM(CASE WHEN s.collection_status <> 'Approved' OR s.collection_status IS NULL THEN s.payment ELSE 0 END), 0) AS pending_collections " .
-		"FROM branches b LEFT JOIN pos_sales s ON s.branch_id = b.id " .
+		"FROM branches b LEFT JOIN pos_sales s ON s.branch_id = b.id$dateJoin " .
 		"GROUP BY b.id, b.branch_name ORDER BY b.branch_name ASC"
 	);
 	if ($result) {
@@ -752,6 +870,21 @@ if ($action == "owner-report-collections-branches") {
 if ($action == "owner-report-inventory-branches") {
 	global $conn;
 	$branches = [];
+	$productsByBranch = [];
+	$productsResult = $conn->query(
+		"SELECT id, branch_id, product_name, quantity_on_hand " .
+		"FROM products WHERE status = 1 ORDER BY product_name ASC"
+	);
+	if ($productsResult) {
+		while ($product = $productsResult->fetch_assoc()) {
+			$branchId = intval($product['branch_id']);
+			$productsByBranch[$branchId][] = [
+				'id' => intval($product['id']),
+				'product_name' => $product['product_name'],
+				'quantity_on_hand' => floatval($product['quantity_on_hand']),
+			];
+		}
+	}
 	$result = $conn->query(
 		"SELECT b.id, b.branch_name, IFNULL(COUNT(p.id), 0) AS total_products " .
 		"FROM branches b LEFT JOIN products p ON p.branch_id = b.id AND p.status = 1 " .
@@ -763,6 +896,7 @@ if ($action == "owner-report-inventory-branches") {
 				'id' => intval($row['id']),
 				'branch_name' => $row['branch_name'],
 				'total_products' => intval($row['total_products']),
+				'products' => $productsByBranch[intval($row['id'])] ?? [],
 			];
 		}
 	}
@@ -833,6 +967,83 @@ if ($action == "owner-report-inventory") {
 	return;
 }
 
+if ($action == "owner-report-damage") {
+	global $conn;
+	$count = 0;
+	$pending = 0;
+	$resolved = 0;
+	$result = $conn->query(
+		"SELECT COUNT(*) AS total_damage, " .
+		"SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) AS pending_damage, " .
+		"SUM(CASE WHEN status IN ('Approved', 'Resolved') THEN 1 ELSE 0 END) AS resolved_damage " .
+		"FROM damage_items"
+	);
+	if ($result) {
+		$row = $result->fetch_assoc();
+		$count = intval($row['total_damage'] ?? 0);
+		$pending = intval($row['pending_damage'] ?? 0);
+		$resolved = intval($row['resolved_damage'] ?? 0);
+	}
+	echo json_encode([
+		'success' => true,
+		'count' => $count,
+		'pending' => $pending,
+		'resolved' => $resolved,
+	]);
+	return;
+}
+
+if ($action == "owner-report-damage-branches") {
+	global $conn;
+	$branches = [];
+	$imageStmt = $conn->prepare("SELECT id, item_name, damage_image AS image_path, status, created_at
+		FROM damage_items
+		WHERE branch_id = ? AND damage_image IS NOT NULL AND damage_image <> ''
+		ORDER BY created_at DESC, id DESC");
+	$result = $conn->query(
+		"SELECT b.id, b.branch_name, " .
+		"COUNT(d.id) AS total_damage, " .
+		"SUM(CASE WHEN d.status = 'Pending' THEN 1 ELSE 0 END) AS pending_damage, " .
+		"SUM(CASE WHEN d.status IN ('Approved', 'Resolved') THEN 1 ELSE 0 END) AS resolved_damage " .
+		"FROM branches b " .
+		"LEFT JOIN damage_items d ON d.branch_id = b.id " .
+		"GROUP BY b.id, b.branch_name ORDER BY b.branch_name ASC"
+	);
+	if ($result) {
+		while ($row = $result->fetch_assoc()) {
+			$damageItems = [];
+			if ($imageStmt) {
+				$damageBranchId = intval($row['id']);
+				$imageStmt->bind_param('i', $damageBranchId);
+				$imageStmt->execute();
+				$imageResult = $imageStmt->get_result();
+				while ($imageRow = $imageResult->fetch_assoc()) {
+					$damageItems[] = [
+						'id' => intval($imageRow['id']),
+						'item_name' => $imageRow['item_name'],
+						'image_path' => $imageRow['image_path'],
+						'status' => $imageRow['status'],
+						'created_at' => $imageRow['created_at'],
+					];
+				}
+			}
+			$branches[] = [
+				'id' => intval($row['id']),
+				'branch_name' => $row['branch_name'],
+				'total_damage' => intval($row['total_damage']),
+				'pending_damage' => intval($row['pending_damage']),
+				'resolved_damage' => intval($row['resolved_damage']),
+				'damage_items' => $damageItems,
+			];
+		}
+	}
+	if ($imageStmt) {
+		$imageStmt->close();
+	}
+	echo json_encode(['success' => true, 'branches' => $branches]);
+	return;
+}
+
 if ($action == "owner-report-attendance") {
 	global $conn;
 	$attendanceRate = 0;
@@ -878,26 +1089,13 @@ if ($action == "owner-report-quotations") {
 
 if ($action == "owner-report-payable") {
 	global $conn;
-	// Get outstanding POS sales payable
-	$psCount = 0;
-	$psTotal = 0;
-	$res1 = $conn->query("SELECT COUNT(*) AS count, IFNULL(SUM(total - payment), 0) AS total_payable FROM pos_sales WHERE total > payment");
-	if ($res1) {
-		$r1 = $res1->fetch_assoc();
-		$psCount = intval($r1['count'] ?? 0);
-		$psTotal = floatval($r1['total_payable'] ?? 0);
-	}
-
-	// Get owner requisitions payable (approved) minus any amount_paid
+	// Payable comes only from approved owner requisitions with an outstanding balance.
 	$orqCount = 0;
 	$orqTotal = 0;
 	$res2 = $conn->query(
-		"SELECT COUNT(*) AS count, IFNULL(SUM(CASE WHEN (r.quantity * COALESCE(p.unit_price,0) - IFNULL(r.amount_paid,0)) > 0 " .
-		"THEN (r.quantity * COALESCE(p.unit_price,0) - IFNULL(r.amount_paid,0)) ELSE 0 END), 0) AS total_payable " .
+		"SELECT COUNT(*) AS count, IFNULL(SUM(GREATEST(r.balance, 0)), 0) AS total_payable " .
 		"FROM owner_requisitions r " .
-		"LEFT JOIN products p ON p.product_name COLLATE utf8mb4_unicode_ci = r.item_name COLLATE utf8mb4_unicode_ci " .
-		"AND p.status = 1 AND p.branch_id = r.branch_id " .
-		"WHERE r.status = 'Approved'"
+		"WHERE r.status = 'Approved' AND r.balance > 0"
 	);
 	if ($res2) {
 		$r2 = $res2->fetch_assoc();
@@ -905,12 +1103,10 @@ if ($action == "owner-report-payable") {
 		$orqTotal = floatval($r2['total_payable'] ?? 0);
 	}
 
-	$totalCount = $psCount + $orqCount;
-	$totalPayable = $psTotal + $orqTotal;
 	echo json_encode([
 		'success' => true,
-		'count' => $totalCount,
-		'total' => $totalPayable,
+		'count' => $orqCount,
+		'total' => $orqTotal,
 	]);
 	return;
 }
@@ -920,19 +1116,16 @@ if ($action == "owner-report-payable-branches") {
 	$branches = [];
 	$result = $conn->query(
 		"SELECT b.id, b.branch_name, " .
-		"IFNULL(ps.payable_count, 0) + IFNULL(orq.payable_count, 0) AS payable_count, " .
-		"IFNULL(ps.total_payable, 0) + IFNULL(orq.total_payable, 0) AS total_payable " .
+		"IFNULL(orq.approved_count, 0) AS approved_count, " .
+		"IFNULL(orq.payable_count, 0) AS payable_count, " .
+		"IFNULL(orq.total_payable, 0) AS total_payable " .
 		"FROM branches b " .
 		"LEFT JOIN (" .
-			"SELECT branch_id AS pos_branch_id, COUNT(*) AS payable_count, IFNULL(SUM(total - payment), 0) AS total_payable " .
-			"FROM pos_sales WHERE total > payment GROUP BY branch_id" .
-		") ps ON ps.pos_branch_id = b.id " .
-		"LEFT JOIN (" .
-			"SELECT r.branch_id AS orq_branch_id, COUNT(*) AS payable_count, IFNULL(SUM(GREATEST(r.quantity * COALESCE(p.unit_price, 0) - IFNULL(r.amount_paid, 0), 0)), 0) AS total_payable " .
+			"SELECT r.branch_id AS orq_branch_id, COUNT(*) AS approved_count, " .
+			"SUM(CASE WHEN r.balance > 0 THEN 1 ELSE 0 END) AS payable_count, " .
+			"IFNULL(SUM(GREATEST(r.balance, 0)), 0) AS total_payable " .
 			"FROM owner_requisitions r " .
-			"LEFT JOIN products p ON p.product_name COLLATE utf8mb4_unicode_ci = r.item_name COLLATE utf8mb4_unicode_ci " .
-			"AND p.status = 1 AND p.branch_id = r.branch_id " .
-			"WHERE r.status = 'Approved' AND (r.quantity * COALESCE(p.unit_price, 0) - IFNULL(r.amount_paid, 0)) > 0 GROUP BY r.branch_id" .
+			"WHERE r.status = 'Approved' GROUP BY r.branch_id" .
 		") orq ON orq.orq_branch_id = b.id " .
 		"GROUP BY b.id, b.branch_name ORDER BY b.branch_name ASC"
 	);
@@ -943,6 +1136,7 @@ if ($action == "owner-report-payable-branches") {
 				'branch_name' => $row['branch_name'],
 				'payable_count' => intval($row['payable_count']),
 				'total_payable' => floatval($row['total_payable']),
+				'is_paid' => intval($row['approved_count']) > 0 && intval($row['payable_count']) === 0,
 			];
 		}
 	}
