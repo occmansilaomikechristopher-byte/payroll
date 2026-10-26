@@ -26,6 +26,7 @@ class Action
         $this->ensureNotificationTable();
         $this->ensureOwnerRequisitionPaymentSchema();
         $this->ensureQuotationTables();
+        $this->ensurePayrollAdjustmentSchema();
     }
 
     function __destruct()
@@ -55,6 +56,21 @@ class Action
         $result = $this->db->query("SHOW COLUMNS FROM notifications LIKE 'branch_id'");
         if ($result && $result->num_rows === 0) {
             $this->db->query("ALTER TABLE notifications ADD COLUMN branch_id INT NULL AFTER target_user_id");
+        }
+    }
+
+    private function ensurePayrollAdjustmentSchema()
+    {
+        $columns = [
+            'adjustment_amount' => 'DECIMAL(12,2) NOT NULL DEFAULT 0.00',
+            'adjustment_remarks' => 'TEXT NULL',
+        ];
+
+        foreach ($columns as $column => $definition) {
+            $result = $this->db->query("SHOW COLUMNS FROM payroll_items LIKE '$column'");
+            if ($result && $result->num_rows === 0) {
+                $this->db->query("ALTER TABLE payroll_items ADD COLUMN $column $definition");
+            }
         }
     }
 
@@ -4223,6 +4239,7 @@ class Action
                         $stmt->bind_param("di", $salary, $employee_id);
                         $stmt->execute();
                     }
+
                 }
             }
 
@@ -4232,6 +4249,79 @@ class Action
             $this->db->rollback();
             return ['result' => false, 'message' => 'Error updating payroll items: ' . $e->getMessage()];
         }
+    }
+
+    function save_payroll_adjustment()
+    {
+        $loginRole = (int) ($_SESSION['login_role'] ?? 0);
+        if (!in_array($loginRole, [1, 10], true)) {
+            return ['result' => false, 'message' => 'You are not authorized to edit payroll adjustments.'];
+        }
+
+        $itemId = (int) ($_POST['id'] ?? 0);
+        $amountRaw = trim((string) ($_POST['adjustment_amount'] ?? ''));
+        $remarks = trim((string) ($_POST['adjustment_remarks'] ?? ''));
+
+        if ($itemId <= 0 || $amountRaw === '' || !is_numeric($amountRaw)) {
+            return ['result' => false, 'message' => 'A valid adjustment amount is required.'];
+        }
+
+        $amount = round((float) $amountRaw, 2);
+        if ($amount > 0 && $remarks === '') {
+            return ['result' => false, 'message' => 'Please provide remarks explaining this adjustment.'];
+        }
+        if (mb_strlen($remarks) > 1000) {
+            return ['result' => false, 'message' => 'Adjustment remarks must not exceed 1000 characters.'];
+        }
+
+        $stmt = $this->db->prepare(
+            "SELECT pi.payroll_id, p.status, pi.employee_id, pi.adjustment_amount, pi.net
+             FROM payroll_items pi
+             INNER JOIN payroll p ON p.id = pi.payroll_id
+             WHERE pi.id = ?"
+        );
+        if (!$stmt) {
+            return ['result' => false, 'message' => 'Unable to validate the payroll adjustment.'];
+        }
+        $stmt->bind_param('i', $itemId);
+        $stmt->execute();
+        $item = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$item) {
+            return ['result' => false, 'message' => 'Payroll record not found.'];
+        }
+        if ((int) $item['status'] === 2) {
+            return ['result' => false, 'message' => 'Locked payroll records cannot be adjusted.'];
+        }
+
+        $oldAdjustment = (float) ($item['adjustment_amount'] ?? 0);
+        $oldNet = (float) ($item['net'] ?? 0);
+        $newNet = round($oldNet - $oldAdjustment + $amount, 2);
+        $stmt = $this->db->prepare(
+            "UPDATE payroll_items
+             SET adjustment_amount = ?, adjustment_remarks = NULLIF(?, ''), net = ?
+             WHERE id = ?"
+        );
+        if (!$stmt) {
+            return ['result' => false, 'message' => 'Unable to save the payroll adjustment.'];
+        }
+        $stmt->bind_param('dsdi', $amount, $remarks, $newNet, $itemId);
+        if (!$stmt->execute()) {
+            $stmt->close();
+            return ['result' => false, 'message' => 'Unable to save the payroll adjustment.'];
+        }
+        $stmt->close();
+
+        $this->save_payroll_history(
+            (int) $item['payroll_id'],
+            11,
+            [['value' => $amount, 'field' => 'adjustment_amount', 'employee_id' => (int) $item['employee_id']]],
+            null,
+            $remarks
+        );
+
+        return ['result' => true, 'message' => 'Payroll adjustment saved.'];
     }
 
     function save_new_payroll_item($id, $value, $field, $dd_id)
@@ -4644,6 +4734,17 @@ class Action
             $details = (is_array($other) ? implode(', ', array_map('strval', $other)) : (string) $other) . ' Payroll';
         }
 
+        if ($type === 11) {
+            $employee_id = (int) ($other[0]['employee_id'] ?? 0);
+            $amount = (float) ($other[0]['value'] ?? 0);
+            $stmt = $this->db->prepare("SELECT firstname, lastname FROM employee WHERE id = ?");
+            $stmt->bind_param("i", $employee_id);
+            $stmt->execute();
+            $emp = $stmt->get_result()->fetch_assoc();
+            $employeeName = $emp ? $emp['lastname'] . ', ' . $emp['firstname'] : 'Unknown employee';
+            $details = "Employee: {$employeeName} & Adjustment: {$amount} & Remarks: " . (string) $value2;
+        }
+
         if ($type === 7) {
             $employee_id = $other[0]['employee_id'];
             $field = $other[0]['field'];
@@ -4738,7 +4839,7 @@ class Action
 
         $data = " payroll_id='$payroll_id' ";
         $data .= ", user_id = '$user_id' ";
-        $data .= ", details = '$details' ";
+        $data .= ", details = '" . $this->db->real_escape_string($details) . "' ";
         // var_dump("INSERT INTO payroll_logs set " . $data);
         $save = $this->db->query("INSERT INTO payroll_logs set " . $data);
     }

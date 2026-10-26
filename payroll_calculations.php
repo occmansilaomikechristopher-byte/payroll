@@ -26,6 +26,7 @@ $site_ids = json_decode($payroll['site_ids'], true);
 $site_ids = isset($site_ids) ? $site_ids : [];
 $commaSeparatedSites = implode(',', $site_ids);
 $status = $payroll['status'];
+$can_edit_adjustments = in_array((int) ($_SESSION['login_role'] ?? 0), [1, 10], true) && $status !== 2;
 
 $i = 0;
 $query = $conn->query("SELECT a.*, f.branch_code, f.branch_name, e.employee_no, e.lastname, e.firstname, e.middlename, e.basic_pay, d.name as department, p.name as position
@@ -173,6 +174,7 @@ $payroll_type = $payroll['type'];
                                                 <!-- Late (3 cols) -->
                                                 <th colspan="3" class="text-center">Late</th>
                                                 <th rowspan="2" class="text-center">Total Gross Pay</th>
+                                                <th colspan="2" class="text-center">Adjustment</th>
                                                 <!-- Deductions -->
                                                 <th colspan="<?= count($contributions_settings) + 4 ?>" class="text-center">Deductions</th>
                                                 <th rowspan="2" class="text-center">Total Deduction</th>
@@ -213,6 +215,8 @@ $payroll_type = $payroll['type'];
                                                 <th class="text-center">Minutes</th>
                                                 <th class="text-center">Rate</th>
                                                 <th class="text-center">Amount</th>
+                                                <th class="text-center">Amount</th>
+                                                <th class="text-center">Remarks</th>
                                                 <!-- Deduction sub-headers -->
                                                 <?php if (count($contributions_settings) > 0) {
                                                     foreach ($contributions_settings as $k) {
@@ -302,7 +306,9 @@ $payroll_type = $payroll['type'];
 
                                                 $total_amount =  ($total_basic_rate    +  $total_allowance - $absent_amount) / 2;
                                                 $t_total_amount += $total_amount;
-                                                $gross_salary =  ($total_amount +   $overtime_amount   +  $legal_holiday_amount + $sunday_duty_amount +  $special_holiday_amount - $late_amount);
+                                                $adjustment_amount = (float) ($row['adjustment_amount'] ?? 0);
+                                                $gross_salary_before_adjustment = $total_amount + $overtime_amount + $legal_holiday_amount + $sunday_duty_amount + $special_holiday_amount - $late_amount;
+                                                $gross_salary = $gross_salary_before_adjustment + $adjustment_amount;
 
                                                 $contributions = json_decode($row['contributions'], true);
                                                 $deductions = json_decode($row['deductions'], true);
@@ -495,8 +501,23 @@ $payroll_type = $payroll['type'];
                                                         <b><?= number_format($late_amount, 2) ?></b>
                                                     </td>
                                                     <!-- /Late -->
-                                                    <td class="text-right" style="min-width: 90px;">
+                                                    <td class="text-right gross-salary" style="min-width: 90px;" data-base-gross="<?= htmlspecialchars((string) $gross_salary_before_adjustment) ?>">
                                                         <b><?= number_format($gross_salary, 2) ?></b>
+                                                    </td>
+                                                    <td style="min-width: 120px;" class="text-right">
+                                                        <?php if ($can_edit_adjustments) { ?>
+                                                            <input type="number" step="0.01" class="form-control adjustment-amount" value="<?= htmlspecialchars((string) $adjustment_amount) ?>" data-id="<?= (int) $row['id'] ?>">
+                                                        <?php } else { ?>
+                                                            <b><?= number_format($adjustment_amount, 2) ?></b>
+                                                        <?php } ?>
+                                                    </td>
+                                                    <td style="min-width: 220px;">
+                                                        <?php if ($can_edit_adjustments) { ?>
+                                                            <textarea class="form-control adjustment-remarks" rows="2" maxlength="1000" data-id="<?= (int) $row['id'] ?>" placeholder="Why was this adjustment made?"><?= htmlspecialchars((string) ($row['adjustment_remarks'] ?? '')) ?></textarea>
+                                                            <button type="button" class="btn btn-sm btn-primary mt-1 save-adjustment" data-id="<?= (int) $row['id'] ?>">Save</button>
+                                                        <?php } else { ?>
+                                                            <?= nl2br(htmlspecialchars((string) ($row['adjustment_remarks'] ?? ''))) ?>
+                                                        <?php } ?>
                                                     </td>
                                                     <?php
 
@@ -652,7 +673,7 @@ $payroll_type = $payroll['type'];
                                                     $net = $gross_salary -  $total_deductions + $total_refunds;
                                                     $t_net += $net;
                                                     ?>
-                                                    <td style="min-width: 90px;" class="text-right net-content">
+                                                    <td style="min-width: 90px;" class="text-right net-content" data-base-gross="<?= htmlspecialchars((string) $gross_salary_before_adjustment) ?>" data-total-deductions="<?= htmlspecialchars((string) $total_deductions) ?>" data-total-refunds="<?= htmlspecialchars((string) $total_refunds) ?>">
                                                         <b><?= number_format($net, 2) ?></b>
                                                     </td>
                                                     <td style="min-width: 90px;" class="text-center">
@@ -696,6 +717,7 @@ $payroll_type = $payroll['type'];
                                                 <th class="text-right"><?= number_format($t_late, 2) ?></th>
                                                 <th></th>
                                                 <th class="text-right"><?= number_format($t_gross, 2) ?></th>
+                                                <th colspan="2"></th>
                                                 <th colspan="<?= count($contributions_settings) ?>"></th>
                                                 <th></th>
                                                 <th></th>
@@ -730,6 +752,7 @@ $payroll_type = $payroll['type'];
                                                 <th colspan="3" class="text-center">Overtime</th>
                                                 <th colspan="3" class="text-center">Late</th>
                                                 <th rowspan="2" class="text-center">GROSS SALARY</th>
+                                                <th colspan="2" class="text-center">Adjustment</th>
                                                 <th colspan="<?= count($contributions_settings) ?>" class="text-center">Deduction</th>
                                                 <th rowspan="2" class="text-center">Total Deduction</th>
                                                 <?php if (count($refunds_settings) > 0) { ?>
@@ -751,6 +774,8 @@ $payroll_type = $payroll['type'];
                                                 <th class="text-center">Min</th>
                                                 <th class="text-center">Rate</th>
                                                 <th class="text-center">Amount</th>
+                                                <th class="text-center">Amount</th>
+                                                <th class="text-center">Remarks</th>
 
                                                 <?php if (count($contributions_settings) > 0) {
                                                     foreach ($contributions_settings as $k) {
@@ -850,7 +875,9 @@ $payroll_type = $payroll['type'];
 
                                                 $total_amount =  ($total_basic_rate    +  $total_allowance - $absent_amount) / 2;
                                                 $t_total_amount += $total_amount;
-                                                $gross_salary =  (($total_basic_rate +   $overtime_amount   +  $total_allowance)   - $late_amount);
+                                                $adjustment_amount = (float) ($row['adjustment_amount'] ?? 0);
+                                                $gross_salary_before_adjustment = $total_basic_rate + $overtime_amount + $total_allowance - $late_amount;
+                                                $gross_salary = $gross_salary_before_adjustment + $adjustment_amount;
 
                                                 $contributions = json_decode($row['contributions'], true);
                                                 $deductions = json_decode($row['deductions'], true);
@@ -959,8 +986,23 @@ $payroll_type = $payroll['type'];
                                                         <b><?= number_format($late_amount, 2) ?></b>
                                                     </td>
                                                     <!-- /Late -->
-                                                    <td class="text-right" style="min-width: 90px;">
+                                                    <td class="text-right gross-salary" style="min-width: 90px;" data-base-gross="<?= htmlspecialchars((string) $gross_salary_before_adjustment) ?>">
                                                         <b><?= number_format($gross_salary, 2) ?></b>
+                                                    </td>
+                                                    <td style="min-width: 120px;" class="text-right">
+                                                        <?php if ($can_edit_adjustments) { ?>
+                                                            <input type="number" step="0.01" class="form-control adjustment-amount" value="<?= htmlspecialchars((string) $adjustment_amount) ?>" data-id="<?= (int) $row['id'] ?>">
+                                                        <?php } else { ?>
+                                                            <b><?= number_format($adjustment_amount, 2) ?></b>
+                                                        <?php } ?>
+                                                    </td>
+                                                    <td style="min-width: 220px;">
+                                                        <?php if ($can_edit_adjustments) { ?>
+                                                            <textarea class="form-control adjustment-remarks" rows="2" maxlength="1000" data-id="<?= (int) $row['id'] ?>" placeholder="Why was this adjustment made?"><?= htmlspecialchars((string) ($row['adjustment_remarks'] ?? '')) ?></textarea>
+                                                            <button type="button" class="btn btn-sm btn-primary mt-1 save-adjustment" data-id="<?= (int) $row['id'] ?>">Save</button>
+                                                        <?php } else { ?>
+                                                            <?= nl2br(htmlspecialchars((string) ($row['adjustment_remarks'] ?? ''))) ?>
+                                                        <?php } ?>
                                                     </td>
                                                     <?php
 
@@ -1049,7 +1091,7 @@ $payroll_type = $payroll['type'];
                                                     $net = $gross_salary -  $total_deductions + $total_refunds;
                                                     $t_net += $net;
                                                     ?>
-                                                    <td style="min-width: 90px;" class="text-right net-content">
+                                                    <td style="min-width: 90px;" class="text-right net-content" data-base-gross="<?= htmlspecialchars((string) $gross_salary_before_adjustment) ?>" data-total-deductions="<?= htmlspecialchars((string) $total_deductions) ?>" data-total-refunds="<?= htmlspecialchars((string) $total_refunds) ?>">
                                                         <b><?= number_format($net, 2) ?></b>
                                                     </td>
                                                     <td style="min-width: 90px;" class="text-center">
@@ -1083,6 +1125,7 @@ $payroll_type = $payroll['type'];
                                                 <th></th>
                                                 <th></th>
                                                 <th class="text-right"><?= number_format($t_gross, 2) ?></th>
+                                                <th colspan="2"></th>
                                                 <th colspan="<?= count($contributions_settings) ?>"></th>
                                                 <th class="text-right"><?= number_format($t_deduction, 2) ?></th>
                                                 <?php if (count($refunds_settings) > 0) { ?>

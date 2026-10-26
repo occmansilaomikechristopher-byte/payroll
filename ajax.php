@@ -535,6 +535,10 @@ if ($action == "calculate_payroll") {
 	$save = $crud->calculate_payroll();
 	echo json_encode($save);
 }
+if ($action == "save_payroll_adjustment") {
+	$save = $crud->save_payroll_adjustment();
+	echo json_encode($save);
+}
 
 if ($action == "save_contribution") {
 	$save = $crud->save_contribution();
@@ -1143,7 +1147,6 @@ if ($action == "owner-report-payable-branches") {
 	echo json_encode(['success' => true, 'branches' => $branches]);
 	return;
 }
-
 
 
 

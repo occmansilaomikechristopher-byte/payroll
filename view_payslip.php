@@ -58,6 +58,8 @@ $allowance_rate = (float) $payroll['allowance_amount'];
 $allowance_days = (float) ($payroll['allowance_days'] ?? 0);
 $total_allowance = $allowance_rate * $allowance_days;
 $gross_salary = $total_basic_rate + $overtime_amount - $late_amount - $undertime_amount + $total_allowance;
+$adjustment_amount = (float) ($payroll['adjustment_amount'] ?? 0);
+$gross_salary += $adjustment_amount;
 $net = $gross_salary - $total_deductions;
 
 ?>
@@ -166,6 +168,10 @@ $net = $gross_salary - $total_deductions;
 							<p>Employee ID : <b><?= htmlspecialchars($payroll['employee_no']) ?></b></p>
 							<p>Employee Name : <b><?= htmlspecialchars($payroll['lastname']) ?> <?= htmlspecialchars($payroll['firstname']) ?> <?= htmlspecialchars($payroll['middlename']) ?>.</b></p>
 							<p>Period: <?= date('F d', strtotime($payroll['date_from'])) ?> - <?= date('F d, Y', strtotime($payroll['date_to'])) ?></p>
+							<p>Adjustment: <b><?= number_format($adjustment_amount, 2) ?></b></p>
+							<?php if (trim((string) ($payroll['adjustment_remarks'] ?? '')) !== ''): ?>
+								<p>Adjustment remarks: <?= nl2br(htmlspecialchars($payroll['adjustment_remarks'])) ?></p>
+							<?php endif; ?>
 						</td>
 						<td style="border-left: 1px solid #000; padding: 10px; width: 50%;">
 							<p>Office: <b>Danao Patag Opol Misamis Oriental </b></p>

@@ -322,6 +322,7 @@ LEFT JOIN branches f ON f.id = a.site_id
                         <th colspan="3" class="text-center info-header">Overtime</th>
                         <th colspan="3" class="text-center info-header">Late</th>
                         <th rowspan="2" class="text-center success-header">GROSS SALARY</th>
+                        <th colspan="2" class="text-center success-header">Adjustment</th>
                         <th colspan="<?= count($contributions_settings) ?>" class="text-center danger-header">Deduction</th>
                         <th rowspan="2" class="text-center danger-header">Total Deduction</th>
                         <?php if (count($refunds_settings) > 0) { ?>
@@ -343,6 +344,8 @@ LEFT JOIN branches f ON f.id = a.site_id
                         <th class="text-center  info-header">Min</th>
                         <th class="text-center  info-header">Rate</th>
                         <th class="text-center  info-header">Amount</th>
+                        <th class="text-center success-header">Amount</th>
+                        <th class="text-center success-header">Remarks</th>
 
                         <?php if (count($contributions_settings) > 0) {
                             foreach ($contributions_settings as $k) {
@@ -441,7 +444,8 @@ LEFT JOIN branches f ON f.id = a.site_id
 
                         $total_amount =  ($total_basic_rate    +  $total_allowance - $absent_amount) / 2;
                         $t_total_amount += $total_amount;
-                        $gross_salary =  (($total_basic_rate +   $overtime_amount   +  $total_allowance)   - $late_amount);
+                        $adjustment_amount = (float) ($row['adjustment_amount'] ?? 0);
+                        $gross_salary =  (($total_basic_rate +   $overtime_amount   +  $total_allowance)   - $late_amount) + $adjustment_amount;
 
                         $contributions = json_decode($row['contributions'], true);
                         $deductions = json_decode($row['deductions'], true);
@@ -516,6 +520,12 @@ LEFT JOIN branches f ON f.id = a.site_id
                             <!-- /Late -->
                             <td class="text-right">
                                 <?= number_format($gross_salary, 2) ?>
+                            </td>
+                            <td class="text-right">
+                                <?= number_format($adjustment_amount, 2) ?>
+                            </td>
+                            <td style="max-width: 180px; white-space: normal; overflow-wrap: anywhere;">
+                                <?= nl2br(htmlspecialchars((string) ($row['adjustment_remarks'] ?? ''))) ?>
                             </td>
                             <?php
 

@@ -41,6 +41,62 @@ $(document).ready(function () {
     updatePayroll();
 });
 
+$(document).on("click", ".save-adjustment", function () {
+    const itemId = $(this).data("id");
+    const row = $(this).closest("tr");
+    const amount = row.find(".adjustment-amount").val();
+    const remarks = row.find(".adjustment-remarks").val().trim();
+    const button = $(this);
+    const numericAmount = Number(amount);
+
+    if (amount === "" || !Number.isFinite(numericAmount)) {
+        Swal.fire({ icon: "error", title: "Invalid amount", text: "Enter a valid adjustment amount." });
+        return;
+    }
+    if (numericAmount > 0 && remarks === "") {
+        Swal.fire({ icon: "error", title: "Remarks required", text: "Explain why this adjustment was made." });
+        return;
+    }
+
+    button.prop("disabled", true);
+    $.ajax({
+        url: "ajax.php?action=save_payroll_adjustment&_=" + Date.now(),
+        method: "POST",
+        dataType: "JSON",
+        data: { id: itemId, adjustment_amount: numericAmount, adjustment_remarks: remarks },
+        success: function (res) {
+            if (res && res.result) {
+                const adjustment = numericAmount;
+                const grossCell = row.find(".gross-salary");
+                const netCell = row.find(".net-content");
+                const baseGross = Number(netCell.attr("data-base-gross"));
+                const totalDeductions = Number(netCell.attr("data-total-deductions"));
+                const totalRefunds = Number(netCell.attr("data-total-refunds"));
+                const gross = baseGross + adjustment;
+                const net = gross - totalDeductions + totalRefunds;
+
+                grossCell.find("b").text(gross.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                netCell.find("b").text(net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                button.prop("disabled", false);
+                Swal.fire({ icon: "success", title: "Saved", text: "Adjustment and Net Pay updated." });
+            } else {
+                Swal.fire({ icon: "error", title: "Unable to save", text: res && res.message ? res.message : "The adjustment could not be saved." });
+                button.prop("disabled", false);
+            }
+        },
+        error: function (xhr) {
+            let message = "The adjustment could not be saved.";
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                message = xhr.responseJSON.message;
+            } else if (xhr.responseText) {
+                message += " Server response: " + xhr.responseText.substring(0, 200);
+            }
+            Swal.fire({ icon: "error", title: "Unable to save", text: message });
+            button.prop("disabled", false);
+        }
+    });
+});
+
 function view_site() {
     $("#modal-sites-2").modal("show");
 }
