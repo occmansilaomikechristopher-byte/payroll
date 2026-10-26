@@ -1607,7 +1607,7 @@ class Action
             FROM pos_sale_items WHERE sale_id = ? ORDER BY id ASC");
         $items = [];
         if ($itemsStmt) {
-            $itemsStmt->bind_param('i', $sale_id);
+            $itemsStmt->bind_param('i', $sale_id);  
             $itemsStmt->execute();
             $itemsRes = $itemsStmt->get_result();
             while ($row = $itemsRes->fetch_assoc()) {

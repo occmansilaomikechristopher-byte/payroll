@@ -35,7 +35,7 @@
     <style>
         /* Dark blue sidebar theme */
         .navbar-menu {
-            background: linear-gradient(180deg, #0d493a 0%, #017065 100%) !important;
+            background: linear-gradient(180deg, #16886c 0%, #017065 100%) !important;
             border-right: 1px solid rgba(255, 255, 255, 0.71);
         }
 
