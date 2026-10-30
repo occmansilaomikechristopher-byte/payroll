@@ -1,4 +1,35 @@
 <!-- ── Create / Edit Employee ─────────────────────────────────────── -->
+<style>
+    #addemployee .classification-label,
+    #addemployee .select2-container .select2-selection__rendered,
+    #addemployee .select2-results__option {
+        color: #212529 !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+
+    #addemployee .classification-label {
+        display: block;
+        color: #009688 !important;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    #modal-loan .loan-label,
+    #modal-loan .select2-container .select2-selection__rendered,
+    #modal-loan .select2-results__option {
+        color: #212529 !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+
+    #modal-loan .loan-label {
+        display: block;
+        color: #009688 !important;
+        font-size: 12px;
+        font-weight: 600;
+    }
+</style>
 <div class="modal fade" id="addemployee" tabindex="-1" role="dialog">
     <form id="form-add" data-parsley-validate>
         <input type="hidden" name="id" value="<?= isset($_GET['id']) ? (int)$_GET['id'] : '' ?>">
@@ -23,13 +54,13 @@
                     </div>
                     <div class="row g-3 mb-3">
                         <div class="col-md-12">
-                            <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
+                            <label class="form-label fw-semibold classification-label">
                                 <i class="ri-shield-check-line me-1"></i>Classification <span class="text-danger">*</span>
                             </label>
                             <select id="clasification-select" class="form-control select2" name="clasification_id"
                                 data-placeholder="Select classification"
                                 data-parsley-required-message="Please select classification." required>
-                                <option value=""></option>
+                                <option value="">Select classification</option>
                                 <?php
                                 $pos = $conn->query("SELECT * FROM clasification");
                                 while ($row = $pos->fetch_assoc()):
@@ -467,13 +498,13 @@
                 <div class="modal-body">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
+                            <label class="form-label fw-semibold loan-label">
                                 Loan Type <span class="text-danger">*</span>
                             </label>
                             <select id="loan-select" class="form-control select2" name="loan_type"
                                 data-placeholder="Select loan type"
                                 data-parsley-required-message="Type is required." required>
-                                <option value=""></option>
+                                <option value="">Select loan type</option>
                                 <?php
                                 $pos = $conn->query("SELECT * FROM contribution_loan_types ORDER BY loan_type ASC");
                                 while ($row = $pos->fetch_assoc()):
