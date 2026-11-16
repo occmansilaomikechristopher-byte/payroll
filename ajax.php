@@ -782,6 +782,7 @@ if ($action == "owner-report-sales-branches") {
 	global $conn;
 	$from = trim($_GET['from'] ?? '');
 	$to = trim($_GET['to'] ?? '');
+	$user_id = intval($_GET['user_id'] ?? 0);
 	$datePattern = '/^\d{4}-\d{2}-\d{2}$/';
 	if (($from !== '' && !preg_match($datePattern, $from)) || ($to !== '' && !preg_match($datePattern, $to))) {
 		http_response_code(400);
@@ -802,6 +803,9 @@ if ($action == "owner-report-sales-branches") {
 	if ($toSql !== '') {
 		$dateJoin .= " AND s.created_at <= '$toSql'";
 	}
+	if ($user_id > 0) {
+		$dateJoin .= " AND s.cashier_id = $user_id";
+	}
 	$branches = [];
 	$result = $conn->query(
 		"SELECT b.id, b.branch_name, IFNULL(SUM(s.total), 0) AS total_sales " .
@@ -817,7 +821,18 @@ if ($action == "owner-report-sales-branches") {
 			];
 		}
 	}
-	echo json_encode(['success' => true, 'branches' => $branches]);
+	$users = [];
+	$uRes = $conn->query("SELECT id, name, branch_id FROM users WHERE status = 1 ORDER BY name ASC");
+	if ($uRes) {
+		while ($uRow = $uRes->fetch_assoc()) {
+			$users[] = [
+				'id' => intval($uRow['id']),
+				'name' => $uRow['name'],
+				'branch_id' => intval($uRow['branch_id'] ?? 0),
+			];
+		}
+	}
+	echo json_encode(['success' => true, 'branches' => $branches, 'users' => $users]);
 	return;
 }
 
@@ -825,6 +840,7 @@ if ($action == "owner-report-collections-branches") {
 	global $conn;
 	$from = trim($_GET['from'] ?? '');
 	$to = trim($_GET['to'] ?? '');
+	$user_id = intval($_GET['user_id'] ?? 0);
 	$datePattern = '/^\d{4}-\d{2}-\d{2}$/';
 	if (($from !== '' && !preg_match($datePattern, $from)) || ($to !== '' && !preg_match($datePattern, $to))) {
 		http_response_code(400);
@@ -844,6 +860,9 @@ if ($action == "owner-report-collections-branches") {
 	}
 	if ($toSql !== '') {
 		$dateJoin .= " AND s.created_at <= '$toSql'";
+	}
+	if ($user_id > 0) {
+		$dateJoin .= " AND s.cashier_id = $user_id";
 	}
 	$check = $conn->query("SHOW COLUMNS FROM pos_sales LIKE 'collection_status'");
 	if ($check && $check->num_rows === 0) {
@@ -867,7 +886,18 @@ if ($action == "owner-report-collections-branches") {
 			];
 		}
 	}
-	echo json_encode(['success' => true, 'branches' => $branches]);
+	$users = [];
+	$uRes = $conn->query("SELECT id, name, branch_id FROM users WHERE status = 1 ORDER BY name ASC");
+	if ($uRes) {
+		while ($uRow = $uRes->fetch_assoc()) {
+			$users[] = [
+				'id' => intval($uRow['id']),
+				'name' => $uRow['name'],
+				'branch_id' => intval($uRow['branch_id'] ?? 0),
+			];
+		}
+	}
+	echo json_encode(['success' => true, 'branches' => $branches, 'users' => $users]);
 	return;
 }
 

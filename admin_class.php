@@ -1505,21 +1505,27 @@ class Action
             $this->ensure_pos_collection_status_column();
             $input = json_decode(file_get_contents('php://input'), true) ?: [];
             $branch_id = isset($input['branch_id']) ? intval($input['branch_id']) : 0;
+            $cashier_id = isset($input['cashier_id']) ? intval($input['cashier_id']) : (isset($input['user_id']) ? intval($input['user_id']) : 0);
             $from = isset($input['from']) ? $this->db->real_escape_string($input['from']) : '';
             $to   = isset($input['to'])   ? $this->db->real_escape_string($input['to'])   : '';
 
             $where = "1";
             if ($branch_id > 0) {
-                $where .= " AND branch_id = $branch_id";
+                $where .= " AND s.branch_id = $branch_id";
+            }
+            if ($cashier_id > 0) {
+                $where .= " AND s.cashier_id = $cashier_id";
             }
             if ($from !== '') {
-                $where .= " AND created_at >= '$from 00:00:00'";
+                $where .= " AND s.created_at >= '$from 00:00:00'";
             }
             if ($to !== '') {
-                $where .= " AND created_at <= '$to 23:59:59'";
+                $where .= " AND s.created_at <= '$to 23:59:59'";
             }
-            $res = $this->db->query("SELECT id, invoice_no, subtotal, discount, total, payment, change_due, collection_status, created_at
-                                     FROM pos_sales WHERE $where ORDER BY created_at DESC LIMIT 200");
+            $res = $this->db->query("SELECT s.id, s.invoice_no, s.subtotal, s.discount, s.total, s.payment, s.change_due, s.collection_status, s.created_at, s.cashier_id, COALESCE(u.name, 'Admin') AS cashier_name
+                                     FROM pos_sales s
+                                     LEFT JOIN users u ON u.id = s.cashier_id
+                                     WHERE $where ORDER BY s.created_at DESC LIMIT 200");
             $sales = [];
             while ($row = $res->fetch_assoc()) {
                 $sales[] = $row;
