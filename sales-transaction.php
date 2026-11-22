@@ -21,17 +21,17 @@ if ($branch_id > 0) {
 ?>
 <style>
     .sales-card {
-        border-top: 3px solid #219688;
+        border-top: 3px solid #01544c;
         border-radius: 4px;
         background: #fff;
     }
 
     .sales-heading {
-        color: #219688;
+        color: #01544c;
     }
 
     .product-table tbody tr:hover {
-        background: #f0faf9;
+        background: #f0faf8;
     }
 
     .cart-table tbody tr:hover {
@@ -57,7 +57,7 @@ if ($branch_id > 0) {
     .sales-summary .summary-value {
         font-size: 24px;
         font-weight: 800;
-        color: #219688;
+        color: #01544c;
     }
 
     .sales-summary .summary-label {

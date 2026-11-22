@@ -47,18 +47,18 @@ foreach ($rows as $row) {
 }
 ?>
 <style>
-    .cr-card { border-top:3px solid #219688; border-radius:4px; background:#fff; }
+    .cr-card { border-top:3px solid #01544c; border-radius:4px; background:#fff; }
     .cr-stat { text-align:center; padding:16px; }
-    .cr-stat .v { font-size:22px; font-weight:800; color:#219688; }
+    .cr-stat .v { font-size:22px; font-weight:800; color:#01544c; }
     .cr-stat .l { font-size:11px; color:#666; text-transform:uppercase; letter-spacing:.5px; margin-top:4px; }
-    #collections-table thead th { background:#219688 !important; color:#fff !important; border-color:#176358 !important; }
-    #collections-table tbody tr:hover td { background:#f0faf9; }
-    .cr-filter { background:#219688; color:#fff; border-radius:4px; padding:10px 16px; margin-bottom:12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    #collections-table thead th { background:#01544c !important; color:#fff !important; border-color:#01433d !important; }
+    #collections-table tbody tr:hover td { background:#f0faf8; }
+    .cr-filter { background:linear-gradient(135deg, #01544c 0%, #01433d 100%); border-bottom:2px solid #f4b42e; color:#fff; border-radius:4px; padding:10px 16px; margin-bottom:12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
     .cr-filter input, .cr-filter select { border:0; border-radius:4px; padding:5px 9px; font-size:13px; }
 </style>
 <div class="main-content"><div class="page-content"><div class="container-fluid">
     <div class="row"><div class="col-12"><div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
-        <h4 class="mb-sm-0"><i class="ri-cash-line me-2" style="color:#219688;"></i>Collections Report</h4>
+        <h4 class="mb-sm-0"><i class="ri-cash-line me-2" style="color:#01544c;"></i>Collections Report</h4>
         <div class="page-title-right"><ol class="breadcrumb m-0"><li class="breadcrumb-item">Reports</li><li class="breadcrumb-item active">Collections</li></ol></div>
     </div></div></div>
     <div class="row">

@@ -58,10 +58,10 @@ if ($id > 0) {
 }
 ?>
 <style>
-    .dd-card { border-top:3px solid #219688; border-radius:6px; background:#fff; }
+    .dd-card { border-top:3px solid #01544c; border-radius:6px; background:#fff; }
     .dd-label { font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:.4px; }
     .dd-value { font-size:15px; font-weight:700; color:#0f172a; }
-    .dd-code { background:#e6f5f3; color:#176358; padding:3px 8px; border-radius:3px; font-size:12px; font-weight:700; font-family:monospace; }
+    .dd-code { background:#e6f5f3; color:#01433d; padding:3px 8px; border-radius:3px; font-size:12px; font-weight:700; font-family:monospace; }
 </style>
 
 <div class="main-content">
@@ -71,7 +71,7 @@ if ($id > 0) {
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
                         <div>
-                            <h4 class="mb-sm-0"><i class="ri-file-list-3-line me-2" style="color:#219688;"></i>Damage Items Details</h4>
+                            <h4 class="mb-sm-0"><i class="ri-file-list-3-line me-2" style="color:#01544c;"></i>Damage Items Details</h4>
                             <p class="text-muted mb-0 small mt-1"><i class="ri-information-line"></i> Review the selected damage item record.</p>
                         </div>
                         <div class="page-title-right">

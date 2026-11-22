@@ -7,7 +7,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h6 class="modal-title mb-0">
-                        <i class="ri-money-dollar-circle-line me-2" style="color:#009688;"></i>Create Payroll
+                        <i class="ri-money-dollar-circle-line me-2" style="color:#01544c;"></i>Create Payroll
                     </h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -15,7 +15,7 @@
                     <div class="row g-3">
 
                         <div class="col-md-12">
-                            <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
+                            <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#01544c;">
                                 <i class="ri-building-2-line me-1"></i>Branch <span class="text-danger">*</span>
                             </label>
                             <select id="employer-select" class="form-control select2" name="employer_id"
@@ -35,7 +35,7 @@
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
+                            <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#01544c;">
                                 <i class="ri-calendar-2-line me-1"></i>Date From <span class="text-danger">*</span>
                             </label>
                             <div class="input-group">
@@ -47,7 +47,7 @@
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
+                            <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#01544c;">
                                 <i class="ri-calendar-2-line me-1"></i>Date To <span class="text-danger">*</span>
                             </label>
                             <div class="input-group">
@@ -59,7 +59,7 @@
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
+                            <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#01544c;">
                                 <i class="ri-list-check-2 me-1"></i>Payroll Type <span class="text-danger">*</span>
                             </label>
                             <select id="type" name="type" class="form-control select2"
@@ -80,7 +80,7 @@
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">
                         <i class="ri-close-line me-1"></i>Cancel
                     </button>
-                    <button type="submit" class="btn btn-sm text-white submitbutton" style="background:#009688;border-color:#009688;">
+                    <button type="submit" class="btn btn-sm text-white submitbutton" style="background:#01544c;border-color:#01544c;">
                         <i class="ri-arrow-right-line me-1"></i>Next
                     </button>
                 </div>
@@ -96,7 +96,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h6 class="modal-title mb-0">
-                        <i class="ri-settings-3-line me-2" style="color:#009688;"></i>Payroll Settings
+                        <i class="ri-settings-3-line me-2" style="color:#01544c;"></i>Payroll Settings
                     </h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -137,8 +137,8 @@
                     ?>
                     <?= $i > 0 ? '<hr class="my-3">' : '' ?>
                     <div class="d-flex align-items-center gap-2 mb-2">
-                        <i class="<?= $sec['icon'] ?>" style="color:#009688;font-size:16px;"></i>
-                        <span class="fw-bold" style="font-size:13px;color:#009688;"><?= $sec['title'] ?></span>
+                        <i class="<?= $sec['icon'] ?>" style="color:#01544c;font-size:16px;"></i>
+                        <span class="fw-bold" style="font-size:13px;color:#01544c;"><?= $sec['title'] ?></span>
                     </div>
                     <div class="row g-2">
                         <?php while ($row = $rows->fetch_assoc()): ?>
@@ -163,7 +163,7 @@
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">
                         <i class="ri-close-line me-1"></i>Cancel
                     </button>
-                    <button type="submit" class="btn btn-sm text-white submitbutton" style="background:#009688;border-color:#009688;">
+                    <button type="submit" class="btn btn-sm text-white submitbutton" style="background:#01544c;border-color:#01544c;">
                         <i class="ri-save-line me-1"></i>Save Settings
                     </button>
                 </div>
@@ -178,7 +178,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h6 class="modal-title mb-0">
-                    <i class="ri-history-line me-2" style="color:#009688;"></i>Payroll History
+                    <i class="ri-history-line me-2" style="color:#01544c;"></i>Payroll History
                 </h6>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>

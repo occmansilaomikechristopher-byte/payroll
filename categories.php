@@ -1,9 +1,9 @@
 <style>
-    .cat-code { background:#219688; color:#fff; padding:2px 8px; border-radius:3px; font-size:11px; font-weight:700; display:inline-block; font-family:monospace; }
+    .cat-code { background:#01544c; color:#fff; padding:2px 8px; border-radius:3px; font-size:11px; font-weight:700; display:inline-block; font-family:monospace; }
     .cat-name { font-weight:600; font-size:13px; }
     .cat-desc { font-size:11px; color:#888; }
-    #data-table thead th { background-color:#219688 !important; border-color:#176358 !important; color:#fff !important; }
-    #data-table tbody tr:hover td { background:#f0faf9; }
+    #data-table thead th { background-color:#01544c !important; border-color:#01433d !important; color:#fff !important; }
+    #data-table tbody tr:hover td { background:#f0faf8; }
 </style>
 
 <div class="main-content">
@@ -13,7 +13,7 @@
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
                         <h4 class="mb-sm-0">
-                            <i class="ri-layout-grid-line me-2" style="color:#219688;"></i>Product Categories
+                            <i class="ri-layout-grid-line me-2" style="color:#01544c;"></i>Product Categories
                         </h4>
                         <div class="page-title-right">
                             <ol class="breadcrumb m-0">
@@ -24,16 +24,16 @@
                     </div>
                 </div>
 
-                <div class="card" style="border-top:3px solid #219688;">
+                <div class="card" style="border-top:3px solid #01544c;">
                     <div class="card-header align-items-center d-flex py-2">
                         <h4 class="card-title mb-0 flex-grow-1">
-                            <i class="ri-layout-grid-line me-2" style="color:#219688;"></i>Categories List
+                            <i class="ri-layout-grid-line me-2" style="color:#01544c;"></i>Categories List
                             <?php
                             $cat_count = $conn->query("SELECT COUNT(*) AS c FROM product_categories WHERE status=1")->fetch_assoc()['c'];
                             ?>
-                            <span class="badge ms-1" style="background:#e6f5f3;color:#219688;font-size:11px;font-weight:700;vertical-align:middle;"><?= $cat_count ?></span>
+                            <span class="badge ms-1" style="background:#e6f5f3;color:#01544c;font-size:11px;font-weight:700;vertical-align:middle;"><?= $cat_count ?></span>
                         </h4>
-                        <button type="button" class="btn btn-sm text-white" style="background:#219688;border-color:#219688;"
+                        <button type="button" class="btn btn-sm text-white" style="background:#01544c;border-color:#01544c;"
                             data-bs-toggle="modal" data-bs-target="#modal-add-category">
                             <i class="ri-add-line me-1"></i>Add Category
                         </button>

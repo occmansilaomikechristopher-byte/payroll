@@ -3,9 +3,9 @@
         <div class="card pos-card">
             <div class="card-header align-items-center d-flex py-2">
                 <h4 class="card-title mb-0 flex-grow-1">
-                    <i class="ri-layout-grid-line me-2" style="color:#219688;"></i>Product Categories
+                    <i class="ri-layout-grid-line me-2" style="color:#01544c;"></i>Product Categories
                 </h4>
-                <button type="button" class="btn btn-sm text-white" style="background:#219688;border-color:#219688;" data-bs-toggle="modal" data-bs-target="#modal-add-category">
+                <button type="button" class="btn btn-sm text-white" style="background:#01544c;border-color:#01544c;" data-bs-toggle="modal" data-bs-target="#modal-add-category">
                     <i class="ri-add-line me-1"></i>Add Category
                 </button>
             </div>

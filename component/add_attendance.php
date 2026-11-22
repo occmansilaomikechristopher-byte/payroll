@@ -82,7 +82,7 @@
 			<div class="modal-content">
 				<div class="modal-header">
 					<h6 class="modal-title mb-0">
-						<i class="ri-filter-3-line me-2" style="color:#009688;"></i>Filter Attendance Records
+						<i class="ri-filter-3-line me-2" style="color:#01544c;"></i>Filter Attendance Records
 					</h6>
 					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 				</div>
@@ -90,7 +90,7 @@
 
 					<!-- Date Range -->
 					<div class="mb-3">
-						<label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
+						<label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#01544c;">
 							<i class="ri-calendar-range-line me-1"></i>Date Range <span class="text-danger">*</span>
 						</label>
 						<div class="row g-2">
@@ -117,7 +117,7 @@
 
 					<!-- Employee -->
 					<div class="mb-3">
-						<label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
+						<label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#01544c;">
 							<i class="ri-user-line me-1"></i>Employee <span class="text-danger">*</span>
 						</label>
 						<select id="employee-select" name="employee_id[]" class="form-control" multiple
@@ -135,7 +135,7 @@
 
 					<!-- Branch -->
 					<div class="mb-1">
-						<label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
+						<label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#01544c;">
 							<i class="ri-map-pin-2-line me-1"></i>Branch <span class="text-muted fw-normal">(optional)</span>
 						</label>
 						<select id="site-select" class="form-control" name="site_id" data-placeholder="All branches">
@@ -156,7 +156,7 @@
 					<button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">
 						<i class="ri-close-line me-1"></i>Cancel
 					</button>
-					<button type="submit" class="btn btn-sm text-white" style="background:#009688;border-color:#009688;">
+					<button type="submit" class="btn btn-sm text-white" style="background:#01544c;border-color:#01544c;">
 						<i class="ri-search-line me-1"></i>Apply Filter
 					</button>
 				</div>

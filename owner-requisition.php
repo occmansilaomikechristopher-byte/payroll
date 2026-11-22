@@ -87,15 +87,15 @@ if ($stats_query) {
 }
 ?>
 <style>
-    .or-card { border-top:3px solid #219688; border-radius:6px; background:#fff; }
+    .or-card { border-top:3px solid #01544c; border-radius:6px; background:#fff; }
     .or-stat { padding:16px; border-radius:16px; background:#fff; box-shadow:0 1px 4px rgba(57,75,124,.07); }
-    .or-stat .v { font-size:24px; font-weight:800; color:#219688; line-height:1; }
+    .or-stat .v { font-size:24px; font-weight:800; color:#01544c; line-height:1; }
     .or-stat .l { font-size:11px; color:#6b7280; text-transform:uppercase; letter-spacing:.4px; margin-top:4px; }
-    .or-code { background:#e6f5f3; color:#176358; padding:2px 8px; border-radius:3px; font-size:11px; font-weight:700; font-family:monospace; }
+    .or-code { background:#e6f5f3; color:#01544c; padding:2px 8px; border-radius:3px; font-size:11px; font-weight:700; font-family:monospace; }
     .or-name { font-weight:700; }
     .or-desc { font-size:11px; color:#6b7280; }
-    #owner-table thead th { background-color:#219688 !important; border-color:#176358 !important; color:#fff !important; }
-    #owner-table tbody tr:hover td { background:#f0faf9; }
+    #owner-table thead th { background-color:#01544c !important; border-color:#01433d !important; color:#fff !important; }
+    #owner-table tbody tr:hover td { background:#f0faf8; }
 </style>
 
 <div class="main-content">
@@ -105,7 +105,7 @@ if ($stats_query) {
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
                         <div>
-                            <h4 class="mb-sm-0"><i class="ri-file-list-3-line me-2" style="color:#219688;"></i>Owner Requisition</h4>
+                            <h4 class="mb-sm-0"><i class="ri-file-list-3-line me-2" style="color:#01544c;"></i>Owner Requisition</h4>
                             <p class="text-muted mb-0 small mt-1"><i class="ri-information-line"></i> Manage owner requisition requests and approvals.</p>
                         </div>
                         <div class="page-title-right">
@@ -135,10 +135,10 @@ if ($stats_query) {
             <div class="card or-card mb-3">
                 <div class="card-header align-items-center d-flex justify-content-between py-2">
                     <h4 class="card-title mb-0">
-                        <i class="ri-file-list-3-line me-2" style="color:#219688;"></i>Requisition List
-                        <span class="badge ms-1" style="background:#e6f5f3;color:#219688;font-size:11px;font-weight:700;vertical-align:middle;"><?= count($items) ?></span>
+                        <i class="ri-file-list-3-line me-2" style="color:#01544c;"></i>Requisition List
+                        <span class="badge ms-1" style="background:#e6f5f3;color:#01544c;font-size:11px;font-weight:700;vertical-align:middle;"><?= count($items) ?></span>
                     </h4>
-                    <button type="button" class="btn btn-sm text-white" style="background:#219688;border-color:#219688;" data-bs-toggle="modal" data-bs-target="#modal-add-owner-requisition">
+                    <button type="button" class="btn btn-sm text-white" style="background:#01544c;border-color:#01544c;" data-bs-toggle="modal" data-bs-target="#modal-add-owner-requisition">
                         <i class="ri-add-line me-1"></i>Add Requisition
                     </button>
                 </div>
@@ -201,8 +201,8 @@ if ($stats_query) {
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <form method="post">
-                <div class="modal-header" style="border-bottom:2px solid #219688;">
-                    <h5 class="modal-title" style="color:#219688;"><i class="ri-file-list-3-line me-2"></i>Add Owner Requisition</h5>
+                <div class="modal-header" style="border-bottom:2px solid #f4b42e;">
+                    <h5 class="modal-title" style="color:#ffffff;"><i class="ri-file-list-3-line me-2"></i>Add Owner Requisition</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">

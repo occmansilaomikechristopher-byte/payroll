@@ -622,6 +622,7 @@ LEFT JOIN branches f ON f.id = a.site_id
                         <th></th>
                         <th></th>
                         <th class="text-right"><?= number_format($t_gross, 2) ?></th>
+                        <th colspan="2"></th>
                         <th colspan="<?= count($contributions_settings) ?>"></th>
                         <th class="text-right"><?= number_format($t_deduction, 2) ?></th>
                         <?php if (count($refunds_settings) > 0) { ?>

@@ -1,12 +1,12 @@
 <style>
-    .prod-code { background:#219688; color:#fff; padding:2px 8px; border-radius:3px; font-size:10px; font-weight:700; display:inline-block; font-family:monospace; }
+    .prod-code { background:#01544c; color:#fff; padding:2px 8px; border-radius:3px; font-size:10px; font-weight:700; display:inline-block; font-family:monospace; }
     .prod-name { font-weight:600; font-size:13px; }
     .prod-cat { font-size:11px; color:#888; }
-    .prod-price { font-weight:600; color:#219688; }
+    .prod-price { font-weight:600; color:#01544c; }
     .prod-qty { font-weight:600; }
     .prod-low { background:#fff3cd; color:#856404; padding:1px 6px; border-radius:3px; font-size:10px; font-weight:700; }
-    #data-table thead th { background-color:#219688 !important; border-color:#176358 !important; color:#fff !important; }
-    #data-table tbody tr:hover td { background:#f0faf9; }
+    #data-table thead th { background-color:#01544c !important; border-color:#01433d !important; color:#fff !important; }
+    #data-table tbody tr:hover td { background:#f0faf8; }
 </style>
 
 <div class="main-content">
@@ -16,7 +16,7 @@
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
                         <h4 class="mb-sm-0">
-                            <i class="ri-shopping-bag-2-line me-2" style="color:#219688;"></i>Products
+                            <i class="ri-shopping-bag-2-line me-2" style="color:#01544c;"></i>Products
                         </h4>
                         <div class="page-title-right">
                             <ol class="breadcrumb m-0">
@@ -27,19 +27,19 @@
                     </div>
                 </div>
 
-                <div class="card" style="border-top:3px solid #219688;">
+                <div class="card" style="border-top:3px solid #01544c;">
                     <div class="card-header align-items-center d-flex py-2">
                         <h4 class="card-title mb-0 flex-grow-1">
-                            <i class="ri-shopping-bag-2-line me-2" style="color:#219688;"></i>Products List
+                            <i class="ri-shopping-bag-2-line me-2" style="color:#01544c;"></i>Products List
                             <?php
                             $prod_count = $conn->query("SELECT COUNT(*) AS c FROM products WHERE status=1")->fetch_assoc()['c'];
                             $login_role = intval($_SESSION['login_role'] ?? 0);
                             $can_manage_products = in_array($login_role, [1, 9, 10], true);
                             ?>
-                            <span class="badge ms-1" style="background:#e6f5f3;color:#219688;font-size:11px;font-weight:700;vertical-align:middle;"><?= $prod_count ?></span>
+                            <span class="badge ms-1" style="background:#e6f5f3;color:#01544c;font-size:11px;font-weight:700;vertical-align:middle;"><?= $prod_count ?></span>
                         </h4>
                         <?php if ($can_manage_products): ?>
-                            <button type="button" class="btn btn-sm text-white" style="background:#219688;border-color:#219688;"
+                            <button type="button" class="btn btn-sm text-white" style="background:#01544c;border-color:#01544c;"
                                 data-bs-toggle="modal" data-bs-target="#modal-add-product">
                                 <i class="ri-add-line me-1"></i>Add Product
                             </button>
@@ -51,7 +51,7 @@
                     <div class="card-body">
                         <?php if ($can_manage_products): ?>
                         <div class="mb-3">
-                            <!-- <button type="button" class="btn text-white" style="background:#219688;border-color:#219688;" data-bs-toggle="modal" data-bs-target="#modal-add-product">
+                            <!-- <button type="button" class="btn text-white" style="background:#01544c;border-color:#01544c;" data-bs-toggle="modal" data-bs-target="#modal-add-product">
                                 <i class="ri-add-line me-1"></i>Add Product
                             </button> -->
                         </div>

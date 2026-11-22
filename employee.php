@@ -1,12 +1,12 @@
 <style>
-    .emp-id { font-weight:700; color:#1976d2; font-family:'Segoe UI',monospace; letter-spacing:.3px; }
+    .emp-id { font-weight:700; color:#01544c; font-family:'Segoe UI',monospace; letter-spacing:.3px; }
     .emp-name { font-weight:600; font-size:13px; }
     .emp-position { font-size:11px; color:#555; }
-    .emp-currency { font-weight:600; color:#009688; font-size:12px; font-family:'Segoe UI',monospace; }
+    .emp-currency { font-weight:600; color:#01544c; font-size:12px; font-family:'Segoe UI',monospace; }
     .emp-actions { display:flex; gap:4px; align-items:center; flex-wrap:nowrap; }
     .emp-actions .btn-sm { padding:3px 9px; font-size:11px; white-space:nowrap; }
     .filter-label { font-size:11px; color:#666; font-weight:600; margin-bottom:3px; }
-    .emp-avatar { width:28px; height:28px; border-radius:50%; background:#009688; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .emp-avatar { width:28px; height:28px; border-radius:50%; background:#01544c; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
     
 </style>
 <div class="main-content">
@@ -16,7 +16,7 @@
 			<div class="row">
 				<div class="col-12">
 					<div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
-						<h4 class="mb-sm-0"><i class="ri-group-line me-2 text-success"></i>Employee</h4>
+						<h4 class="mb-sm-0"><i class="ri-group-line me-2" style="color:#01544c;"></i>Employee</h4>
 						<div class="page-title-right">
 							<ol class="breadcrumb m-0">
 								<li class="breadcrumb-item"><a href="javascript: void(0);">Pages</a></li>

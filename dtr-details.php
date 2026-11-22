@@ -218,7 +218,7 @@ while ($row = $query->fetch_assoc()) {
 #print-section { display: none; }
 
 /* table header */
-#table-1 thead th { background-color: #219688; color: #fff; border-color: #dddddd; }
+#table-1 thead th { background-color: #01544c; color: #fff; border-color: #01433d; }
 
 /* DTR header: keep the header fixed vertically without freezing columns.
    The shared payroll table styles use a fixed 40px offset for column 2,
@@ -243,13 +243,13 @@ while ($row = $query->fetch_assoc()) {
 /* date group row */
 #table-1 tbody tr.date-separator td {
     background: #e6f5f3 !important;
-    color: #174f49 !important;
+    color: #01544c !important;
     padding: 7px 12px;
     font-weight: bold;
     border-top: 1px solid #9ed8d0 !important;
     border-bottom: 1px solid #9ed8d0 !important;
 }
-#table-1 tbody tr.date-separator td * { color: #174f49 !important; }
+#table-1 tbody tr.date-separator td * { color: #01544c !important; }
 #table-1 tbody tr.date-separator td .dtr-date-ot { color: #8a5a00 !important; }
 #table-1 tbody tr.date-separator td .dtr-date-late { color: #a32121 !important; }
 .date-separator { cursor: pointer; user-select: none; }
@@ -259,39 +259,39 @@ while ($row = $query->fetch_assoc()) {
 #table-1 tbody tr.employee-header td { background: #e6f5f3; border-top: 1px solid #cccccc; }
 
 /* grand total */
-#table-1 tbody tr.grand-total-row td { background: #219688; color: #fff; font-weight: bold; }
+#table-1 tbody tr.grand-total-row td { background: #01544c; color: #fff; font-weight: bold; }
 
 /* duplicate */
 #table-1 tbody tr.duplicate-entry td { background: #fff5f5; border-left: 3px solid #f06548; }
 
 /* simple chips */
 .dtr-time-chip { display: inline-block; padding: 2px 6px; font-size: 11px; border: 1px solid #cccccc; border-radius: 3px; }
-.dtr-time-chip.in  { background: #e6f5f3; color: #219688; }
+.dtr-time-chip.in  { background: #e6f5f3; color: #01544c; }
 .dtr-time-chip.out { background: #fce4ec; color: #c62828; }
 .dtr-time-chip.na  { background: #f5f5f5; color: #888; }
 .dtr-log-chip { display: inline-block; padding: 1px 5px; font-size: 10px; border: 1px solid #cccccc; border-radius: 3px; margin-bottom: 1px; }
-.dtr-log-chip.bio    { background: #e6f5f3; color: #219688; }
+.dtr-log-chip.bio    { background: #e6f5f3; color: #01544c; }
 .dtr-log-chip.manual { background: #fff8e1; color: #c98a00; }
 
 /* stat boxes */
 .dtr-stats-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
-.dtr-stat-box { flex: 1; min-width: 120px; border: 1px solid #dddddd; border-top: 3px solid #219688; background: #fff; padding: 10px 14px; }
+.dtr-stat-box { flex: 1; min-width: 120px; border: 1px solid #dddddd; border-top: 3px solid #01544c; background: #fff; padding: 10px 14px; }
 .dtr-stat-box .stat-val { font-size: 18px; font-weight: bold; }
 .dtr-stat-box .stat-lbl { font-size: 11px; color: #666; }
 
 /* editable */
 .editable-field { display: flex; align-items: center; gap: 2px; justify-content: center; }
 .editable-field .form-control { font-size: 11px; padding: 2px 5px; height: 24px; border: 1px solid #cccccc; }
-.update-dtr-field { width: 22px; height: 22px; padding: 0; font-size: 11px; cursor: pointer; border: 1px solid #cccccc; background: #f5f5f5; color: #219688; }
+.update-dtr-field { width: 22px; height: 22px; padding: 0; font-size: 11px; cursor: pointer; border: 1px solid #cccccc; background: #f5f5f5; color: #01544c; }
 
 /* misc */
 .logs-container { max-height: 90px; overflow-y: auto; }
-.dtr-emp-init { width: 26px; height: 26px; border-radius: 50%; background: #219688; color: #fff; font-size: 10px; font-weight: bold; display: inline-flex; align-items: center; justify-content: center; }
+.dtr-emp-init { width: 26px; height: 26px; border-radius: 50%; background: #01544c; color: #fff; font-size: 10px; font-weight: bold; display: inline-flex; align-items: center; justify-content: center; }
 .dtr-emp-name { font-size: 12px; font-weight: 600; color: #333; }
 .dtr-emp-pos  { font-size: 11px; color: #666; }
 .dtr-tot-item { display: inline-flex; flex-direction: column; align-items: center; min-width: 38px; }
 .dtr-tot-item .tot-lbl { font-size: 9px; color: #888; text-transform: uppercase; }
-.dtr-tot-item .tot-val { font-size: 12px; font-weight: bold; color: #219688; }
+.dtr-tot-item .tot-val { font-size: 12px; font-weight: bold; color: #01544c; }
 .dtr-tot-item.ot .tot-val { color: #c98a00; }
 .dtr-tot-item.ut .tot-val { color: #1565c0; }
 .dtr-tot-item.late .tot-val { color: #c62828; }
@@ -682,9 +682,9 @@ while ($row = $query->fetch_assoc()) {
                         <!-- Summary stat cards -->
                         <div class="dtr-stats-row">
                             <div class="dtr-stat-box">
-                                <div class="stat-icon" style="background:#e6f5f3;color:#219688;"><i class="ri-time-line"></i></div>
+                                <div class="stat-icon" style="background:#e6f5f3;color:#01544c;"><i class="ri-time-line"></i></div>
                                 <div>
-                                    <div class="stat-val" style="color:#219688;"><?= number_format($grandTotals['work_hours'], 2) ?></div>
+                                    <div class="stat-val" style="color:#01544c;"><?= number_format($grandTotals['work_hours'], 2) ?></div>
                                     <div class="stat-lbl">Work Hours</div>
                                 </div>
                             </div>
@@ -715,12 +715,12 @@ while ($row = $query->fetch_assoc()) {
                         <div class="modal fade" id="employeeNotesModal" tabindex="-1" aria-hidden="true">
                             <div class="modal-dialog modal-dialog-centered">
                                 <div class="modal-content">
-                                    <div class="modal-header" style="border-bottom:2px solid #219688;">
-                                        <h5 class="modal-title" style="color:#219688;"><i class="ri-sticky-note-line me-2"></i>Employee Notes</h5>
+                                    <div class="modal-header" style="border-bottom:2px solid #f4b42e;">
+                                        <h5 class="modal-title" style="color:#01544c;"><i class="ri-sticky-note-line me-2"></i>Employee Notes</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                     </div>
                                     <div class="modal-body">
-                                        <h6 id="modalEmployeeName" class="mb-1" style="color:#219688;font-weight:600;"></h6>
+                                        <h6 id="modalEmployeeName" class="mb-1" style="color:#01544c;font-weight:600;"></h6>
                                         <p id="modalEmployeePosition" class="text-muted small mb-0"></p>
                                         <p id="modalEmployeeDate" class="text-muted small mb-2"></p>
                                         <label class="form-label fw-semibold small">Notes:</label>

@@ -1,2 +1,348 @@
+/* ==========================================================================
+   GV Aluminum & Glass Supply - Brand Color Theme
+   Unified with Login Page Palette
+   ========================================================================== */
 
-/*# sourceMappingURL=custom.min.css.map */
+:root {
+    --brand-dark-teal: #01544c;
+    --brand-darker-teal: #01433d;
+    --brand-accent-teal: #00695c;
+    --brand-gold: #f4b42e;
+    --brand-gold-dark: #d89b25;
+    --brand-light-teal: #e6f5f3;
+    --brand-light-gold: #fef7ea;
+
+    /* Override Velzon Bootstrap Variables */
+    --vz-primary: #01544c;
+    --vz-primary-rgb: 1, 84, 76;
+    --vz-primary-text-emphasis: #01544c;
+    --vz-primary-bg-subtle: #e6f5f3;
+    --vz-primary-border-subtle: #80aaa5;
+    --vz-link-color: #01544c;
+    --vz-link-hover-color: #01433d;
+    --vz-vertical-menu-bg: #01544c;
+    --vz-vertical-menu-border: rgba(244, 180, 46, 0.35);
+}
+
+/* ── SIDEBAR (NAVBAR-MENU) ──────────────────────────────────────────────── */
+.navbar-menu {
+    background: linear-gradient(180deg, #01544c 0%, #01433d 100%) !important;
+    border-right: 1px solid rgba(244, 180, 46, 0.35) !important;
+    box-shadow: 2px 0 16px rgba(1, 67, 61, 0.2) !important;
+}
+
+.navbar-brand-box {
+    background: transparent !important;
+    border-bottom: 2px solid #f4b42e !important;
+    padding: 0 16px !important;
+}
+
+.navbar-brand-box .logo,
+.navbar-brand-box .logo-light,
+.navbar-brand-box .logo-dark {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+}
+
+.navbar-brand-box .logo-sm {
+    background: #f4b42e !important;
+    color: #01544c !important;
+    font-weight: 800 !important;
+    border-radius: 6px !important;
+    padding: 2px 6px !important;
+}
+
+.navbar-menu .navbar-nav .nav-link {
+    color: rgba(255, 255, 255, 0.88) !important;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.navbar-menu .navbar-nav .nav-link i {
+    color: rgba(255, 255, 255, 0.78) !important;
+}
+
+.navbar-menu .navbar-nav .nav-link:hover,
+.navbar-menu .navbar-nav .nav-link:hover i {
+    color: #f4b42e !important;
+    background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.navbar-menu .navbar-nav .nav-link.active,
+.navbar-menu .navbar-nav .nav-link.active i {
+    color: #ffffff !important;
+    background: rgba(244, 180, 46, 0.18) !important;
+    border-left: 3px solid #f4b42e !important;
+    box-shadow: inset 0 0 0 1px rgba(244, 180, 46, 0.25) !important;
+}
+
+.navbar-menu .navbar-nav .nav-link[aria-expanded="true"],
+.navbar-menu .navbar-nav .nav-link[aria-expanded="true"] i {
+    color: #f4b42e !important;
+}
+
+.navbar-menu .menu-title span {
+    color: rgba(244, 180, 46, 0.85) !important;
+    font-size: 11px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.navbar-menu .menu-dropdown .nav-link,
+.navbar-menu .nav-sub .nav-link {
+    color: rgba(255, 255, 255, 0.75) !important;
+}
+
+.navbar-menu .menu-dropdown .nav-link:hover,
+.navbar-menu .menu-dropdown .nav-link.active,
+.navbar-menu .nav-sub .nav-link:hover,
+.navbar-menu .nav-sub .nav-link.active {
+    color: #f4b42e !important;
+    background: rgba(244, 180, 46, 0.12) !important;
+}
+
+/* ── TOPBAR (PAGE-TOPBAR) ──────────────────────────────────────────────── */
+#page-topbar {
+    background: #ffffff !important;
+    border-bottom: 2px solid #f4b42e !important;
+    box-shadow: 0 2px 10px rgba(1, 84, 76, 0.06) !important;
+}
+
+#topnav-hamburger-icon .hamburger-icon span {
+    background-color: #01544c !important;
+}
+
+/* ── BUTTONS ───────────────────────────────────────────────────────────── */
+.btn-primary,
+.btn-info {
+    background-color: #01544c !important;
+    border-color: #01544c !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 6px rgba(1, 84, 76, 0.25);
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active,
+.btn-primary.active,
+.btn-info:hover,
+.btn-info:focus,
+.btn-info:active {
+    background-color: #01433d !important;
+    border-color: #01433d !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 10px rgba(1, 84, 76, 0.35);
+}
+
+.btn-outline-primary {
+    color: #01544c !important;
+    border-color: #01544c !important;
+}
+
+.btn-outline-primary:hover,
+.btn-outline-primary:focus,
+.btn-outline-primary:active {
+    background-color: #01544c !important;
+    border-color: #01544c !important;
+    color: #ffffff !important;
+}
+
+.btn-soft-primary {
+    color: #01544c !important;
+    background-color: #e6f5f3 !important;
+}
+
+.btn-soft-primary:hover {
+    color: #ffffff !important;
+    background-color: #01544c !important;
+}
+
+.btn-warning,
+.btn-gold {
+    background-color: #f4b42e !important;
+    border-color: #f4b42e !important;
+    color: #1f2937 !important;
+    font-weight: 600 !important;
+}
+
+.btn-warning:hover,
+.btn-gold:hover {
+    background-color: #d89b25 !important;
+    border-color: #d89b25 !important;
+    color: #ffffff !important;
+}
+
+/* ── TABLES ────────────────────────────────────────────────────────────── */
+table thead th,
+.table thead th,
+#data-table thead th,
+#dtr-recent-table thead th,
+#sales-table thead th,
+#collections-table thead th,
+#inventory-table thead th,
+.attendance-log-table th {
+    background-color: #01544c !important;
+    border-color: #01433d !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    vertical-align: middle;
+}
+
+.table-hover tbody tr:hover td,
+#sales-table tbody tr:hover td,
+#collections-table tbody tr:hover td,
+#inventory-table tbody tr:hover td {
+    background-color: #f0faf8 !important;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #01544c !important;
+    border-color: #01544c !important;
+    color: #ffffff !important;
+}
+
+.pagination .page-link {
+    color: #01544c !important;
+}
+
+.pagination .page-link:hover {
+    color: #01433d !important;
+    background-color: #e6f5f3 !important;
+}
+
+/* ── PAGE TITLES & BREADCRUMBS ─────────────────────────────────────────── */
+.page-title-box h4 i,
+.page-title-box i {
+    color: #01544c !important;
+}
+
+.breadcrumb-item.active {
+    color: #01544c !important;
+    font-weight: 600 !important;
+}
+
+.breadcrumb-item a:hover {
+    color: #01544c !important;
+}
+
+/* ── MODALS ────────────────────────────────────────────────────────────── */
+.modal-header {
+    background: linear-gradient(135deg, #01544c 0%, #01433d 100%) !important;
+    border-bottom: 2px solid #f4b42e !important;
+    color: #ffffff !important;
+}
+
+.modal-header .modal-title {
+    color: #ffffff !important;
+    font-weight: 600 !important;
+}
+
+.modal-header .btn-close {
+    filter: brightness(0) invert(1) !important;
+}
+
+/* ── BADGES & ACCENTS ──────────────────────────────────────────────────── */
+.badge.bg-primary,
+.badge-primary {
+    background-color: #01544c !important;
+    color: #ffffff !important;
+}
+
+.badge.bg-success {
+    background-color: #00695c !important;
+    color: #ffffff !important;
+}
+
+.badge.bg-warning {
+    background-color: #f4b42e !important;
+    color: #1f2937 !important;
+    font-weight: 700 !important;
+}
+
+.badge-soft-primary {
+    background-color: #e6f5f3 !important;
+    color: #01544c !important;
+}
+
+/* ── FORM FOCUS ────────────────────────────────────────────────────────── */
+.form-control:focus,
+.form-select:focus {
+    border-color: #01544c !important;
+    box-shadow: 0 0 0 0.2rem rgba(1, 84, 76, 0.2) !important;
+}
+
+/* ── TABS ──────────────────────────────────────────────────────────────── */
+.nav-tabs-custom .nav-link.active,
+.nav-tabs .nav-link.active {
+    color: #01544c !important;
+    border-bottom: 2px solid #01544c !important;
+    font-weight: 700 !important;
+}
+
+/* ── DASHBOARD STAT CARDS (home.php) ───────────────────────────────────── */
+.stat-card__value {
+    color: #01544c !important;
+}
+
+.stat-card--green { border-top: 4px solid #01544c !important; }
+.stat-card--blue { border-top: 4px solid #01433d !important; }
+.stat-card--gold { border-top: 4px solid #f4b42e !important; }
+.stat-card--teal { border-top: 4px solid #00695c !important; }
+.stat-card--purple { border-top: 4px solid #01544c !important; }
+.stat-card--red { border-top: 4px solid #d89b25 !important; }
+
+.stat-card__icon--green { background: #e6f5f3 !important; color: #01544c !important; }
+.stat-card__icon--blue { background: #e0f2f1 !important; color: #01433d !important; }
+.stat-card__icon--gold { background: #fef7ea !important; color: #d89b25 !important; }
+.stat-card__icon--teal { background: #e6f5f3 !important; color: #00695c !important; }
+.stat-card__icon--purple { background: #e6f5f3 !important; color: #01544c !important; }
+.stat-card__icon--red { background: #fef7ea !important; color: #f4b42e !important; }
+
+/* ── REPORTS & MODULE CARDS (sales, collections, inventory, pos) ──────── */
+.sr-card,
+.cr-card,
+.ir-card,
+.pos-card {
+    border-top: 3px solid #01544c !important;
+}
+
+.sr-stat .v,
+.cr-stat .v,
+.ir-stat .v,
+.pos-stat-val {
+    color: #01544c !important;
+}
+
+.sr-inv,
+.prod-price {
+    color: #01544c !important;
+}
+
+.sr-branch,
+.pos-icon {
+    background: #e6f5f3 !important;
+    color: #01544c !important;
+}
+
+.sr-filter,
+.cr-filter {
+    background: linear-gradient(135deg, #01544c 0%, #01433d 100%) !important;
+    border-bottom: 2px solid #f4b42e !important;
+}
+
+.prod-code,
+.brn-code,
+.cat-code {
+    background: #01544c !important;
+    color: #ffffff !important;
+}
+
+.emp-currency,
+.emp-avatar {
+    color: #01544c !important;
+}
+.emp-avatar {
+    background: #01544c !important;
+    color: #ffffff !important;
+}

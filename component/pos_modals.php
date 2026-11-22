@@ -2,8 +2,8 @@
 <div class="modal fade" id="modal-add-branch" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header" style="border-bottom:2px solid #219688;">
-                <h5 class="modal-title" style="color:#219688;"><i class="ri-git-branch-line me-2"></i>Add Branch</h5>
+            <div class="modal-header" style="border-bottom:2px solid #f4b42e;">
+                <h5 class="modal-title" style="color:#01544c;"><i class="ri-git-branch-line me-2"></i>Add Branch</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="form-add-branch" novalidate>
@@ -40,7 +40,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn text-white" style="background:#219688;">Save Branch</button>
+                    <button type="submit" class="btn text-white" style="background:#01544c;">Save Branch</button>
                 </div>
             </form>
         </div>
@@ -51,8 +51,8 @@
 <div class="modal fade" id="modal-edit-branch" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header" style="border-bottom:2px solid #219688;">
-                <h5 class="modal-title" style="color:#219688;"><i class="ri-edit-line me-2"></i>Edit Branch</h5>
+            <div class="modal-header" style="border-bottom:2px solid #f4b42e;">
+                <h5 class="modal-title" style="color:#01544c;"><i class="ri-edit-line me-2"></i>Edit Branch</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="form-edit-branch" novalidate>
@@ -90,7 +90,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn text-white" style="background:#219688;">Update Branch</button>
+                    <button type="submit" class="btn text-white" style="background:#01544c;">Update Branch</button>
                 </div>
             </form>
         </div>
@@ -101,8 +101,8 @@
 <div class="modal fade" id="modal-add-category" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header" style="border-bottom:2px solid #219688;">
-                <h5 class="modal-title" style="color:#219688;"><i class="ri-layout-grid-line me-2"></i>Add Category</h5>
+            <div class="modal-header" style="border-bottom:2px solid #f4b42e;">
+                <h5 class="modal-title" style="color:#01544c;"><i class="ri-layout-grid-line me-2"></i>Add Category</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="form-add-category" novalidate>
@@ -131,7 +131,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn text-white" style="background:#219688;">Save Category</button>
+                    <button type="submit" class="btn text-white" style="background:#01544c;">Save Category</button>
                 </div>
             </form>
         </div>
@@ -142,8 +142,8 @@
 <div class="modal fade" id="modal-edit-category" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header" style="border-bottom:2px solid #219688;">
-                <h5 class="modal-title" style="color:#219688;"><i class="ri-edit-line me-2"></i>Edit Category</h5>
+            <div class="modal-header" style="border-bottom:2px solid #f4b42e;">
+                <h5 class="modal-title" style="color:#01544c;"><i class="ri-edit-line me-2"></i>Edit Category</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="form-edit-category" novalidate>
@@ -173,7 +173,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn text-white" style="background:#219688;">Update Category</button>
+                    <button type="submit" class="btn text-white" style="background:#01544c;">Update Category</button>
                 </div>
             </form>
         </div>
@@ -185,8 +185,8 @@
 <div class="modal fade" id="modal-add-product" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header" style="border-bottom:2px solid #219688;">
-                <h5 class="modal-title" style="color:#219688;"><i class="ri-box-line me-2"></i>Add Product</h5>
+            <div class="modal-header" style="border-bottom:2px solid #f4b42e;">
+                <h5 class="modal-title" style="color:#01544c;"><i class="ri-box-line me-2"></i>Add Product</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="form-add-product" enctype="multipart/form-data" novalidate>
@@ -355,7 +355,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn text-white" style="background:#219688;">Save Product</button>
+                    <button type="submit" class="btn text-white" style="background:#01544c;">Save Product</button>
                 </div>
             </form>
         </div>
@@ -366,15 +366,15 @@
 <div class="modal fade" id="modal-add-stock" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header" style="border-bottom:2px solid #219688;">
-                <h5 class="modal-title" style="color:#219688;"><i class="ri-add-line me-2"></i>Add Stock</h5>
+            <div class="modal-header" style="border-bottom:2px solid #f4b42e;">
+                <h5 class="modal-title" style="color:#01544c;"><i class="ri-add-line me-2"></i>Add Stock</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="form-add-stock" novalidate>
                 <input type="hidden" id="add-stock-product-id" name="id">
                 <div class="modal-body">
                     <div class="alert alert-light border mb-3">
-                        <div class="fw-semibold" style="color:#219688;">Stock Update</div>
+                        <div class="fw-semibold" style="color:#01544c;">Stock Update</div>
                         <div class="small text-muted">Enter the quantity to add to inventory.</div>
                     </div>
                     <div class="mb-3">
@@ -385,7 +385,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn text-white" style="background:#219688;">Add Stock</button>
+                    <button type="submit" class="btn text-white" style="background:#01544c;">Add Stock</button>
                 </div>
             </form>
         </div>
@@ -402,8 +402,8 @@ $is_cashier_stock_modal = $is_cashier_modal && $inventory_modal_mode === 'stock'
 <div class="modal fade" id="modal-edit-product" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header" style="border-bottom:2px solid #219688;">
-                <h5 class="modal-title" style="color:#219688;"><i class="ri-edit-line me-2"></i><?= $is_cashier_stock_modal ? 'Add Stock' : 'Edit Product' ?></h5>
+            <div class="modal-header" style="border-bottom:2px solid #f4b42e;">
+                <h5 class="modal-title" style="color:#01544c;"><i class="ri-edit-line me-2"></i><?= $is_cashier_stock_modal ? 'Add Stock' : 'Edit Product' ?></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="form-edit-product" enctype="multipart/form-data" novalidate data-mode="<?= $is_cashier_stock_modal ? 'stock' : 'full' ?>">
@@ -412,7 +412,7 @@ $is_cashier_stock_modal = $is_cashier_modal && $inventory_modal_mode === 'stock'
                 <div class="modal-body">
                     <?php if ($is_cashier_stock_modal): ?>
                         <div class="alert alert-light border mb-3">
-                            <div class="fw-semibold" style="color:#219688;">Stock Update</div>
+                            <div class="fw-semibold" style="color:#01544c;">Stock Update</div>
                             <div class="small text-muted">Add quantity to the current inventory for this product.</div>
                         </div>
                         <div class="row">
@@ -552,7 +552,7 @@ $is_cashier_stock_modal = $is_cashier_modal && $inventory_modal_mode === 'stock'
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn text-white" style="background:#219688;"><?= $is_cashier_stock_modal ? 'Add Stock' : 'Update Product' ?></button>
+                    <button type="submit" class="btn text-white" style="background:#01544c;"><?= $is_cashier_stock_modal ? 'Add Stock' : 'Update Product' ?></button>
                 </div>
             </form>
         </div>

@@ -3,9 +3,9 @@
         <div class="card pos-card">
             <div class="card-header align-items-center d-flex py-2">
                 <h4 class="card-title mb-0 flex-grow-1">
-                    <i class="ri-git-branch-line me-2" style="color:#219688;"></i>Branches
+                    <i class="ri-git-branch-line me-2" style="color:#01544c;"></i>Branches
                 </h4>
-                <button type="button" class="btn btn-sm text-white" style="background:#219688;border-color:#219688;" data-bs-toggle="modal" data-bs-target="#modal-add-branch">
+                <button type="button" class="btn btn-sm text-white" style="background:#01544c;border-color:#01544c;" data-bs-toggle="modal" data-bs-target="#modal-add-branch">
                     <i class="ri-add-line me-1"></i>Add Branch
                 </button>
             </div>

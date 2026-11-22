@@ -17,7 +17,7 @@ if ($from && $to && $from > $to) {
 }
 ?>
 <style>
-    .attendance-log-table th { background-color: #009688; color: white; }
+    .attendance-log-table th { background-color: #01544c; color: white; }
     .attendance-log-table td { font-size: 13px; }
     .log-time-in { color: #28a745; font-weight: 600; }
     .log-time-out { color: #dc3545; font-weight: 600; }
@@ -29,7 +29,7 @@ if ($from && $to && $from > $to) {
             <div class="row">
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
-                        <h4 class="mb-sm-0"><i class="ri-calendar-check-line me-2" style="color:#219688;"></i>Attendance</h4>
+                        <h4 class="mb-sm-0"><i class="ri-calendar-check-line me-2" style="color:#01544c;"></i>Attendance</h4>
                         <div class="page-title-right">
                             <ol class="breadcrumb m-0">
                                 <li class="breadcrumb-item"><a href="javascript:void(0);">Reports</a></li>
@@ -50,7 +50,7 @@ if ($from && $to && $from > $to) {
                                 <div class="col-sm-6 col-lg-4">
                                     <div class="input-group">
                                         <span class="input-group-text" style="background:#eef0f8;border-color:#c5cde8;">
-                                            <i class="ri-calendar-line" style="color:#009688;"></i>
+                                            <i class="ri-calendar-line" style="color:#01544c;"></i>
                                         </span>
                                         <input type="date" name="from" id="from" class="form-control" value="<?= htmlspecialchars($from) ?>">
                                     </div>
@@ -58,7 +58,7 @@ if ($from && $to && $from > $to) {
                                 <div class="col-sm-6 col-lg-4">
                                     <div class="input-group">
                                         <span class="input-group-text" style="background:#eef0f8;border-color:#c5cde8;">
-                                            <i class="ri-calendar-line" style="color:#009688;"></i>
+                                            <i class="ri-calendar-line" style="color:#01544c;"></i>
                                         </span>
                                         <input type="date" name="to" id="to" class="form-control" value="<?= htmlspecialchars($to) ?>">
                                     </div>
@@ -88,7 +88,7 @@ if ($from && $to && $from > $to) {
                     <div class="card shadow-sm">
                         <div class="card-header">
                             <h5 class="card-title mb-0">
-                                <i class="ri-file-list-line me-2" style="color:#009688;"></i>Employee Logs
+                                <i class="ri-file-list-line me-2" style="color:#01544c;"></i>Employee Logs
                             </h5>
                         </div>
                         <div class="card-body">

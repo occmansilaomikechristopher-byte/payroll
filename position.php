@@ -1,18 +1,163 @@
 <style>
-    .pos-name { font-weight:600; font-size:13px; color:#222; }
-    .pos-index { font-size:11px; color:#aaa; font-family:monospace; margin-right:6px; }
-    #data-table thead th { background-color:#009688 !important; border-color:#2d3d66 !important; color:#fff !important; }
-    #data-table tbody tr:hover td { background:#f4f5fb; }
+    .position-page .page-title-box {
+        padding-top: 6px;
+        padding-bottom: 20px;
+    }
+
+    .position-page .page-title-box h4 {
+        color: #1f2937;
+        font-weight: 600;
+    }
+
+    .position-list-card {
+        overflow: hidden;
+        border: 1px solid #e8edf3;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+    }
+
+    .position-list-card .card-header {
+        padding: 18px 22px;
+        border-bottom: 1px solid #eef2f6;
+        background: #fff;
+    }
+
+    .position-list-card .card-title {
+        color: #344054;
+        font-size: 15px;
+        font-weight: 600;
+    }
+
+    .position-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 24px;
+        height: 22px;
+        padding: 0 7px;
+        border-radius: 12px;
+        background: #e6f5f3;
+        color: #01544c;
+        font-size: 11px;
+        font-weight: 700;
+        vertical-align: middle;
+    }
+
+    .position-create-btn {
+        border: 0;
+        border-radius: 6px;
+        background: #01544c;
+        box-shadow: 0 3px 8px rgba(1, 84, 76, 0.25);
+    }
+
+    .position-create-btn:hover,
+    .position-create-btn:focus {
+        background: #01433d;
+    }
+
+    .position-list-card .card-body {
+        padding: 22px;
+    }
+
+    #data-table {
+        border-color: #edf0f4;
+    }
+
+    #data-table thead th {
+        padding: 12px 14px;
+        border-color: #01433d !important;
+        background: #01544c !important;
+        color: #fff !important;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    #data-table tbody td {
+        padding: 13px 14px;
+        border-color: #edf0f4;
+        color: #475467;
+        font-size: 13px;
+    }
+
+    #data-table tbody tr:hover td {
+        background: #f7fbfa;
+    }
+
+    .pos-name {
+        color: #344054;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .pos-index {
+        display: inline-block;
+        min-width: 30px;
+        margin-right: 7px;
+        color: #98a2b3;
+        font-family: monospace;
+        font-size: 11px;
+    }
+
+    #data-table .btn-outline-primary {
+        border-color: #80aaa5;
+        border-radius: 5px;
+        color: #01544c;
+        font-size: 12px;
+    }
+
+    #data-table .btn-outline-primary:hover {
+        border-color: #01544c;
+        background: #e6f5f3;
+        color: #01544c;
+    }
+
+    .position-list-card .dataTables_wrapper .dataTables_length,
+    .position-list-card .dataTables_wrapper .dataTables_filter {
+        margin-bottom: 18px;
+        color: #667085;
+        font-size: 12px;
+    }
+
+    .position-list-card .dataTables_wrapper .dataTables_filter input,
+    .position-list-card .dataTables_wrapper .dataTables_length select {
+        border: 1px solid #dfe5ec;
+        border-radius: 6px;
+        color: #344054;
+        outline: none;
+    }
+
+    .position-list-card .dataTables_wrapper .dataTables_filter input:focus {
+        border-color: #01544c;
+        box-shadow: 0 0 0 3px rgba(1, 84, 76, 0.15);
+    }
+
+    @media (max-width: 575.98px) {
+        .position-list-card .card-header {
+            align-items: flex-start !important;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .position-list-card .card-body {
+            padding: 16px 12px;
+        }
+
+        .position-list-card .dataTables_wrapper .dataTables_length,
+        .position-list-card .dataTables_wrapper .dataTables_filter {
+            float: none;
+            text-align: left;
+        }
+    }
 </style>
 
-<div class="main-content">
+<div class="main-content position-page">
     <div class="page-content">
         <div class="container-fluid">
             <div class="row">
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
                         <h4 class="mb-sm-0">
-                            <i class="ri-briefcase-4-line me-2" style="color:#009688;"></i>Position
+                            <i class="ri-briefcase-4-line me-2" style="color:#01544c;"></i>Position
                         </h4>
                         <div class="page-title-right">
                             <ol class="breadcrumb m-0">
@@ -23,23 +168,23 @@
                     </div>
                 </div>
 
-                <div class="card" style="border-top:3px solid #009688;">
-                    <div class="card-header align-items-center d-flex py-2">
+                <div class="card position-list-card">
+                    <div class="card-header align-items-center d-flex">
                         <h4 class="card-title mb-0 flex-grow-1">
-                            <i class="ri-briefcase-4-line me-2" style="color:#009688;"></i>Position List
+                            <i class="ri-briefcase-4-line me-2" style="color:#01544c;"></i>Position List
                             <?php
                             $pos_count = $conn->query("SELECT COUNT(*) AS c FROM position")->fetch_assoc()['c'];
                             ?>
-                            <span class="badge ms-1" style="background:#eef0f8;color:#009688;font-size:11px;font-weight:700;vertical-align:middle;"><?= $pos_count ?></span>
+                            <span class="position-count ms-1"><?= $pos_count ?></span>
                         </h4>
-                        <button type="button" class="btn btn-sm text-white" style="background:#009688;border-color:#009688;"
+                        <button type="button" class="btn btn-sm text-white position-create-btn"
                             data-bs-toggle="modal" data-bs-target="#modal">
                             <i class="ri-add-circle-line me-1"></i>Create Position
                         </button>
                     </div>
 
                     <div class="card-body">
-                        <div class="table-responsive mt-2 mb-1">
+                        <div class="table-responsive">
                             <table id="data-table" class="table table-hover table-bordered align-middle">
                                 <thead>
                                     <tr>

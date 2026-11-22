@@ -5,7 +5,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h6 class="modal-title title mb-0">
-                        <i class="ri-user-add-line me-2" style="color:#009688;"></i>Create User
+                        <i class="ri-user-add-line me-2" style="color:#01544c;"></i>Create User
                     </h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -15,7 +15,7 @@
                     
 
                         <div class="col-md-12">
-                            <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
+                            <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#01544c;">
                                 <i class="ri-shield-check-line me-1"></i>Role <span class="text-danger">*</span>
                             </label>
                             <select class="form-control select2" id="role" name="role"
@@ -28,7 +28,7 @@
                         </div>
 
                         <div class="col-md-12" id="branch-wrapper">
-                            <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
+                            <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#01544c;">
                                 <i class="ri-git-branch-line me-1"></i>Branch <span class="text-danger">*</span>
                             </label>
                             <select id="branch-select" class="form-control select2" name="branch_id"
@@ -54,7 +54,7 @@
                         </div>
 
                         <div class="col-md-12">
-                            <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
+                            <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#01544c;">
                                 <i class="ri-user-3-line me-1"></i>Full Name <span class="text-danger">*</span>
                             </label>
                             <input type="text" class="form-control" placeholder="e.g. Juan Dela Cruz"
@@ -63,7 +63,7 @@
                         </div>
 
                         <div class="col-md-6" id="username-wrapper">
-                            <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
+                            <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#01544c;">
                                 <i class="ri-at-line me-1"></i>Username <span class="text-danger">*</span>
                             </label>
                             <input type="text" class="form-control" placeholder="username"
@@ -72,7 +72,7 @@
                         </div>
 
                         <div class="col-md-6" id="password-wrapper">
-                            <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
+                            <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#01544c;">
                                 <i class="ri-lock-password-line me-1"></i>Password <span class="text-danger">*</span>
                             </label>
                             <div class="input-group">
@@ -94,7 +94,7 @@
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">
                         <i class="ri-close-line me-1"></i>Cancel
                     </button>
-                    <button type="submit" class="btn btn-sm text-white submitbutton" style="background:#009688;border-color:#009688;">
+                    <button type="submit" class="btn btn-sm text-white submitbutton" style="background:#01544c;border-color:#01544c;">
                         <i class="fa fa-spinner fa-spin fa-spinner-button"></i>
                         <i class="ri-save-line me-1"></i>Create
                     </button>

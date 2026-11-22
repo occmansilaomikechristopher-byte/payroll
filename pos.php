@@ -5,12 +5,12 @@ $can_manage_products = in_array($login_role, [1, 9, 10], true);
 ?>
 
 <style>
-    .pos-card { border-top:3px solid #219688; border-radius:4px; background:#fff; }
+    .pos-card { border-top:3px solid #01544c; border-radius:4px; background:#fff; }
     .pos-stat { text-align:center; padding:20px; }
-    .pos-stat-val { font-size:28px; font-weight:700; color:#219688; }
+    .pos-stat-val { font-size:28px; font-weight:700; color:#01544c; }
     .pos-stat-lbl { font-size:12px; color:#666; text-transform:uppercase; letter-spacing:.5px; margin-top:6px; }
-    .pos-icon { width:48px; height:48px; border-radius:50%; background:#e6f5f3; display:flex; align-items:center; justify-content:center; font-size:20px; color:#219688; margin:0 auto 10px; }
-    .table-striped tbody tr:hover { background-color:#f0faf9 !important; }
+    .pos-icon { width:48px; height:48px; border-radius:50%; background:#e6f5f3; display:flex; align-items:center; justify-content:center; font-size:20px; color:#01544c; margin:0 auto 10px; }
+    .table-striped tbody tr:hover { background-color:#f0faf8 !important; }
 </style>
 
 <div class="main-content">
@@ -21,7 +21,7 @@ $can_manage_products = in_array($login_role, [1, 9, 10], true);
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
                         <div>
                             <h4 class="mb-sm-0">
-                                <i class="ri-shopping-cart-2-line me-2" style="color:#219688;"></i>POS System
+                                <i class="ri-shopping-cart-2-line me-2" style="color:#01544c;"></i>POS System
                             </h4>
                             <p class="text-muted mb-0 small mt-1"><i class="ri-information-line"></i> Manage branches, product categories, and inventory</p>
                         </div>
@@ -41,22 +41,22 @@ $can_manage_products = in_array($login_role, [1, 9, 10], true);
                     <div class="nav-tabs-custom">
                         <ul class="nav nav-tabs" role="tablist" style="border-bottom:2px solid #e9ecef;">
                             <li class="nav-item" role="presentation">
-                                <a class="nav-link <?= $tab === 'dashboard' ? 'active' : '' ?>" href="pos" style="<?= $tab === 'dashboard' ? 'border-bottom:2px solid #219688;color:#219688;' : '' ?>">
+                                <a class="nav-link <?= $tab === 'dashboard' ? 'active' : '' ?>" href="pos" style="<?= $tab === 'dashboard' ? 'border-bottom:2px solid #01544c;color:#01544c;' : '' ?>">
                                     <i class="ri-dashboard-line me-2"></i>Dashboard
                                 </a>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <a class="nav-link <?= $tab === 'branches' ? 'active' : '' ?>" href="pos?tab=branches" style="<?= $tab === 'branches' ? 'border-bottom:2px solid #219688;color:#219688;' : '' ?>">
+                                <a class="nav-link <?= $tab === 'branches' ? 'active' : '' ?>" href="pos?tab=branches" style="<?= $tab === 'branches' ? 'border-bottom:2px solid #01544c;color:#01544c;' : '' ?>">
                                     <i class="ri-git-branch-line me-2"></i>Branches
                                 </a>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <a class="nav-link <?= $tab === 'categories' ? 'active' : '' ?>" href="pos?tab=categories" style="<?= $tab === 'categories' ? 'border-bottom:2px solid #219688;color:#219688;' : '' ?>">
+                                <a class="nav-link <?= $tab === 'categories' ? 'active' : '' ?>" href="pos?tab=categories" style="<?= $tab === 'categories' ? 'border-bottom:2px solid #01544c;color:#01544c;' : '' ?>">
                                     <i class="ri-layout-grid-line me-2"></i>Categories
                                 </a>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <a class="nav-link <?= $tab === 'products' ? 'active' : '' ?>" href="pos?tab=products" style="<?= $tab === 'products' ? 'border-bottom:2px solid #219688;color:#219688;' : '' ?>">
+                                <a class="nav-link <?= $tab === 'products' ? 'active' : '' ?>" href="pos?tab=products" style="<?= $tab === 'products' ? 'border-bottom:2px solid #01544c;color:#01544c;' : '' ?>">
                                     <i class="ri-shopping-bag-2-line me-2"></i>Products
                                 </a>
                             </li>
@@ -117,7 +117,7 @@ $can_manage_products = in_array($login_role, [1, 9, 10], true);
                     <div class="col-12">
                         <div class="card pos-card">
                             <div class="card-body">
-                                <h5 class="card-title mb-3"><i class="ri-lightbulb-flash-line me-2" style="color:#219688;"></i>Quick Actions</h5>
+                                <h5 class="card-title mb-3"><i class="ri-lightbulb-flash-line me-2" style="color:#01544c;"></i>Quick Actions</h5>
                                 <div class="d-flex gap-3 flex-wrap">
                                     <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modal-add-branch">
                                         <i class="ri-add-line me-1"></i>Add Branch

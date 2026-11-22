@@ -11,7 +11,7 @@ $filter_query = '';
     .dtr-user small { font-size:10px; color: #888; font-weight:400; display:block; }
     .dtr-action { display:flex; gap:4px; justify-content:center; }
     #data-table1 thead th,
-    #data-table thead th { background-color: #009688 !important; border-color: #038479 !important; color: #fff !important; }
+    #data-table thead th { background-color: #01544c !important; border-color: #01433d !important; color: #fff !important; }
 </style>
 
 <div class="main-content">
@@ -20,7 +20,7 @@ $filter_query = '';
             <div class="row">
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
-                        <h4 class="mb-sm-0"><i class="ri-time-line me-2" style="color: #009688;"></i>Daily Time Record</h4>
+                        <h4 class="mb-sm-0"><i class="ri-time-line me-2" style="color: #01544c;"></i>Daily Time Record</h4>
                         <div class="page-title-right">
                             <ol class="breadcrumb m-0">
                                 <li class="breadcrumb-item"><a href="javascript:void(0);">Pages</a></li>
@@ -30,7 +30,7 @@ $filter_query = '';
                     </div>
                 </div>
 
-                <div class="card" style="border-top:3px solid #0d6efd;">
+                <div class="card" style="border-top:3px solid #01544c;">
                     <div class="card-header align-items-center d-flex py-2">
                         <h4 class="card-title mb-0 flex-grow-1">
                             <i class="ri-time-line me-2" style="color: #0d6efd;"></i>DTR List

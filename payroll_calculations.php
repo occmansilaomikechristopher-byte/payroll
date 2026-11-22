@@ -74,8 +74,8 @@ $payroll_type = $payroll['type'];
     right: auto !important;
 }
 /* simple colors */
-#table-1 thead th { background-color: #219688 !important; color: #fff !important; border-color: #cccccc !important; }
-#table-1 thead tr:first-child th { background-color: #176358 !important; }
+#table-1 thead th { background-color: #01544c !important; color: #fff !important; border-color: #cccccc !important; }
+#table-1 thead tr:first-child th { background-color: #01433d !important; }
 #table-1 tbody td:nth-child(1), #table-1 tfoot th:nth-child(1) { background-color: #fff !important; color: #333 !important; border-right: 1px solid #cccccc !important; font-weight: normal !important; }
 #table-1 tbody td:nth-child(2), #table-1 tfoot th:nth-child(2) { background-color: #fff !important; color: #333 !important; border-right: 1px solid #cccccc !important; font-weight: normal !important; box-shadow: none !important; }
 #table-1 tbody tr:nth-child(even) td { background-color: #fff !important; }

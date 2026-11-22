@@ -9,7 +9,7 @@
         align-items: center;
         background: #e6f5f3;
         border-radius: 8px;
-        color: #219688;
+        color: #01544c;
         display: inline-flex;
         height: 32px;
         justify-content: center;
@@ -17,8 +17,8 @@
     }
 
     #data-table thead th {
-        background-color: #219688 !important;
-        border-color: #176358 !important;
+        background-color: #01544c !important;
+        border-color: #01433d !important;
         color: #fff !important;
         font-size: 12px;
         letter-spacing: .02em;
@@ -37,7 +37,7 @@
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
                         <h4 class="mb-sm-0">
-                            <i class="ri-money-dollar-circle-line me-2" style="color:#219688;"></i>Deductions
+                            <i class="ri-money-dollar-circle-line me-2" style="color:#01544c;"></i>Deductions
                         </h4>
                         <div class="page-title-right">
                             <ol class="breadcrumb m-0">
@@ -48,10 +48,10 @@
                     </div>
                 </div>
 
-                <div class="card" style="border-top:3px solid #219688;">
+                <div class="card" style="border-top:3px solid #01544c;">
                     <div class="card-header align-items-center d-flex py-2">
                         <h4 class="card-title mb-0 flex-grow-1">
-                            <i class="ri-money-dollar-circle-line me-2" style="color:#219688;"></i>Deduction List
+                            <i class="ri-money-dollar-circle-line me-2" style="color:#01544c;"></i>Deduction List
                             <?php
                             $query = $conn->query("SELECT id, deduction, description FROM deductions ORDER BY deduction ASC");
                             $deductions = [];
@@ -62,11 +62,11 @@
                                 }
                             }
                             ?>
-                            <span class="badge ms-1" style="background:#e6f5f3;color:#219688;font-size:11px;font-weight:700;vertical-align:middle;">
+                            <span class="badge ms-1" style="background:#e6f5f3;color:#01544c;font-size:11px;font-weight:700;vertical-align:middle;">
                                 <?= count($deductions) ?>
                             </span>
                         </h4>
-                        <button type="button" class="btn btn-sm text-white" style="background:#219688;border-color:#219688;"
+                        <button type="button" class="btn btn-sm text-white" style="background:#01544c;border-color:#01544c;"
                             data-bs-toggle="modal" id="create-btn" data-bs-target="#modal">
                             <i class="ri-add-line me-1"></i>Create Deduction
                         </button>

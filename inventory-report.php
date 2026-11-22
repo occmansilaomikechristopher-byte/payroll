@@ -1,10 +1,10 @@
 <style>
-    .ir-card { border-top:3px solid #219688; border-radius:4px; background:#fff; }
+    .ir-card { border-top:3px solid #01544c; border-radius:4px; background:#fff; }
     .ir-stat { text-align:center; padding:16px; }
-    .ir-stat .v { font-size:22px; font-weight:800; color:#219688; }
+    .ir-stat .v { font-size:22px; font-weight:800; color:#01544c; }
     .ir-stat .l { font-size:11px; color:#666; text-transform:uppercase; letter-spacing:.5px; margin-top:4px; }
-    #inventory-table thead th { background-color:#219688 !important; border-color:#176358 !important; color:#fff !important; }
-    #inventory-table tbody tr:hover td { background:#f0faf9; }
+    #inventory-table thead th { background-color:#01544c !important; border-color:#01433d !important; color:#fff !important; }
+    #inventory-table tbody tr:hover td { background:#f0faf8; }
 </style>
 
 <?php
@@ -29,7 +29,7 @@ $simple_add_product_modal = false;
             <div class="row">
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
-                        <h4 class="mb-sm-0"><i class="ri-store-3-line me-2" style="color:#219688;"></i>Inventory Report</h4>
+                        <h4 class="mb-sm-0"><i class="ri-store-3-line me-2" style="color:#01544c;"></i>Inventory Report</h4>
                         <div class="page-title-right">
                             <ol class="breadcrumb m-0">
                                 <li class="breadcrumb-item"><a href="javascript:void(0);">Reports</a></li>

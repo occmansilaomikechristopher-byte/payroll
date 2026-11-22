@@ -1,13 +1,13 @@
 <style>
-    .sr-card { border-top:3px solid #219688; border-radius:4px; background:#fff; }
+    .sr-card { border-top:3px solid #01544c; border-radius:4px; background:#fff; }
     .sr-stat { text-align:center; padding:16px; }
-    .sr-stat .v { font-size:22px; font-weight:800; color:#219688; }
+    .sr-stat .v { font-size:22px; font-weight:800; color:#01544c; }
     .sr-stat .l { font-size:11px; color:#666; text-transform:uppercase; letter-spacing:.5px; margin-top:4px; }
-    .sr-inv { font-family:monospace; font-weight:700; color:#219688; font-size:12px; }
-    .sr-branch { background:#e6f5f3; color:#176358; padding:1px 7px; border-radius:3px; font-size:11px; font-weight:700; }
-    #sales-table thead th { background-color:#219688 !important; border-color:#176358 !important; color:#fff !important; }
-    #sales-table tbody tr:hover td { background:#f0faf9; }
-    .sr-filter { background:#219688; color:#fff; border-radius:4px; padding:10px 16px; margin-bottom:12px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .sr-inv { font-family:monospace; font-weight:700; color:#01544c; font-size:12px; }
+    .sr-branch { background:#e6f5f3; color:#01544c; padding:1px 7px; border-radius:3px; font-size:11px; font-weight:700; }
+    #sales-table thead th { background-color:#01544c !important; border-color:#01433d !important; color:#fff !important; }
+    #sales-table tbody tr:hover td { background:#f0faf8; }
+    .sr-filter { background:linear-gradient(135deg, #01544c 0%, #01433d 100%); border-bottom:2px solid #f4b42e; color:#fff; border-radius:4px; padding:10px 16px; margin-bottom:12px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
     .sr-filter input, .sr-filter select { border:none; border-radius:4px; padding:5px 9px; font-size:13px; }
 </style>
 
@@ -84,7 +84,7 @@ if ($sales) {
             <div class="row">
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
-                        <h4 class="mb-sm-0"><i class="ri-money-dollar-circle-line me-2" style="color:#219688;"></i>Sales Report</h4>
+                        <h4 class="mb-sm-0"><i class="ri-money-dollar-circle-line me-2" style="color:#01544c;"></i>Sales Report</h4>
                         <div class="page-title-right">
                             <ol class="breadcrumb m-0">
                                 <li class="breadcrumb-item"><a href="javascript:void(0);">Reports</a></li>
@@ -186,8 +186,8 @@ if ($sales) {
 <div class="modal fade" id="modal-sale-details" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
-            <div class="modal-header" style="border-bottom:2px solid #219688;">
-                <h5 class="modal-title" style="color:#219688;"><i class="ri-receipt-line me-2"></i><span id="sd-invoice">Sale Details</span></h5>
+            <div class="modal-header" style="border-bottom:2px solid #f4b42e;">
+                <h5 class="modal-title" style="color:#01544c;"><i class="ri-receipt-line me-2"></i><span id="sd-invoice">Sale Details</span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -213,7 +213,7 @@ if ($sales) {
                         <table class="table table-sm">
                             <tr><td>Subtotal</td><td class="text-end" id="sd-subtotal"></td></tr>
                             <tr><td>Discount</td><td class="text-end text-danger" id="sd-discount"></td></tr>
-                            <tr class="fw-bold" style="font-size:15px;"><td>Total</td><td class="text-end" id="sd-total" style="color:#219688;"></td></tr>
+                            <tr class="fw-bold" style="font-size:15px;"><td>Total</td><td class="text-end" id="sd-total" style="color:#01544c;"></td></tr>
                             <tr><td>Cash Paid</td><td class="text-end" id="sd-payment"></td></tr>
                             <tr><td>Change</td><td class="text-end text-success" id="sd-change"></td></tr>
                         </table>

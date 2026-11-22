@@ -9,17 +9,17 @@ if ($login_role != 1) {
 }
 ?>
 <style>
-    .usr-avatar { width:30px; height:30px; border-radius:50%; background:#009688; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .usr-avatar { width:30px; height:30px; border-radius:50%; background:#01544c; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
     .usr-name { font-weight:600; font-size:13px; }
-    .usr-username { font-family:monospace; font-size:12px; color:#009688; font-weight:600; }
+    .usr-username { font-family:monospace; font-size:12px; color:#01544c; font-weight:600; }
     .usr-employer { font-size:13px; font-weight:600; }
-    .usr-site-code { background:#009688; color:#fff; padding:1px 6px; border-radius:3px; font-size:10px; font-weight:700; font-family:monospace; }
+    .usr-site-code { background:#01544c; color:#fff; padding:1px 6px; border-radius:3px; font-size:10px; font-weight:700; font-family:monospace; }
     .usr-site-name { font-size:11px; font-weight:600; color:#333; }
     .usr-site-addr { font-size:10px; color:#888; }
     .usr-site-item { border:1px solid #d0d7ee; border-radius:4px; padding:4px 8px; margin-bottom:4px; background:#f7f8fc; }
     .usr-action { display:flex; gap:4px; justify-content:center; flex-wrap:nowrap; }
-    #data-table thead th { background-color:#009688 !important; border-color:#2d3d66 !important; color:#fff !important; }
-    #data-table tbody tr:hover td { background:#f4f5fb; }
+    #data-table thead th { background-color:#01544c !important; border-color:#01433d !important; color:#fff !important; }
+    #data-table tbody tr:hover td { background:#f0faf8; }
 </style>
 
 <div class="main-content">
@@ -29,7 +29,7 @@ if ($login_role != 1) {
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
                         <h4 class="mb-sm-0">
-                            <i class="ri-shield-user-line me-2" style="color:#009688;"></i>User Management
+                            <i class="ri-shield-user-line me-2" style="color:#01544c;"></i>User Management
                         </h4>
                         <div class="page-title-right">
                             <ol class="breadcrumb m-0">
@@ -40,16 +40,16 @@ if ($login_role != 1) {
                     </div>
                 </div>
 
-                <div class="card" style="border-top:3px solid #009688;">
+                <div class="card" style="border-top:3px solid #01544c;">
                     <div class="card-header align-items-center d-flex py-2">
                         <h4 class="card-title mb-0 flex-grow-1">
-                            <i class="ri-shield-user-line me-2" style="color:#009688;"></i>User List
+                            <i class="ri-shield-user-line me-2" style="color:#01544c;"></i>User List
                             <?php
                             $user_count = $conn->query("SELECT COUNT(*) AS c FROM users WHERE role != 1")->fetch_assoc()['c'];
                             ?>
-                            <span class="badge ms-1" style="background:#eef0f8;color:#009688;font-size:11px;font-weight:700;vertical-align:middle;"><?= $user_count ?></span>
+                            <span class="badge ms-1" style="background:#e6f5f3;color:#01544c;font-size:11px;font-weight:700;vertical-align:middle;"><?= $user_count ?></span>
                         </h4>
-                        <button type="button" class="btn btn-sm text-white" style="background:#009688;border-color:#009688;"
+                        <button type="button" class="btn btn-sm text-white" style="background:#01544c;border-color:#01544c;"
                             data-bs-toggle="modal" data-bs-target="#modal">
                             <i class="ri-user-add-line me-1"></i>Create User
                         </button>

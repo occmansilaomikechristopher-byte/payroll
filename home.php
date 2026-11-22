@@ -129,7 +129,7 @@ $recent_dtr = $conn->query("
         font-weight: 800;
         letter-spacing: -.03em;
         margin: 0;
-        color: #0f766e;
+        color: #01544c;
         line-height: 1;
     }
     .stat-card__label {
@@ -145,20 +145,20 @@ $recent_dtr = $conn->query("
         color: #94a3b8;
         margin: 0;
     }
-    .stat-card--green { border-top: 4px solid #0f766e; }
-    .stat-card--purple { border-top: 4px solid #6d28d9; }
-    .stat-card--gold { border-top: 4px solid #f59e0b; }
-    .stat-card--teal { border-top: 4px solid #0ea5e9; }
-    .stat-card--red { border-top: 4px solid #dc2626; }
-    .stat-card--blue { border-top: 4px solid #2563eb; }
-    .stat-card__icon--green { background: #ecfdf5; color: #0f766e; }
-    .stat-card__icon--purple { background: #f5f3ff; color: #6d28d9; }
-    .stat-card__icon--gold { background: #ffedd5; color: #b45309; }
-    .stat-card__icon--teal { background: #eff6ff; color: #0ea5e9; }
-    .stat-card__icon--red { background: #fee2e2; color: #dc2626; }
-    .stat-card__icon--blue { background: #e0f2fe; color: #2563eb; }
+    .stat-card--green { border-top: 4px solid #01544c; }
+    .stat-card--purple { border-top: 4px solid #01433d; }
+    .stat-card--gold { border-top: 4px solid #f4b42e; }
+    .stat-card--teal { border-top: 4px solid #00695c; }
+    .stat-card--red { border-top: 4px solid #d89b25; }
+    .stat-card--blue { border-top: 4px solid #01544c; }
+    .stat-card__icon--green { background: #e6f5f3; color: #01544c; }
+    .stat-card__icon--purple { background: #e0f2f1; color: #01433d; }
+    .stat-card__icon--gold { background: #fef7ea; color: #d89b25; }
+    .stat-card__icon--teal { background: #e6f5f3; color: #00695c; }
+    .stat-card__icon--red { background: #fef7ea; color: #f4b42e; }
+    .stat-card__icon--blue { background: #e6f5f3; color: #01544c; }
     #data-table thead th,
-    #dtr-recent-table thead th { background-color:#009688 !important; border-color:#2d3d66 !important; color:#fff !important; }
+    #dtr-recent-table thead th { background-color:#01544c !important; border-color:#01433d !important; color:#fff !important; }
 </style>
 
 <div class="main-content">
@@ -169,7 +169,7 @@ $recent_dtr = $conn->query("
             <div class="row">
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
-                        <h4 class="mb-sm-0"><i class="ri-dashboard-line me-2" style="color:#009688;"></i>Dashboard</h4>
+                        <h4 class="mb-sm-0"><i class="ri-dashboard-line me-2" style="color:#01544c;"></i>Dashboard</h4>
                         <div class="page-title-right">
                             <ol class="breadcrumb m-0">
                                 <li class="breadcrumb-item"><a href="javascript:void(0);">Pages</a></li>

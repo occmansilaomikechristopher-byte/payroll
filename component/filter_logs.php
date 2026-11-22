@@ -5,7 +5,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h6 class="modal-title mb-0">
-                        <i class="ri-filter-3-line me-2" style="color:#009688;"></i>Filter Visitor Logs
+                        <i class="ri-filter-3-line me-2" style="color:#01544c;"></i>Filter Visitor Logs
                     </h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -13,7 +13,7 @@
 
                     <!-- Date Range -->
                     <div class="mb-3">
-                        <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
+                        <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#01544c;">
                             <i class="ri-calendar-range-line me-1"></i>Date Range <span class="text-danger">*</span>
                         </label>
                         <div class="row g-2">
@@ -40,7 +40,7 @@
 
                     <!-- Branch -->
                     <div class="mb-1">
-                        <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#009688;">
+                        <label class="form-label fw-semibold" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#01544c;">
                             <i class="ri-git-branch-line me-1"></i>Branch <span class="text-muted fw-normal">(optional)</span>
                         </label>
                         <select id="site-select" class="form-control select2" name="site_id"
@@ -62,7 +62,7 @@
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">
                         <i class="ri-close-line me-1"></i>Cancel
                     </button>
-                    <button type="submit" class="btn btn-sm text-white" style="background:#009688;border-color:#009688;">
+                    <button type="submit" class="btn btn-sm text-white" style="background:#01544c;border-color:#01544c;">
                         <i class="ri-search-line me-1"></i>Apply Filter
                     </button>
                 </div>
