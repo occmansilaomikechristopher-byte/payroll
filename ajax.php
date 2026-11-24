@@ -943,8 +943,8 @@ if ($action == "owner-report-attendance-branches") {
 	$branches = [];
 	$result = $conn->query(
 		"SELECT b.id, b.branch_name, " .
-		"IFNULL(SUM(CASE WHEN dd.attendance_type IN ('1','3') THEN 1 ELSE 0 END), 0) AS present_count, " .
-		"IFNULL(COUNT(dd.id), 0) AS total_logs " .
+		"IFNULL(COUNT(DISTINCT CASE WHEN (dd.work_hours > 0 OR LOWER(IFNULL(dd.attendance_type, '')) IN ('in', 'bio', 'manual', '1', '3', 'present') OR (dd.logs IS NOT NULL AND dd.logs != '' AND dd.logs != '[]' AND dd.logs != 'null')) THEN CONCAT(dd.employee_id, '_', IFNULL(dd.date_time, dd.id)) END), 0) AS present_count, " .
+		"IFNULL(COUNT(DISTINCT CONCAT(dd.employee_id, '_', IFNULL(dd.date_time, dd.id))), 0) AS total_logs " .
 		"FROM branches b " .
 		"LEFT JOIN dtr d ON d.branch_id = b.id " .
 		"LEFT JOIN dtr_details dd ON dd.ddtr_id = d.id " .
@@ -959,6 +959,8 @@ if ($action == "owner-report-attendance-branches") {
 				'id' => intval($row['id']),
 				'branch_name' => $row['branch_name'],
 				'attendance_rate' => $attendanceRate,
+				'present_count' => $present,
+				'total_logs' => $totalLogs,
 			];
 		}
 	}
@@ -1081,15 +1083,27 @@ if ($action == "owner-report-damage-branches") {
 if ($action == "owner-report-attendance") {
 	global $conn;
 	$attendanceRate = 0;
-	$totalDays = $conn->query("SELECT COUNT(DISTINCT DATE(datetime_log)) as days FROM attendance");
-	$presentLogs = $conn->query("SELECT COUNT(*) as presents FROM attendance WHERE log_type IN (1,3)");
+	$dtrQuery = $conn->query(
+		"SELECT " .
+		"COUNT(DISTINCT CONCAT(dd.employee_id, '_', IFNULL(dd.date_time, dd.id))) AS total_shifts, " .
+		"COUNT(DISTINCT CASE WHEN (dd.work_hours > 0 OR LOWER(IFNULL(dd.attendance_type, '')) IN ('in', 'bio', 'manual', '1', '3', 'present') OR (dd.logs IS NOT NULL AND dd.logs != '' AND dd.logs != '[]' AND dd.logs != 'null')) THEN CONCAT(dd.employee_id, '_', IFNULL(dd.date_time, dd.id)) END) AS present_shifts " .
+		"FROM dtr_details dd"
+	);
+	if ($dtrQuery && ($row = $dtrQuery->fetch_assoc()) && intval($row['total_shifts']) > 0) {
+		$total = intval($row['total_shifts']);
+		$present = intval($row['present_shifts']);
+		$attendanceRate = $total > 0 ? ($present / $total) * 100 : 0;
+	} else {
+		$totalDays = $conn->query("SELECT COUNT(DISTINCT DATE(datetime_log)) as days FROM attendance");
+		$presentLogs = $conn->query("SELECT COUNT(*) as presents FROM attendance WHERE log_type IN (1,3)");
 
-	if ($totalDays && $presentLogs) {
-		$totalRow = $totalDays->fetch_assoc();
-		$presentRow = $presentLogs->fetch_assoc();
-		$total = intval($totalRow['days'] ?? 0);
-		$present = intval($presentRow['presents'] ?? 0);
-		$attendanceRate = $total > 0 ? ($present / ($total * 2)) * 100 : 0;
+		if ($totalDays && $presentLogs) {
+			$totalRow = $totalDays->fetch_assoc();
+			$presentRow = $presentLogs->fetch_assoc();
+			$total = intval($totalRow['days'] ?? 0);
+			$present = intval($presentRow['presents'] ?? 0);
+			$attendanceRate = $total > 0 ? ($present / ($total * 2)) * 100 : 0;
+		}
 	}
 	echo json_encode(['success' => true, 'rate' => round($attendanceRate, 1)]);
 	return;
